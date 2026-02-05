@@ -151,7 +151,7 @@ class SSM_Notification_System {
                 'expires_at' => $options['expires_at'],
                 'created_at' => current_time('mysql')
             ),
-            array('%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s')
+            array('%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')
         );
 
         if ($result) {

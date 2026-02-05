@@ -3,7 +3,7 @@
  * Plugin Name: Swimming School Manager
  * Plugin URI: https://example.com
  * Description: System zarządzania szkółką pływania - Rodzice, Dzieci, Instruktorzy, Kursy z harmonogramem
- * Version: 2.61
+ * Version: 2.62
  * Author: Twoje Imię
  * Text Domain: swimming-school
  * Domain Path: /languages

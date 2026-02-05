@@ -328,8 +328,8 @@ html { margin-top: 0 !important; }
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Dropdown toggles
-    document.querySelectorAll('.ssm-topbar-dropdown > button').forEach(function(btn) {
+    // Dropdown toggles (exclude notifications - has separate handler)
+    document.querySelectorAll('.ssm-topbar-dropdown:not(.ssm-notifications-dropdown) > button').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
             const dropdown = this.nextElementSibling;
