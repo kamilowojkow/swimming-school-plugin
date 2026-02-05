@@ -3,7 +3,7 @@
  * Plugin Name: Swimming School Manager
  * Plugin URI: https://example.com
  * Description: System zarządzania szkółką pływania - Rodzice, Dzieci, Instruktorzy, Kursy z harmonogramem
- * Version: 2.62
+ * Version: 2.64
  * Author: Twoje Imię
  * Text Domain: swimming-school
  * Domain Path: /languages
@@ -81,7 +81,8 @@ class Swimming_School_Manager_V2 {
         require_once SSM_PLUGIN_DIR . 'includes/gamification-system.php';
         require_once SSM_PLUGIN_DIR . 'includes/translations.php';
         require_once SSM_PLUGIN_DIR . 'includes/notification-system.php';
-        
+        require_once SSM_PLUGIN_DIR . 'includes/api/rest-api.php';
+
         // Inicjalizacja
         add_action('plugins_loaded', array($this, 'init'));
         add_action('admin_menu', array($this, 'add_admin_menu'));
@@ -536,6 +537,53 @@ class Swimming_School_Manager_V2 {
                 KEY sent_at (sent_at)
             ) $charset_collate;";
             dbDelta($sql_notification_sent);
+        }
+
+        // Tabela: Auth Tokens (dla REST API)
+        $table_auth_tokens = $wpdb->prefix . 'ssm_auth_tokens';
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_auth_tokens'");
+
+        if ($table_exists != $table_auth_tokens) {
+            require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+            $charset_collate = $wpdb->get_charset_collate();
+
+            $sql_auth_tokens = "CREATE TABLE $table_auth_tokens (
+                id mediumint(9) NOT NULL AUTO_INCREMENT,
+                user_type varchar(20) NOT NULL,
+                user_id mediumint(9) NOT NULL,
+                token varchar(64) NOT NULL,
+                refresh_token varchar(64) NOT NULL,
+                expires_at datetime NOT NULL,
+                revoked tinyint(1) DEFAULT 0,
+                created_at datetime NOT NULL,
+                PRIMARY KEY (id),
+                KEY token (token),
+                KEY refresh_token (refresh_token),
+                KEY user_lookup (user_type, user_id)
+            ) $charset_collate;";
+            dbDelta($sql_auth_tokens);
+        }
+
+        // Tabela: Push Tokens (dla powiadomień mobilnych)
+        $table_push_tokens = $wpdb->prefix . 'ssm_push_tokens';
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_push_tokens'");
+
+        if ($table_exists != $table_push_tokens) {
+            require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+            $charset_collate = $wpdb->get_charset_collate();
+
+            $sql_push_tokens = "CREATE TABLE $table_push_tokens (
+                id mediumint(9) NOT NULL AUTO_INCREMENT,
+                user_type varchar(20) NOT NULL,
+                user_id mediumint(9) NOT NULL,
+                token varchar(255) NOT NULL,
+                platform varchar(20) NOT NULL,
+                created_at datetime NOT NULL,
+                PRIMARY KEY (id),
+                UNIQUE KEY token (token),
+                KEY user_lookup (user_type, user_id)
+            ) $charset_collate;";
+            dbDelta($sql_push_tokens);
         }
     }
     
