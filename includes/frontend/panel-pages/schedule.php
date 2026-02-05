@@ -79,6 +79,7 @@ if ($absences_table_exists && $sessions) {
                     <th>Kurs</th>
                     <th>Obiekt</th>
                     <th>Instruktor</th>
+                    <th>Status</th>
                     <th>Akcja</th>
                 </tr>
             </thead>
@@ -114,23 +115,34 @@ if ($absences_table_exists && $sessions) {
                         <td><?php echo esc_html($session->instructor_name); ?></td>
                         <td>
                             <?php if ($is_absent): ?>
-                                <span class="ssm-badge-absent">Nieobecność</span>
-                            <?php elseif ($session->allow_makeups && $can_report && $absences_left > 0): ?>
-                                <button class="ssm-btn-absence-small" 
-                                        data-session-id="<?php echo $session->id; ?>"
-                                        data-enrollment-id="<?php echo $session->enrollment_id; ?>"
-                                        data-child-name="<?php echo esc_attr($session->child_name); ?>"
-                                        data-class-name="<?php echo esc_attr($session->class_name); ?>"
-                                        data-date="<?php echo $date->format('d.m.Y'); ?>">
-                                    Zgłoś
-                                </button>
-                            <?php elseif ($absences_left == 0): ?>
-                                <small style="color:#95a5a6;">Brak limitu</small>
-                            <?php elseif (!$can_report): ?>
-                                <small style="color:#95a5a6;">Za późno</small>
+                                <span class="ssm-badge-past">Nieobecny</span>
+                            <?php elseif ($is_today): ?>
+                                <span class="ssm-badge-today">Dzisiaj</span>
                             <?php else: ?>
-                                -
+                                <span class="ssm-badge-upcoming">Nadchodzące</span>
                             <?php endif; ?>
+                        </td>
+                        <td>
+                            <div class="ssm-actions">
+                                <?php if ($is_absent): ?>
+                                    <span class="ssm-text-muted">Zgłoszono</span>
+                                <?php elseif ($session->allow_makeups && $can_report && $absences_left > 0): ?>
+                                    <button class="ssm-btn-absence-small"
+                                            data-session-id="<?php echo $session->id; ?>"
+                                            data-enrollment-id="<?php echo $session->enrollment_id; ?>"
+                                            data-child-name="<?php echo esc_attr($session->child_name); ?>"
+                                            data-class-name="<?php echo esc_attr($session->class_name); ?>"
+                                            data-date="<?php echo $date->format('d.m.Y'); ?>">
+                                        Zgłoś nieobecność
+                                    </button>
+                                <?php elseif ($absences_left == 0): ?>
+                                    <span class="ssm-text-muted">Limit wyczerpany</span>
+                                <?php elseif (!$can_report): ?>
+                                    <span class="ssm-text-muted">Za późno</span>
+                                <?php else: ?>
+                                    <span class="ssm-text-muted">—</span>
+                                <?php endif; ?>
+                            </div>
                         </td>
                     </tr>
                 <?php endforeach; ?>

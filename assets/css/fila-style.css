@@ -775,7 +775,7 @@ body {
 }
 
 /* ========================================
-   TABLES
+   TABLES - FILA EVENTS STYLE
    ======================================== */
 
 .ssm-schedule-table-container {
@@ -791,40 +791,184 @@ body {
     border-collapse: collapse;
 }
 
+/* Nagłówki - jasne szare tło w stylu Fila */
 .ssm-schedule-table thead {
-    background: var(--primary-gradient);
-    color: white;
+    background: #f8f9fa;
 }
 
 .ssm-schedule-table th {
-    padding: 16px;
+    padding: 18px 16px;
     text-align: left;
-    font-weight: 600;
+    font-weight: 500;
     font-size: 14px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    color: #6b7280;
+    border-bottom: 1px solid #eef0f7;
 }
 
+/* Komórki danych */
 .ssm-schedule-table td {
-    padding: 16px;
-    border-bottom: 1px solid var(--border-color);
-    font-size: 15px;
+    padding: 18px 16px;
+    border-bottom: 1px solid #eef0f7;
+    font-size: 14px;
+    color: #64748b;
+    vertical-align: middle;
+}
+
+/* Pogrubiony tekst w kolumnie nazwy */
+.ssm-schedule-table td strong {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+/* Link w nazwie kursu */
+.ssm-schedule-table .ssm-course-link {
+    color: var(--primary-color);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.ssm-schedule-table .ssm-course-link:hover {
+    text-decoration: underline;
 }
 
 .ssm-schedule-table tbody tr {
     transition: background 0.2s ease;
+    background: var(--bg-white);
 }
 
 .ssm-schedule-table tbody tr:hover {
-    background: var(--bg-light);
+    background: #f8fafc;
 }
 
+/* Dzisiejsze zajęcia - subtelne żółte tło */
 .ssm-schedule-table tr.is-today {
-    background: linear-gradient(90deg, rgba(245, 158, 11, 0.1) 0%, transparent 100%);
+    background: #fffbeb;
 }
 
+.ssm-schedule-table tr.is-today:hover {
+    background: #fef3c7;
+}
+
+/* Nieobecność - przekreślone */
 .ssm-schedule-table tr.is-absent {
-    opacity: 0.5;
+    opacity: 0.6;
+    background: #fafafa;
+}
+
+/* ========================================
+   FILA BADGES (Status)
+   ======================================== */
+
+.ssm-badge-upcoming,
+.ssm-badge-active {
+    display: inline-block;
+    padding: 5px 14px;
+    background: #dcfce7;
+    color: #16a34a;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 4px;
+}
+
+.ssm-badge-past,
+.ssm-badge-absent {
+    display: inline-block;
+    padding: 5px 14px;
+    background: #fee2e2;
+    color: #dc2626;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 4px;
+}
+
+.ssm-badge-pending {
+    display: inline-block;
+    padding: 5px 14px;
+    background: #fef3c7;
+    color: #d97706;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 4px;
+}
+
+.ssm-badge-today {
+    display: inline-block;
+    padding: 5px 14px;
+    background: #dbeafe;
+    color: #2563eb;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 4px;
+}
+
+/* ========================================
+   FILA ACTION BUTTONS (Ikony akcji)
+   ======================================== */
+
+.ssm-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ssm-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    color: #9ca3af;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    font-size: 16px;
+    text-decoration: none;
+}
+
+.ssm-action-btn:hover {
+    background: #f3f4f6;
+    color: var(--primary-color);
+}
+
+.ssm-action-btn.view:hover {
+    color: #3b82f6;
+}
+
+.ssm-action-btn.edit:hover {
+    color: #f59e0b;
+}
+
+.ssm-action-btn.delete:hover {
+    color: #ef4444;
+}
+
+/* Przycisk zgłoszenia nieobecności - styl Fila */
+.ssm-btn-absence-small {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: transparent;
+    color: #ef4444;
+    border: 1px solid #ef4444;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ssm-btn-absence-small:hover {
+    background: #ef4444;
+    color: white;
+}
+
+/* Mały tekst pomocniczy */
+.ssm-schedule-table .ssm-text-muted {
+    color: #9ca3af;
+    font-size: 13px;
 }
 
 /* ========================================
@@ -870,32 +1014,64 @@ body {
     .ssm-main-content {
         padding: var(--spacing-md);
     }
-    
+
     .ssm-stats-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .ssm-upcoming-item {
         flex-direction: column;
         text-align: center;
     }
-    
+
     .ssm-upcoming-actions {
         width: 100%;
         align-items: center;
     }
-    
+
     .ssm-children-grid {
         grid-template-columns: 1fr;
     }
-    
+
+    /* Tabela Fila - responsywna */
     .ssm-schedule-table {
         font-size: 13px;
     }
-    
+
     .ssm-schedule-table th,
     .ssm-schedule-table td {
-        padding: 10px 8px;
+        padding: 12px 10px;
+    }
+
+    .ssm-schedule-table th:first-child,
+    .ssm-schedule-table td:first-child {
+        padding-left: 16px;
+    }
+
+    .ssm-actions {
+        gap: 4px;
+    }
+
+    .ssm-action-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+    }
+
+    .ssm-btn-absence-small {
+        padding: 5px 10px;
+        font-size: 12px;
+    }
+}
+
+/* Bardzo małe ekrany - tabela przewijana */
+@media (max-width: 576px) {
+    .ssm-schedule-table-container {
+        overflow-x: auto;
+    }
+
+    .ssm-schedule-table {
+        min-width: 600px;
     }
 }
 
