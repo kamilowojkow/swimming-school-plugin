@@ -554,9 +554,9 @@ if ($viewing_child_id) {
 
                 <!-- Opis / Info -->
                 <p class="ssm-card-description">
-                    <?php echo $child->age; ?> <?php echo ssm_t('years'); ?> •
-                    <?php echo $progress['points']->points; ?> <?php echo ssm_t('points'); ?> •
-                    <?php echo ssm_t('level'); ?> <?php echo $progress['points']->level; ?>
+                    <i class="ri-cake-2-line"></i> <?php echo $child->age; ?> <?php echo ssm_t('years'); ?> •
+                    <i class="ri-star-line"></i> <?php echo $progress['points']->points; ?> <?php echo ssm_t('points'); ?> •
+                    <i class="ri-trophy-line"></i> <?php echo ssm_t('level'); ?> <?php echo $progress['points']->level; ?>
                 </p>
 
                 <!-- Pasek postępu -->

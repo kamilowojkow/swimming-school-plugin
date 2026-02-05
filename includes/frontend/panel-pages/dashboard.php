@@ -307,8 +307,8 @@ $next_class = !empty($upcoming) ? $upcoming[0] : null;
                 <div class="ssm-child-widget-info">
                     <span class="ssm-child-widget-name"><?php echo esc_html($child->first_name . ' ' . $child->last_name); ?></span>
                     <span class="ssm-child-widget-meta">
-                        <?php echo $child->age; ?> <?php echo ssm_t('years'); ?> •
-                        <?php echo $child_courses; ?> <?php echo ssm_t('courses'); ?> •
+                        <i class="ri-cake-2-line"></i> <?php echo $child->age; ?> <?php echo ssm_t('years'); ?> •
+                        <i class="ri-swimming-line"></i> <?php echo $child_courses; ?> <?php echo ssm_t('courses'); ?> •
                         <?php echo $progress['current_tier']['name']; ?>
                     </span>
                 </div>
