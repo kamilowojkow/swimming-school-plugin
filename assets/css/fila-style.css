@@ -1102,3 +1102,218 @@ body.ssm-dark-mode .ssm-search-box {
 @keyframes ssm-spin {
     to { transform: rotate(360deg); }
 }
+
+/* ========================================
+   NOTIFICATIONS
+   ======================================== */
+
+.ssm-notifications-dropdown {
+    position: relative;
+}
+
+.ssm-notifications-menu {
+    width: 380px;
+    max-width: calc(100vw - 40px);
+    padding: 0;
+    max-height: 500px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.ssm-notifications-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--ssm-border);
+    background: var(--ssm-bg);
+}
+
+.ssm-notifications-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ssm-text);
+}
+
+.ssm-mark-all-read {
+    background: none;
+    border: none;
+    color: var(--ssm-primary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.ssm-mark-all-read:hover {
+    background: var(--ssm-primary);
+    color: white;
+}
+
+.ssm-notifications-list {
+    overflow-y: auto;
+    max-height: 400px;
+    flex: 1;
+}
+
+.ssm-notifications-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--ssm-text-muted);
+}
+
+.ssm-notifications-empty i {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+.ssm-notifications-empty p {
+    margin: 0;
+    font-size: 14px;
+}
+
+.ssm-notification-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--ssm-border-light);
+    position: relative;
+    transition: background 0.2s ease;
+    cursor: pointer;
+}
+
+.ssm-notification-item:hover {
+    background: var(--ssm-bg);
+}
+
+.ssm-notification-item.unread {
+    background: #f0f9ff;
+}
+
+.ssm-notification-item.unread::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--ssm-primary);
+}
+
+.ssm-notification-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 20px;
+}
+
+.ssm-notification-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.ssm-notification-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ssm-text);
+    margin-bottom: 4px;
+    line-height: 1.3;
+}
+
+.ssm-notification-message {
+    font-size: 13px;
+    color: var(--ssm-text-muted);
+    margin-bottom: 6px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.ssm-notification-time {
+    font-size: 12px;
+    color: var(--ssm-text-light);
+}
+
+.ssm-notification-link {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+}
+
+.ssm-notification-actions {
+    display: flex;
+    gap: 8px;
+    position: relative;
+    z-index: 2;
+}
+
+.ssm-notification-actions button {
+    background: none;
+    border: none;
+    color: var(--ssm-text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.ssm-notification-actions button:hover {
+    background: var(--ssm-border-light);
+    color: var(--ssm-text);
+}
+
+.ssm-notification-count {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    background: var(--ssm-danger);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+    animation: ssm-pulse 2s ease-in-out infinite;
+}
+
+@keyframes ssm-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+/* Notification priority indicators */
+.ssm-notification-item[data-priority="urgent"] .ssm-notification-icon {
+    animation: ssm-urgent-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes ssm-urgent-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+    .ssm-notifications-menu {
+        position: fixed;
+        top: var(--ssm-topbar-height);
+        left: 10px;
+        right: 10px;
+        width: auto;
+        max-height: calc(100vh - var(--ssm-topbar-height) - 20px);
+    }
+}

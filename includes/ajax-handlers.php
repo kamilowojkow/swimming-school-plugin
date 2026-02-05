@@ -1303,7 +1303,11 @@ function ssm_ajax_report_unavailability() {
     
     // Wyślij powiadomienia do innych instruktorów
     ssm_notify_instructors_about_substitution($session_id, $instructor->id);
-    
+
+    // Trigger powiadomień systemowych
+    $unavailability_id = $wpdb->insert_id;
+    do_action('ssm_substitution_created', $unavailability_id, $instructor->id);
+
     wp_send_json_success('Niedyspozycja zgłoszona');
 }
 
@@ -1492,7 +1496,11 @@ function ssm_ajax_take_substitution() {
     
     // Wyślij powiadomienie do oryginalnego instruktora
     ssm_notify_instructor_substitution_taken($unavailability_id);
-    
+
+    // Trigger powiadomień systemowych
+    do_action('ssm_substitution_taken', $unavailability_id, $instructor->id);
+    do_action('ssm_instructor_change', $unavailability->session_id, $unavailability->instructor_id, $instructor->id);
+
     wp_send_json_success('Zastępstwo przejęte - zajęcia dodane do harmonogramu');
 }
 

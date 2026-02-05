@@ -3,7 +3,7 @@
  * Plugin Name: Swimming School Manager
  * Plugin URI: https://example.com
  * Description: System zarządzania szkółką pływania - Rodzice, Dzieci, Instruktorzy, Kursy z harmonogramem
- * Version: 2.60
+ * Version: 2.61
  * Author: Twoje Imię
  * Text Domain: swimming-school
  * Domain Path: /languages
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Stałe
-define('SSM_VERSION', '2.60');
+define('SSM_VERSION', '2.61');
 define('SSM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SSM_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -80,6 +80,7 @@ class Swimming_School_Manager_V2 {
         require_once SSM_PLUGIN_DIR . 'includes/registration-hooks.php';
         require_once SSM_PLUGIN_DIR . 'includes/gamification-system.php';
         require_once SSM_PLUGIN_DIR . 'includes/translations.php';
+        require_once SSM_PLUGIN_DIR . 'includes/notification-system.php';
         
         // Inicjalizacja
         add_action('plugins_loaded', array($this, 'init'));
@@ -480,6 +481,62 @@ class Swimming_School_Manager_V2 {
             ) $charset_collate;";
             dbDelta($sql_ratings);
         }
+
+        // Tabela: Powiadomienia
+        $table_notifications = $wpdb->prefix . 'ssm_notifications';
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_notifications'");
+
+        if ($table_exists != $table_notifications) {
+            require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+            $charset_collate = $wpdb->get_charset_collate();
+
+            $sql_notifications = "CREATE TABLE $table_notifications (
+                id mediumint(9) NOT NULL AUTO_INCREMENT,
+                recipient_type varchar(20) NOT NULL,
+                recipient_id mediumint(9) NOT NULL,
+                type varchar(50) NOT NULL,
+                title varchar(255) NOT NULL,
+                message text NOT NULL,
+                data longtext DEFAULT NULL,
+                is_read tinyint(1) DEFAULT 0,
+                priority varchar(20) DEFAULT 'normal',
+                action_url varchar(255) DEFAULT NULL,
+                push_sent tinyint(1) DEFAULT 0,
+                push_sent_at datetime DEFAULT NULL,
+                created_at datetime NOT NULL,
+                read_at datetime DEFAULT NULL,
+                expires_at datetime DEFAULT NULL,
+                PRIMARY KEY (id),
+                KEY recipient (recipient_type, recipient_id),
+                KEY type (type),
+                KEY is_read (is_read),
+                KEY priority (priority),
+                KEY created_at (created_at),
+                KEY expires_at (expires_at)
+            ) $charset_collate;";
+            dbDelta($sql_notifications);
+        }
+
+        // Tabela: Wysłane powiadomienia (deduplikacja)
+        $table_notification_sent = $wpdb->prefix . 'ssm_notification_sent';
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_notification_sent'");
+
+        if ($table_exists != $table_notification_sent) {
+            require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+            $charset_collate = $wpdb->get_charset_collate();
+
+            $sql_notification_sent = "CREATE TABLE $table_notification_sent (
+                id mediumint(9) NOT NULL AUTO_INCREMENT,
+                notification_key varchar(100) NOT NULL,
+                recipient_type varchar(20) NOT NULL,
+                recipient_id mediumint(9) NOT NULL,
+                sent_at datetime NOT NULL,
+                PRIMARY KEY (id),
+                UNIQUE KEY unique_notification (notification_key, recipient_type, recipient_id),
+                KEY sent_at (sent_at)
+            ) $charset_collate;";
+            dbDelta($sql_notification_sent);
+        }
     }
     
     public function activate() {
@@ -855,6 +912,7 @@ class Swimming_School_Manager_V2 {
         add_submenu_page('swimming-school-rewards', 'Odznaczenia', 'Odznaczenia', 'manage_options', 'swimming-school-achievements', array($this, 'achievements_page'));
         add_submenu_page('swimming-school-rewards', 'Tiery', 'Tiery', 'manage_options', 'swimming-school-tiers', array($this, 'tiers_page'));
         add_submenu_page('swimming-school', 'Oceny zajęć', '⭐ Oceny zajęć', 'manage_options', 'swimming-school-ratings', array($this, 'ratings_page'));
+        add_submenu_page('swimming-school', 'Powiadomienia', '🔔 Powiadomienia', 'manage_options', 'swimming-school-notifications', array($this, 'notifications_page'));
         add_submenu_page(null, 'Lista poleceń', 'Lista poleceń', 'manage_options', 'swimming-school-referrals-list', array($this, 'referrals_list_page')); // Ukryte submenu
         add_submenu_page('swimming-school', 'Ustawienia', 'Ustawienia', 'manage_options', 'ssm-settings', array($this, 'settings_page'));
         
@@ -959,7 +1017,11 @@ class Swimming_School_Manager_V2 {
     public function ratings_page() {
         require_once plugin_dir_path(__FILE__) . 'includes/admin/ratings-list.php';
     }
-    
+
+    public function notifications_page() {
+        require_once plugin_dir_path(__FILE__) . 'includes/admin/notifications-admin.php';
+    }
+
     public function settings_page() {
         include SSM_PLUGIN_DIR . 'includes/admin/settings.php';
     }

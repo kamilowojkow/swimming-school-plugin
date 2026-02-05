@@ -197,7 +197,10 @@ function ssm_award_achievement($child_id, $achievement_id, $awarded_by = null, $
             $awarded_by
         );
     }
-    
+
+    // Trigger powiadomienia
+    do_action('ssm_child_achievement_awarded', $child_id, $achievement_id, $awarded_by);
+
     return true;
 }
 

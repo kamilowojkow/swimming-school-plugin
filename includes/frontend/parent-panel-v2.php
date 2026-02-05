@@ -212,12 +212,54 @@ html { margin-top: 0 !important; }
                 </button>
 
                 <!-- Notifications -->
-                <button class="ssm-topbar-btn" title="<?php echo ssm_t('notifications'); ?>">
-                    <i class="ri-notification-3-line"></i>
-                    <?php if ($makeup_count > 0): ?>
-                        <span class="ssm-topbar-badge"><?php echo $makeup_count; ?></span>
-                    <?php endif; ?>
-                </button>
+                <?php
+                $notification_system = ssm_notification_system();
+                $unread_count = $notification_system->get_unread_count('parent', $client->id);
+                $notifications = $notification_system->get_notifications('parent', $client->id, array('limit' => 5));
+                ?>
+                <div class="ssm-topbar-dropdown ssm-notifications-dropdown">
+                    <button class="ssm-topbar-btn" id="notificationsBtn" title="<?php echo ssm_t('notifications'); ?>">
+                        <i class="ri-notification-3-line"></i>
+                        <?php if ($unread_count > 0): ?>
+                            <span class="ssm-topbar-badge ssm-notification-count"><?php echo $unread_count; ?></span>
+                        <?php endif; ?>
+                    </button>
+                    <div class="ssm-dropdown-menu ssm-dropdown-right ssm-notifications-menu" id="notificationsDropdown">
+                        <div class="ssm-notifications-header">
+                            <span class="ssm-notifications-title"><?php echo ssm_t('notifications'); ?></span>
+                            <?php if ($unread_count > 0): ?>
+                                <button type="button" class="ssm-mark-all-read" data-type="parent" data-id="<?php echo $client->id; ?>">
+                                    <?php echo ssm_t('mark_all_read'); ?>
+                                </button>
+                            <?php endif; ?>
+                        </div>
+                        <div class="ssm-notifications-list" data-type="parent" data-id="<?php echo $client->id; ?>">
+                            <?php if (empty($notifications)): ?>
+                                <div class="ssm-notifications-empty">
+                                    <i class="ri-notification-off-line"></i>
+                                    <p><?php echo ssm_t('no_notifications'); ?></p>
+                                </div>
+                            <?php else: ?>
+                                <?php foreach ($notifications as $notif): ?>
+                                    <div class="ssm-notification-item <?php echo $notif->is_read ? '' : 'unread'; ?>"
+                                         data-id="<?php echo $notif->id; ?>">
+                                        <div class="ssm-notification-icon" style="background: <?php echo $notif->color; ?>20; color: <?php echo $notif->color; ?>;">
+                                            <i class="<?php echo $notif->icon; ?>"></i>
+                                        </div>
+                                        <div class="ssm-notification-content">
+                                            <div class="ssm-notification-title"><?php echo esc_html($notif->title); ?></div>
+                                            <div class="ssm-notification-message"><?php echo esc_html($notif->message); ?></div>
+                                            <div class="ssm-notification-time"><?php echo $notif->time_ago; ?></div>
+                                        </div>
+                                        <?php if ($notif->action_url): ?>
+                                            <a href="<?php echo esc_url($notif->action_url); ?>" class="ssm-notification-link"></a>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- User Profile -->
                 <div class="ssm-topbar-dropdown">
@@ -320,6 +362,104 @@ document.addEventListener('DOMContentLoaded', function() {
         if (localStorage.getItem('ssm_dark_mode') === '1') {
             document.body.classList.add('ssm-dark-mode');
             darkModeToggle.querySelector('i').className = 'ri-sun-line';
+        }
+    }
+
+    // Notifications handling
+    const notificationsBtn = document.getElementById('notificationsBtn');
+    const notificationsDropdown = document.getElementById('notificationsDropdown');
+    const notificationsList = document.querySelector('.ssm-notifications-list');
+    const markAllReadBtn = document.querySelector('.ssm-mark-all-read');
+
+    if (notificationsBtn && notificationsDropdown) {
+        notificationsBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            document.querySelectorAll('.ssm-dropdown-menu.show').forEach(function(d) {
+                if (d !== notificationsDropdown) d.classList.remove('show');
+            });
+            notificationsDropdown.classList.toggle('show');
+        });
+
+        // Prevent dropdown from closing when clicking inside
+        notificationsDropdown.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    }
+
+    // Mark notification as read on click
+    if (notificationsList) {
+        notificationsList.addEventListener('click', function(e) {
+            const item = e.target.closest('.ssm-notification-item');
+            if (item && item.classList.contains('unread')) {
+                const notifId = item.dataset.id;
+                const recipientType = notificationsList.dataset.type;
+                const recipientId = notificationsList.dataset.id;
+
+                fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({
+                        action: 'ssm_mark_notification_read',
+                        nonce: '<?php echo wp_create_nonce('ssm_notifications_nonce'); ?>',
+                        notification_id: notifId,
+                        recipient_type: recipientType,
+                        recipient_id: recipientId
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        item.classList.remove('unread');
+                        updateNotificationCount(data.data.unread_count);
+                    }
+                });
+            }
+        });
+    }
+
+    // Mark all as read
+    if (markAllReadBtn) {
+        markAllReadBtn.addEventListener('click', function() {
+            const recipientType = this.dataset.type;
+            const recipientId = this.dataset.id;
+
+            fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: new URLSearchParams({
+                    action: 'ssm_mark_all_notifications_read',
+                    nonce: '<?php echo wp_create_nonce('ssm_notifications_nonce'); ?>',
+                    recipient_type: recipientType,
+                    recipient_id: recipientId
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.querySelectorAll('.ssm-notification-item.unread').forEach(item => {
+                        item.classList.remove('unread');
+                    });
+                    updateNotificationCount(0);
+                    this.style.display = 'none';
+                }
+            });
+        });
+    }
+
+    function updateNotificationCount(count) {
+        const badge = document.querySelector('.ssm-notification-count');
+        if (count > 0) {
+            if (badge) {
+                badge.textContent = count;
+            } else {
+                const btn = document.getElementById('notificationsBtn');
+                const newBadge = document.createElement('span');
+                newBadge.className = 'ssm-topbar-badge ssm-notification-count';
+                newBadge.textContent = count;
+                btn.appendChild(newBadge);
+            }
+        } else {
+            if (badge) badge.remove();
         }
     }
 });
