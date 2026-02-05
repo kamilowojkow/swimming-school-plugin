@@ -264,7 +264,7 @@ $completed_count = $wpdb->get_var($wpdb->prepare(
                         <div class="ssm-option-item">
                             <div class="ssm-option-date">
                                 <span class="day"><?php echo $session_date->format('d'); ?></span>
-                                <span class="month"><?php echo $session_date->format('M'); ?></span>
+                                <span class="month"><?php echo ssm_get_month_name_pl($session_date); ?></span>
                             </div>
                             <div class="ssm-option-info">
                                 <span class="ssm-option-weekday">

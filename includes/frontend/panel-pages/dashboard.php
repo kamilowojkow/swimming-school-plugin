@@ -253,7 +253,7 @@ $next_class = !empty($upcoming) ? $upcoming[0] : null;
         <div class="ssm-next-class-content">
             <div class="ssm-next-class-date">
                 <span class="ssm-next-class-day"><?php echo $next_date->format('d'); ?></span>
-                <span class="ssm-next-class-month"><?php echo $next_date->format('M'); ?></span>
+                <span class="ssm-next-class-month"><?php echo ssm_get_month_name_pl($next_date); ?></span>
             </div>
             <div class="ssm-next-class-info">
                 <h4><?php echo esc_html($next_class->class_name); ?></h4>
@@ -343,7 +343,7 @@ $next_class = !empty($upcoming) ? $upcoming[0] : null;
             <div class="ssm-upcoming-widget-item <?php echo $is_today ? 'is-today' : ''; ?>">
                 <div class="ssm-upcoming-widget-date">
                     <span class="day"><?php echo $date->format('d'); ?></span>
-                    <span class="month"><?php echo $date->format('M'); ?></span>
+                    <span class="month"><?php echo ssm_get_month_name_pl($date); ?></span>
                 </div>
                 <div class="ssm-upcoming-widget-info">
                     <span class="ssm-upcoming-widget-class"><?php echo esc_html($session->class_name); ?></span>

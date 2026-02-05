@@ -137,7 +137,7 @@ foreach ($sessions as $session) {
             <div class="ssm-timeline-date">
                 <div class="ssm-date-box <?php echo $is_today ? 'today' : ''; ?>">
                     <span class="ssm-date-day"><?php echo $date->format('d'); ?></span>
-                    <span class="ssm-date-month"><?php echo $date->format('M'); ?></span>
+                    <span class="ssm-date-month"><?php echo ssm_get_month_name_pl($date); ?></span>
                 </div>
                 <div class="ssm-date-info">
                     <span class="ssm-date-weekday"><?php echo $days_pl[$date->format('N')]; ?></span>

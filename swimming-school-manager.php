@@ -3,7 +3,7 @@
  * Plugin Name: Swimming School Manager
  * Plugin URI: https://example.com
  * Description: System zarządzania szkółką pływania - Rodzice, Dzieci, Instruktorzy, Kursy z harmonogramem
- * Version: 2.58
+ * Version: 2.59
  * Author: Twoje Imię
  * Text Domain: swimming-school
  * Domain Path: /languages
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Stałe
-define('SSM_VERSION', '2.58');
+define('SSM_VERSION', '2.59');
 define('SSM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SSM_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -24,7 +24,7 @@ if (!function_exists('ssm_get_day_name_pl')) {
     function ssm_get_day_name_pl($date_obj) {
         $days = array(
             'Monday' => 'poniedziałek',
-            'Tuesday' => 'wtorek', 
+            'Tuesday' => 'wtorek',
             'Wednesday' => 'środa',
             'Thursday' => 'czwartek',
             'Friday' => 'piątek',
@@ -33,6 +33,24 @@ if (!function_exists('ssm_get_day_name_pl')) {
         );
         $english_day = $date_obj->format('l');
         return $days[$english_day] ?? $english_day;
+    }
+}
+
+// Funkcja pomocnicza - polskie nazwy miesięcy (skrócone)
+if (!function_exists('ssm_get_month_name_pl')) {
+    function ssm_get_month_name_pl($date_obj, $short = true) {
+        $months_short = array(
+            1 => 'sty', 2 => 'lut', 3 => 'mar', 4 => 'kwi',
+            5 => 'maj', 6 => 'cze', 7 => 'lip', 8 => 'sie',
+            9 => 'wrz', 10 => 'paź', 11 => 'lis', 12 => 'gru'
+        );
+        $months_full = array(
+            1 => 'styczeń', 2 => 'luty', 3 => 'marzec', 4 => 'kwiecień',
+            5 => 'maj', 6 => 'czerwiec', 7 => 'lipiec', 8 => 'sierpień',
+            9 => 'wrzesień', 10 => 'październik', 11 => 'listopad', 12 => 'grudzień'
+        );
+        $month_num = (int) $date_obj->format('n');
+        return $short ? ($months_short[$month_num] ?? '') : ($months_full[$month_num] ?? '');
     }
 }
 

@@ -129,6 +129,15 @@ class SSM_Translations {
                 'reported' => 'Zgłoszono',
                 'limit_reached' => 'Limit wyczerpany',
                 'too_late' => 'Za pozno',
+                'date_from' => 'Od',
+                'date_to' => 'Do',
+                'filter' => 'Filtruj',
+                'reset' => 'Resetuj',
+                'quick_access' => 'Szybki dostep',
+                'two_weeks' => 'Dwa tygodnie',
+                'month' => 'Miesiac',
+                'instr_show_past' => 'Pokaz minione',
+                'instr_schedule_description' => 'Zarzadzaj swoim harmonogramem zajec',
 
                 // Children
                 'add_child' => 'Dodaj dziecko',
@@ -538,6 +547,15 @@ class SSM_Translations {
                 'reported' => 'Reported',
                 'limit_reached' => 'Limit reached',
                 'too_late' => 'Too late',
+                'date_from' => 'From',
+                'date_to' => 'To',
+                'filter' => 'Filter',
+                'reset' => 'Reset',
+                'quick_access' => 'Quick access',
+                'two_weeks' => 'Two weeks',
+                'month' => 'Month',
+                'instr_show_past' => 'Show past',
+                'instr_schedule_description' => 'Manage your class schedule',
 
                 // Children
                 'add_child' => 'Add Child',
@@ -947,6 +965,15 @@ class SSM_Translations {
                 'reported' => 'Повідомлено',
                 'limit_reached' => 'Ліміт вичерпано',
                 'too_late' => 'Занадто пізно',
+                'date_from' => 'Від',
+                'date_to' => 'До',
+                'filter' => 'Фільтр',
+                'reset' => 'Скинути',
+                'quick_access' => 'Швидкий доступ',
+                'two_weeks' => 'Два тижні',
+                'month' => 'Місяць',
+                'instr_show_past' => 'Показати минулі',
+                'instr_schedule_description' => 'Керуйте своїм розкладом занять',
 
                 // Children
                 'add_child' => 'Додати дитину',
@@ -1356,6 +1383,15 @@ class SSM_Translations {
                 'reported' => 'Сообщено',
                 'limit_reached' => 'Лимит исчерпан',
                 'too_late' => 'Слишком поздно',
+                'date_from' => 'От',
+                'date_to' => 'До',
+                'filter' => 'Фильтр',
+                'reset' => 'Сбросить',
+                'quick_access' => 'Быстрый доступ',
+                'two_weeks' => 'Две недели',
+                'month' => 'Месяц',
+                'instr_show_past' => 'Показать прошедшие',
+                'instr_schedule_description' => 'Управляйте своим расписанием занятий',
 
                 // Children
                 'add_child' => 'Добавить ребенка',

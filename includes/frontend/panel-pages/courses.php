@@ -242,7 +242,7 @@ $days_pl = array(
                 <div class="ssm-session-item <?php echo $is_today ? 'is-today' : ''; ?>">
                     <div class="ssm-session-date">
                         <span class="day"><?php echo $date->format('d'); ?></span>
-                        <span class="month"><?php echo $date->format('M'); ?></span>
+                        <span class="month"><?php echo ssm_get_month_name_pl($date); ?></span>
                     </div>
                     <div class="ssm-session-info">
                         <span class="ssm-session-day"><?php echo $days_pl[$date->format('l')]; ?></span>
