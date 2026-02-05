@@ -189,6 +189,21 @@ class SSM_Translations {
                 'attendance_rate' => 'Frekwencja',
                 'day' => 'Dzien',
                 'no_class' => 'Brak zajec',
+
+                // Dashboard
+                'dashboard_subtitle' => 'Zobacz co slychac w szkole plywania',
+                'upcoming_classes' => 'Nadchodzace zajecia',
+                'makeups_pending' => 'Odrabianie do zaplanowania',
+                'schedule_now' => 'Zaplanuj teraz',
+                'payments_pending' => 'Platnosci oczekujace',
+                'pay_now' => 'Zaplac teraz',
+                'quick_actions' => 'Szybkie akcje',
+                'next_class' => 'Nastepne zajecia',
+                'tomorrow' => 'Jutro',
+                'view_full_schedule' => 'Zobacz pelny harmonogram',
+                'no_upcoming_classes' => 'Brak nadchodzacych zajec',
+                'your_children' => 'Twoje dzieci',
+                'view_all' => 'Zobacz wszystkie',
             ),
 
             // ========================================
@@ -316,6 +331,21 @@ class SSM_Translations {
                 'attendance_rate' => 'Attendance rate',
                 'day' => 'Day',
                 'no_class' => 'No class',
+
+                // Dashboard
+                'dashboard_subtitle' => 'See what is happening at the swimming school',
+                'upcoming_classes' => 'Upcoming classes',
+                'makeups_pending' => 'Makeups to schedule',
+                'schedule_now' => 'Schedule now',
+                'payments_pending' => 'Payments pending',
+                'pay_now' => 'Pay now',
+                'quick_actions' => 'Quick actions',
+                'next_class' => 'Next class',
+                'tomorrow' => 'Tomorrow',
+                'view_full_schedule' => 'View full schedule',
+                'no_upcoming_classes' => 'No upcoming classes',
+                'your_children' => 'Your children',
+                'view_all' => 'View all',
             ),
 
             // ========================================
@@ -443,6 +473,21 @@ class SSM_Translations {
                 'attendance_rate' => 'Відвідуваність',
                 'day' => 'День',
                 'no_class' => 'Немає заняття',
+
+                // Dashboard
+                'dashboard_subtitle' => 'Дивіться що відбувається в школі плавання',
+                'upcoming_classes' => 'Найближчі заняття',
+                'makeups_pending' => 'Відпрацювання до планування',
+                'schedule_now' => 'Запланувати зараз',
+                'payments_pending' => 'Очікуючі оплати',
+                'pay_now' => 'Оплатити зараз',
+                'quick_actions' => 'Швидкі дії',
+                'next_class' => 'Наступне заняття',
+                'tomorrow' => 'Завтра',
+                'view_full_schedule' => 'Переглянути повний розклад',
+                'no_upcoming_classes' => 'Немає найближчих занять',
+                'your_children' => 'Ваші діти',
+                'view_all' => 'Переглянути всі',
             ),
 
             // ========================================
@@ -570,6 +615,21 @@ class SSM_Translations {
                 'attendance_rate' => 'Посещаемость',
                 'day' => 'День',
                 'no_class' => 'Нет занятия',
+
+                // Dashboard
+                'dashboard_subtitle' => 'Смотрите что происходит в школе плавания',
+                'upcoming_classes' => 'Ближайшие занятия',
+                'makeups_pending' => 'Отработки к планированию',
+                'schedule_now' => 'Запланировать сейчас',
+                'payments_pending' => 'Ожидающие оплаты',
+                'pay_now' => 'Оплатить сейчас',
+                'quick_actions' => 'Быстрые действия',
+                'next_class' => 'Следующее занятие',
+                'tomorrow' => 'Завтра',
+                'view_full_schedule' => 'Посмотреть полное расписание',
+                'no_upcoming_classes' => 'Нет ближайших занятий',
+                'your_children' => 'Ваши дети',
+                'view_all' => 'Посмотреть все',
             ),
         );
     }
