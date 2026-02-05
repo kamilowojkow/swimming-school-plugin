@@ -645,7 +645,7 @@ $current_month_name = $month_names[date('m', strtotime($selected_month))] . ' ' 
                         </td>
                         <td class="cell-date">
                             <strong><?php echo $date->format('d.m.Y'); ?></strong>
-                            <span class="day-name"><?php echo ssm_get_day_name($date); ?></span>
+                            <span class="day-name"><?php echo ssm_get_day_name_pl($date); ?></span>
                         </td>
                         <td class="cell-time">
                             <?php echo substr($session->time_start, 0, 5); ?> - <?php echo substr($session->time_end, 0, 5); ?>

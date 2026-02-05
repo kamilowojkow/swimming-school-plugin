@@ -707,7 +707,7 @@ $session_id = isset($_GET['session_id']) ? intval($_GET['session_id']) : (isset(
                 <div class="ssm-session-meta">
                     <span>
                         <i class="ri-calendar-line"></i>
-                        <?php echo $date->format('d.m.Y'); ?> (<?php echo ssm_get_day_name($date); ?>)
+                        <?php echo $date->format('d.m.Y'); ?> (<?php echo ssm_get_day_name_pl($date); ?>)
                     </span>
                     <span>
                         <i class="ri-time-line"></i>
