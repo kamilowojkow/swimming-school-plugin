@@ -242,7 +242,8 @@ html { margin-top: 0 !important; }
                             <?php else: ?>
                                 <?php foreach ($notifications as $notif): ?>
                                     <div class="ssm-notification-item <?php echo $notif->is_read ? '' : 'unread'; ?>"
-                                         data-id="<?php echo $notif->id; ?>">
+                                         data-id="<?php echo $notif->id; ?>"
+                                         data-url="<?php echo esc_attr($notif->action_url); ?>">
                                         <div class="ssm-notification-icon" style="background: <?php echo $notif->color; ?>20; color: <?php echo $notif->color; ?>;">
                                             <i class="<?php echo $notif->icon; ?>"></i>
                                         </div>
@@ -251,9 +252,6 @@ html { margin-top: 0 !important; }
                                             <div class="ssm-notification-message"><?php echo esc_html($notif->message); ?></div>
                                             <div class="ssm-notification-time"><?php echo $notif->time_ago; ?></div>
                                         </div>
-                                        <?php if ($notif->action_url): ?>
-                                            <a href="<?php echo esc_url($notif->action_url); ?>" class="ssm-notification-link"></a>
-                                        <?php endif; ?>
                                     </div>
                                 <?php endforeach; ?>
                             <?php endif; ?>
@@ -386,15 +384,19 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Mark notification as read on click
+    // Handle notification click - mark as read and navigate
     if (notificationsList) {
         notificationsList.addEventListener('click', function(e) {
             const item = e.target.closest('.ssm-notification-item');
-            if (item && item.classList.contains('unread')) {
-                const notifId = item.dataset.id;
-                const recipientType = notificationsList.dataset.type;
-                const recipientId = notificationsList.dataset.id;
+            if (!item) return;
 
+            const notifId = item.dataset.id;
+            const actionUrl = item.dataset.url;
+            const recipientType = notificationsList.dataset.type;
+            const recipientId = notificationsList.dataset.id;
+
+            // Mark as read if unread
+            if (item.classList.contains('unread')) {
                 fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -413,6 +415,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         updateNotificationCount(data.data.unread_count);
                     }
                 });
+            }
+
+            // Navigate to action URL if exists
+            if (actionUrl) {
+                window.location.href = actionUrl;
             }
         });
     }
