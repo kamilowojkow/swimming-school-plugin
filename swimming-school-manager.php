@@ -3,7 +3,7 @@
  * Plugin Name: Swimming School Manager
  * Plugin URI: https://example.com
  * Description: System zarządzania szkółką pływania - Rodzice, Dzieci, Instruktorzy, Kursy z harmonogramem
- * Version: 2.42
+ * Version: 2.43
  * Author: Twoje Imię
  * Text Domain: swimming-school
  * Domain Path: /languages
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Stałe
-define('SSM_VERSION', '2.42');
+define('SSM_VERSION', '2.43');
 define('SSM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SSM_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -61,6 +61,7 @@ class Swimming_School_Manager_V2 {
         require_once SSM_PLUGIN_DIR . 'includes/referral-system.php';
         require_once SSM_PLUGIN_DIR . 'includes/registration-hooks.php';
         require_once SSM_PLUGIN_DIR . 'includes/gamification-system.php';
+        require_once SSM_PLUGIN_DIR . 'includes/translations.php';
         
         // Inicjalizacja
         add_action('plugins_loaded', array($this, 'init'));
