@@ -1,0 +1,585 @@
+/* Frontend CSS - Swimming School Manager v2.0 */
+
+/* ==========================================
+   PANEL RODZICA - ZAKŁADKI I HARMONOGRAM
+   ========================================== */
+
+.ssm-parent-panel {
+    max-width: 1200px;
+    margin: 30px auto;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+/* Nagłówek panelu */
+.ssm-panel-header {
+    background: linear-gradient(135deg, #2271b1 0%, #1557a0 100%);
+    color: white;
+    padding: 30px;
+    text-align: center;
+}
+
+.ssm-panel-header h2 {
+    margin: 0 0 10px 0;
+    font-size: 32px;
+    font-weight: 600;
+}
+
+.ssm-panel-subtitle {
+    margin: 0;
+    font-size: 16px;
+    opacity: 0.9;
+}
+
+/* Zakładki dzieci */
+.ssm-tabs {
+    display: flex;
+    flex-direction: column;
+    background: #f8f9fa;
+    border-bottom: 3px solid #2271b1;
+}
+
+.ssm-tab-btn {
+    flex: 1;
+    padding: 15px 25px;
+    background: #e9ecef;
+    border: none;
+    border-right: 1px solid #dee2e6;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    color: #495057;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ssm-tab-btn:last-child {
+    border-right: none;
+}
+
+.ssm-tab-btn:hover {
+    background: #d6dce3;
+}
+
+.ssm-tab-btn.active {
+    background: #2271b1;
+    color: white;
+    font-weight: 600;
+}
+
+.ssm-tab-icon {
+    font-size: 20px;
+}
+
+.ssm-tab-age {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+/* Zawartość zakładek */
+.ssm-tab-content {
+    display: none;
+    padding: 30px;
+    animation: fadeIn 0.3s;
+}
+
+.ssm-tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Podsumowanie */
+.ssm-summary {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #f0f6fc;
+    border-left: 4px solid #2271b1;
+    border-radius: 4px;
+}
+
+.ssm-summary-item {
+    flex: 1;
+}
+
+.ssm-summary-label {
+    display: block;
+    font-size: 14px;
+    color: #6c757d;
+    margin-bottom: 5px;
+}
+
+.ssm-summary-value {
+    display: block;
+    font-size: 24px;
+    font-weight: bold;
+    color: #2271b1;
+}
+
+/* Lista kursów */
+.ssm-courses-list {
+    display: grid;
+    gap: 25px;
+}
+
+.ssm-course-card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: box-shadow 0.3s;
+}
+
+.ssm-course-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.ssm-course-header {
+    background: #f8f9fa;
+    padding: 20px;
+    border-bottom: 2px solid #2271b1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ssm-course-title h3 {
+    margin: 0 0 10px 0;
+    color: #2271b1;
+    font-size: 22px;
+}
+
+.ssm-course-meta {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.ssm-meta-item {
+    font-size: 14px;
+    color: #6c757d;
+}
+
+.ssm-course-instructor {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ssm-instructor-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #2271b1;
+}
+
+.ssm-instructor-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.ssm-instructor-label {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.ssm-instructor-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #495057;
+}
+
+/* Tabela sesji */
+.ssm-sessions-list {
+    padding: 20px;
+}
+
+.ssm-sessions-list h4 {
+    margin: 0 0 15px 0;
+    color: #2271b1;
+}
+
+.ssm-sessions-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.ssm-sessions-table thead {
+    background: #2271b1;
+    color: white;
+}
+
+.ssm-sessions-table th {
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.ssm-sessions-table td {
+    padding: 12px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.ssm-sessions-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.ssm-sessions-table tr.ssm-today {
+    background: #fff3cd;
+    font-weight: 600;
+}
+
+/* Stopka kursu */
+.ssm-course-footer {
+    padding: 20px;
+    background: #f8f9fa;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #dee2e6;
+}
+
+.ssm-price-label,
+.ssm-sessions-label {
+    font-size: 14px;
+    color: #6c757d;
+}
+
+.ssm-price-value {
+    font-size: 20px;
+    font-weight: bold;
+    color: #28a745;
+    margin-left: 10px;
+}
+
+.ssm-sessions-value {
+    font-size: 18px;
+    font-weight: 600;
+    color: #2271b1;
+    margin-left: 10px;
+}
+
+/* Badges */
+.ssm-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-left: 8px;
+}
+
+.ssm-badge-today {
+    background: #ffc107;
+    color: #856404;
+}
+
+.ssm-badge-tomorrow {
+    background: #17a2b8;
+    color: white;
+}
+
+/* Brak danych */
+.ssm-no-enrollments,
+.ssm-no-sessions,
+.ssm-no-access,
+.ssm-no-children {
+    text-align: center;
+    padding: 40px;
+    color: #6c757d;
+}
+
+.ssm-no-enrollments p,
+.ssm-no-sessions p {
+    font-size: 16px;
+}
+
+.ssm-login-required {
+    text-align: center;
+    padding: 40px;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 8px;
+}
+
+.ssm-login-btn {
+    display: inline-block;
+    margin-top: 15px;
+    padding: 12px 30px;
+    background: #2271b1;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: 600;
+    transition: background 0.3s;
+}
+
+.ssm-login-btn:hover {
+    background: #1557a0;
+}
+
+/* ==========================================
+   TABELA KURSÓW (PUBLICZNA)
+   ========================================== */
+
+.ssm-classes-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.ssm-classes-table th,
+.ssm-classes-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.ssm-classes-table thead th {
+    background-color: #2271b1;
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+}
+
+.ssm-classes-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.ssm-classes-table tbody tr.ssm-class-full {
+    opacity: 0.6;
+}
+
+.ssm-badge-available {
+    background: #d5e8d4;
+    color: #2e7d32;
+}
+
+.ssm-badge-full {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Responsywne */
+@media (max-width: 768px) {
+    .ssm-panel-header {
+        padding: 20px;
+    }
+    
+    .ssm-panel-header h2 {
+        font-size: 24px;
+    }
+    
+    .ssm-tab-btn {
+        padding: 12px 15px;
+        font-size: 14px;
+    }
+    
+    .ssm-tab-content {
+        padding: 20px 15px;
+    }
+    
+    .ssm-course-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .ssm-course-meta {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .ssm-summary {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .ssm-sessions-table {
+        font-size: 13px;
+    }
+    
+    .ssm-sessions-table th,
+    .ssm-sessions-table td {
+        padding: 8px;
+    }
+    
+    .ssm-classes-table th,
+    .ssm-classes-table td {
+        padding: 8px;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 480px) {
+    .ssm-tab-icon {
+        display: none;
+    }
+    
+    .ssm-tab-age {
+        display: block;
+        margin-top: 3px;
+    }
+}
+
+/* ==========================================
+   PRZYCISK WYBIERAM W TABELI KURSÓW
+   ========================================== */
+
+.ssm-btn-select {
+    display: inline-block;
+    padding: 10px 20px;
+    background: #28a745;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s;
+    border: none;
+    cursor: pointer;
+}
+
+.ssm-btn-select:hover {
+    background: #218838;
+    color: white;
+    transform: translateX(3px);
+}
+
+.ssm-btn-select:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ==========================================
+   FORMULARZ ZAPISU NA KURS
+   ========================================== */
+
+.ssm-enrollment-flow {
+    max-width: 700px;
+    margin: 30px auto;
+    background: #fff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.ssm-flow-header {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.ssm-flow-header h2 {
+    margin: 0 0 20px 0;
+    color: #2271b1;
+}
+
+.ssm-flow-steps {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.ssm-step {
+    padding: 10px 20px;
+    background: #e9ecef;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #6c757d;
+}
+
+.ssm-step.completed {
+    background: #d4edda;
+    color: #155724;
+}
+
+.ssm-step.active {
+    background: #2271b1;
+    color: white;
+}
+
+.ssm-selected-class,
+.ssm-selected-course-banner {
+    background: #f0f6fc;
+    border-left: 4px solid #2271b1;
+    padding: 20px;
+    margin-bottom: 30px;
+    border-radius: 4px;
+}
+
+.ssm-selected-class h3,
+.ssm-selected-course-banner h3 {
+    margin: 0 0 10px 0;
+    color: #2271b1;
+}
+
+.ssm-class-info,
+.ssm-course-details {
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+.ssm-banner-instruction {
+    margin: 15px 0 0 0;
+    font-size: 15px;
+    color: #6c757d;
+}
+
+.ssm-existing-children {
+    margin-bottom: 30px;
+}
+
+.ssm-child-option {
+    display: block;
+    padding: 15px;
+    margin-bottom: 10px;
+    background: #fff;
+    border: 2px solid #dee2e6;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.ssm-child-option:hover {
+    border-color: #2271b1;
+    background: #f8f9fa;
+}
+
+.ssm-child-option input[type="radio"] {
+    margin-right: 10px;
+}
+
+.ssm-child-option span {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.ssm-add-child-form {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 4px;
+}
+
+.ssm-add-child-form h3 {
+    margin-top: 0;
+    color: #2271b1;
+}
