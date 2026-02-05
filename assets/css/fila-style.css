@@ -330,7 +330,7 @@
 .ssm-topbar-right {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     height: 100%;
 }
 
@@ -339,14 +339,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    width: 38px;
-    height: 38px;
+    gap: 8px;
+    width: 46px;
+    height: 46px;
     background: none;
     border: 1px solid var(--ssm-border);
     border-radius: var(--ssm-radius);
     color: var(--ssm-text-muted);
-    font-size: 18px;
+    font-size: 22px;
     cursor: pointer;
     position: relative;
     transition: all 0.2s ease;
@@ -360,21 +360,21 @@
 }
 
 .ssm-topbar-btn .ssm-lang-current {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
 }
 
 .ssm-topbar-badge {
     position: absolute;
-    top: -4px;
-    right: -4px;
+    top: -5px;
+    right: -5px;
     background: var(--ssm-danger);
     color: white;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
-    padding: 2px 6px;
-    border-radius: 10px;
-    min-width: 18px;
+    padding: 3px 7px;
+    border-radius: 12px;
+    min-width: 20px;
     text-align: center;
 }
 
@@ -382,14 +382,14 @@
 .ssm-topbar-profile {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 4px 10px 4px 4px;
+    gap: 12px;
+    padding: 6px 14px 6px 6px;
     background: none;
     border: 1px solid var(--ssm-border);
     border-radius: var(--ssm-radius);
     cursor: pointer;
     transition: all 0.2s ease;
-    height: 42px;
+    height: 50px;
     box-sizing: border-box;
 }
 
@@ -399,8 +399,8 @@
 }
 
 .ssm-profile-avatar {
-    width: 32px;
-    height: 32px;
+    width: 38px;
+    height: 38px;
     background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
     border-radius: 50%;
     display: flex;
@@ -408,7 +408,7 @@
     justify-content: center;
     color: white;
     font-weight: 700;
-    font-size: 13px;
+    font-size: 15px;
     flex-shrink: 0;
 }
 
@@ -420,13 +420,13 @@
 }
 
 .ssm-profile-name {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--ssm-text);
 }
 
 .ssm-profile-role {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--ssm-text-light);
 }
 

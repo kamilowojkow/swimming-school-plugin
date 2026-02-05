@@ -173,10 +173,10 @@ $school_name = get_option('ssm_school_name', ssm_t('swimming_school'));
         <!-- Top Bar -->
         <header class="ssm-topbar">
             <div class="ssm-topbar-left">
-                <div class="ssm-search-box">
-                    <i class="ri-search-line"></i>
-                    <input type="text" placeholder="<?php echo ssm_t('search'); ?>" id="ssmSearch">
-                </div>
+                <!-- Mobile menu toggle -->
+                <button class="ssm-sidebar-toggle" id="sidebarToggle">
+                    <i class="ri-menu-line"></i>
+                </button>
             </div>
 
             <div class="ssm-topbar-right">
