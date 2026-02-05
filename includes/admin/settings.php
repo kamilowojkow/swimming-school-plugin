@@ -15,7 +15,12 @@ if (isset($_POST['ssm_save_settings'])) {
     update_option('ssm_ifirma_api_key', sanitize_text_field($_POST['ifirma_api_key']));
     update_option('ssm_ifirma_username', sanitize_text_field($_POST['ifirma_username']));
     update_option('ssm_enable_ifirma', isset($_POST['enable_ifirma']) ? '1' : '0');
-    
+
+    // Logo settings
+    update_option('ssm_logo_desktop', esc_url_raw($_POST['ssm_logo_desktop']));
+    update_option('ssm_logo_mobile', esc_url_raw($_POST['ssm_logo_mobile']));
+    update_option('ssm_school_name', sanitize_text_field($_POST['ssm_school_name']));
+
     echo '<div class="notice notice-success"><p>✅ Ustawienia zapisane!</p></div>';
 }
 
@@ -31,13 +36,76 @@ $bank_transfer_info = get_option('ssm_bank_transfer_info', '');
 $ifirma_api_key = get_option('ssm_ifirma_api_key', '');
 $ifirma_username = get_option('ssm_ifirma_username', '');
 $enable_ifirma = get_option('ssm_enable_ifirma', '0');
+$logo_desktop = get_option('ssm_logo_desktop', '');
+$logo_mobile = get_option('ssm_logo_mobile', '');
+$school_name = get_option('ssm_school_name', 'Szkola Plywania');
 ?>
 
 <div class="wrap">
     <h1>⚙️ Ustawienia Szkółki Pływania</h1>
-    
+
     <form method="post" action="">
-        
+
+        <!-- Logo i nazwa -->
+        <div class="ssm-settings-section">
+            <h2>🎨 Wygląd panelu</h2>
+            <p>Logo i nazwa szkoły wyświetlane w panelu rodzica</p>
+
+            <table class="form-table">
+                <tr>
+                    <th><label for="ssm_school_name">Nazwa szkoły</label></th>
+                    <td>
+                        <input type="text" id="ssm_school_name" name="ssm_school_name"
+                               class="regular-text" value="<?php echo esc_attr($school_name); ?>"
+                               placeholder="Szkółka Pływania AQUA">
+                        <p class="description">Nazwa wyświetlana w sidebarze gdy brak logo</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="ssm_logo_desktop">Logo (desktop)</label></th>
+                    <td>
+                        <input type="hidden" id="ssm_logo_desktop" name="ssm_logo_desktop"
+                               value="<?php echo esc_url($logo_desktop); ?>">
+                        <div class="ssm-logo-preview" id="logo_desktop_preview">
+                            <?php if ($logo_desktop): ?>
+                                <img src="<?php echo esc_url($logo_desktop); ?>" style="max-height: 60px;">
+                            <?php else: ?>
+                                <span class="ssm-no-logo">Brak logo</span>
+                            <?php endif; ?>
+                        </div>
+                        <button type="button" class="button ssm-upload-logo" data-target="ssm_logo_desktop" data-preview="logo_desktop_preview">
+                            📤 Wybierz logo
+                        </button>
+                        <button type="button" class="button ssm-remove-logo" data-target="ssm_logo_desktop" data-preview="logo_desktop_preview">
+                            ❌ Usuń
+                        </button>
+                        <p class="description">Zalecany rozmiar: 200x50px (PNG/SVG z przezroczystym tłem)</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="ssm_logo_mobile">Logo (mobile)</label></th>
+                    <td>
+                        <input type="hidden" id="ssm_logo_mobile" name="ssm_logo_mobile"
+                               value="<?php echo esc_url($logo_mobile); ?>">
+                        <div class="ssm-logo-preview" id="logo_mobile_preview">
+                            <?php if ($logo_mobile): ?>
+                                <img src="<?php echo esc_url($logo_mobile); ?>" style="max-height: 60px;">
+                            <?php else: ?>
+                                <span class="ssm-no-logo">Brak logo</span>
+                            <?php endif; ?>
+                        </div>
+                        <button type="button" class="button ssm-upload-logo" data-target="ssm_logo_mobile" data-preview="logo_mobile_preview">
+                            📤 Wybierz logo
+                        </button>
+                        <button type="button" class="button ssm-remove-logo" data-target="ssm_logo_mobile" data-preview="logo_mobile_preview">
+                            ❌ Usuń
+                        </button>
+                        <p class="description">Logo dla urządzeń mobilnych. Zalecany rozmiar: 40x40px (ikona/symbol)</p>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
         <!-- Wzory dokumentów -->
         <div class="ssm-settings-section">
             <h2>📄 Wzory dokumentów</h2>
@@ -285,4 +353,69 @@ $enable_ifirma = get_option('ssm_enable_ifirma', '0');
     padding-bottom: 10px;
     border-bottom: 2px solid #2271b1;
 }
+
+.ssm-logo-preview {
+    background: #f5f5f5;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 10px;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 300px;
+}
+
+.ssm-logo-preview img {
+    max-height: 60px;
+    max-width: 100%;
+}
+
+.ssm-no-logo {
+    color: #999;
+    font-style: italic;
+}
+
+.ssm-upload-logo, .ssm-remove-logo {
+    margin-right: 5px;
+}
 </style>
+
+<script>
+jQuery(document).ready(function($) {
+    // Media uploader for logo
+    $('.ssm-upload-logo').on('click', function(e) {
+        e.preventDefault();
+
+        var targetInput = $(this).data('target');
+        var previewDiv = $(this).data('preview');
+
+        var mediaUploader = wp.media({
+            title: 'Wybierz logo',
+            button: { text: 'Użyj tego logo' },
+            multiple: false,
+            library: { type: ['image'] }
+        });
+
+        mediaUploader.on('select', function() {
+            var attachment = mediaUploader.state().get('selection').first().toJSON();
+            $('#' + targetInput).val(attachment.url);
+            $('#' + previewDiv).html('<img src="' + attachment.url + '" style="max-height: 60px;">');
+        });
+
+        mediaUploader.open();
+    });
+
+    // Remove logo
+    $('.ssm-remove-logo').on('click', function(e) {
+        e.preventDefault();
+
+        var targetInput = $(this).data('target');
+        var previewDiv = $(this).data('preview');
+
+        $('#' + targetInput).val('');
+        $('#' + previewDiv).html('<span class="ssm-no-logo">Brak logo</span>');
+    });
+});
+</script>

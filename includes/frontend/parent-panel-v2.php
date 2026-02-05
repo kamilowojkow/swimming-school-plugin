@@ -96,6 +96,11 @@ $pending_payments = $wpdb->get_var($wpdb->prepare(
      WHERE client_id = %d AND status = 'pending'",
     $client->id
 )) ?: 0;
+
+// Get logo settings
+$logo_desktop = get_option('ssm_logo_desktop', '');
+$logo_mobile = get_option('ssm_logo_mobile', '');
+$school_name = get_option('ssm_school_name', ssm_t('swimming_school'));
 ?>
 
 <!-- Remix Icon CDN -->
@@ -107,10 +112,21 @@ $pending_payments = $wpdb->get_var($wpdb->prepare(
     <aside class="ssm-sidebar">
         <!-- Logo -->
         <div class="ssm-sidebar-logo">
-            <div class="ssm-logo-icon">
-                <i class="ri-water-flash-line"></i>
-            </div>
-            <span class="ssm-logo-text"><?php echo ssm_t('swimming_school'); ?></span>
+            <?php if ($logo_desktop || $logo_mobile): ?>
+                <?php if ($logo_desktop): ?>
+                    <img src="<?php echo esc_url($logo_desktop); ?>" alt="<?php echo esc_attr($school_name); ?>" class="ssm-logo-desktop">
+                <?php endif; ?>
+                <?php if ($logo_mobile): ?>
+                    <img src="<?php echo esc_url($logo_mobile); ?>" alt="<?php echo esc_attr($school_name); ?>" class="ssm-logo-mobile">
+                <?php elseif ($logo_desktop): ?>
+                    <img src="<?php echo esc_url($logo_desktop); ?>" alt="<?php echo esc_attr($school_name); ?>" class="ssm-logo-mobile">
+                <?php endif; ?>
+            <?php else: ?>
+                <div class="ssm-logo-icon">
+                    <i class="ri-water-flash-line"></i>
+                </div>
+                <span class="ssm-logo-text"><?php echo esc_html($school_name); ?></span>
+            <?php endif; ?>
             <button class="ssm-sidebar-toggle" id="ssmSidebarToggle">
                 <i class="ri-menu-line"></i>
             </button>

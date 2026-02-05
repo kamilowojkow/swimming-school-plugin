@@ -848,10 +848,13 @@ class Swimming_School_Manager_V2 {
         if (strpos($hook, 'swimming-school') === false && strpos($hook, 'ssm-') === false) {
             return;
         }
-        
+
+        // Media uploader for logo settings
+        wp_enqueue_media();
+
         wp_enqueue_style('ssm-admin-css', SSM_PLUGIN_URL . 'assets/css/admin.css', array(), SSM_VERSION);
         wp_enqueue_script('ssm-admin-js', SSM_PLUGIN_URL . 'assets/js/admin.js', array('jquery'), SSM_VERSION, true);
-        
+
         wp_localize_script('ssm-admin-js', 'ssmAdmin', array(
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('ssm_admin_nonce')
