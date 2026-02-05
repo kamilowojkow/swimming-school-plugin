@@ -76,7 +76,7 @@ body {
 }
 
 /* ========================================
-   SIDEBAR - LEWY MENU
+   SIDEBAR - LEWY MENU (FIXED)
    ======================================== */
 
 .ssm-sidebar {
@@ -85,10 +85,17 @@ body {
     box-shadow: var(--shadow-lg);
     display: flex;
     flex-direction: column;
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
     height: 100vh;
     overflow-y: auto;
+    z-index: 100;
+}
+
+/* Offset dla main content gdy sidebar jest fixed */
+.ssm-parent-dashboard .ssm-main-content {
+    margin-left: 280px;
 }
 
 .ssm-sidebar-header {
@@ -979,32 +986,38 @@ body {
     .ssm-parent-dashboard {
         flex-direction: column;
     }
-    
+
     .ssm-sidebar {
         width: 100%;
         height: auto;
         position: relative;
+        left: auto;
     }
-    
+
+    /* Reset margin-left gdy sidebar nie jest fixed */
+    .ssm-parent-dashboard .ssm-main-content {
+        margin-left: 0;
+    }
+
     .ssm-sidebar-nav {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
         gap: var(--spacing-xs);
         padding: var(--spacing-sm);
     }
-    
+
     .ssm-nav-item {
         flex-direction: column;
         text-align: center;
         padding: var(--spacing-sm);
         margin: 0;
     }
-    
+
     .ssm-nav-icon {
         margin: 0 0 4px 0;
         font-size: 24px;
     }
-    
+
     .ssm-nav-label {
         font-size: 12px;
     }
