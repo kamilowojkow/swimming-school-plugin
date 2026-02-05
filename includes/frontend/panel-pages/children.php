@@ -335,6 +335,159 @@ if ($viewing_child_id) {
             <?php endif; ?>
         </div>
 
+        <!-- Obecność -->
+        <?php
+        // Pobierz obecność dziecka z bieżącego miesiąca
+        $current_month = isset($_GET['attendance_month']) ? sanitize_text_field($_GET['attendance_month']) : date('Y-m');
+        $month_start = $current_month . '-01';
+        $month_end = date('Y-m-t', strtotime($month_start));
+        $days_in_month = date('t', strtotime($month_start));
+        $month_name = date_i18n('F Y', strtotime($month_start));
+
+        // Pobierz sesje i obecność dla dziecka w danym miesiącu
+        $attendance_data = $wpdb->get_results($wpdb->prepare(
+            "SELECT s.session_date, a.status, c.name as class_name
+             FROM {$wpdb->prefix}ssm_sessions s
+             LEFT JOIN {$wpdb->prefix}ssm_attendance a ON s.id = a.session_id AND a.child_id = %d
+             JOIN {$wpdb->prefix}ssm_classes c ON s.class_id = c.id
+             JOIN {$wpdb->prefix}ssm_enrollments e ON e.class_id = c.id AND e.child_id = %d AND e.status = 'active'
+             WHERE s.session_date BETWEEN %s AND %s
+             ORDER BY s.session_date",
+            $viewing_child->id,
+            $viewing_child->id,
+            $month_start,
+            $month_end
+        ));
+
+        // Zorganizuj dane po dniach
+        $attendance_by_day = array();
+        foreach ($attendance_data as $record) {
+            $day = intval(date('j', strtotime($record->session_date)));
+            if (!isset($attendance_by_day[$day])) {
+                $attendance_by_day[$day] = array();
+            }
+            $attendance_by_day[$day][] = $record;
+        }
+
+        // Policz statystyki
+        $total_sessions = count($attendance_data);
+        $present_count = 0;
+        $absent_count = 0;
+        foreach ($attendance_data as $record) {
+            if ($record->status === 'present') $present_count++;
+            elseif ($record->status === 'absent') $absent_count++;
+        }
+        $attendance_rate = $total_sessions > 0 ? round(($present_count / $total_sessions) * 100) : 0;
+
+        // Nawigacja miesięcy
+        $prev_month = date('Y-m', strtotime($month_start . ' -1 month'));
+        $next_month = date('Y-m', strtotime($month_start . ' +1 month'));
+        $current_url = remove_query_arg('attendance_month');
+        ?>
+        <div class="ssm-section">
+            <div class="ssm-section-header">
+                <h3 class="ssm-section-title">
+                    <i class="ri-calendar-check-line"></i>
+                    <?php echo ssm_t('attendance'); ?>
+                </h3>
+                <div class="ssm-attendance-nav">
+                    <a href="<?php echo add_query_arg('attendance_month', $prev_month, $current_url); ?>" class="ssm-btn ssm-btn-outline ssm-btn-sm">
+                        <i class="ri-arrow-left-s-line"></i>
+                    </a>
+                    <span class="ssm-attendance-month"><?php echo $month_name; ?></span>
+                    <a href="<?php echo add_query_arg('attendance_month', $next_month, $current_url); ?>" class="ssm-btn ssm-btn-outline ssm-btn-sm">
+                        <i class="ri-arrow-right-s-line"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Statystyki obecności -->
+            <div class="ssm-attendance-stats">
+                <div class="ssm-attendance-stat">
+                    <span class="ssm-attendance-stat-value ssm-text-success"><?php echo $present_count; ?></span>
+                    <span class="ssm-attendance-stat-label"><?php echo ssm_t('present'); ?></span>
+                </div>
+                <div class="ssm-attendance-stat">
+                    <span class="ssm-attendance-stat-value ssm-text-danger"><?php echo $absent_count; ?></span>
+                    <span class="ssm-attendance-stat-label"><?php echo ssm_t('absent'); ?></span>
+                </div>
+                <div class="ssm-attendance-stat">
+                    <span class="ssm-attendance-stat-value"><?php echo $total_sessions; ?></span>
+                    <span class="ssm-attendance-stat-label"><?php echo ssm_t('total_classes'); ?></span>
+                </div>
+                <div class="ssm-attendance-stat">
+                    <span class="ssm-attendance-stat-value <?php echo $attendance_rate >= 80 ? 'ssm-text-success' : ($attendance_rate >= 50 ? 'ssm-text-warning' : 'ssm-text-danger'); ?>">
+                        <?php echo $attendance_rate; ?>%
+                    </span>
+                    <span class="ssm-attendance-stat-label"><?php echo ssm_t('attendance_rate'); ?></span>
+                </div>
+            </div>
+
+            <!-- Kalendarz obecności -->
+            <div class="ssm-attendance-calendar">
+                <div class="ssm-attendance-header">
+                    <div class="ssm-attendance-label"><?php echo ssm_t('day'); ?></div>
+                    <?php for ($day = 1; $day <= $days_in_month; $day++): ?>
+                    <div class="ssm-attendance-day-header <?php echo date('j') == $day && date('Y-m') == $current_month ? 'ssm-today' : ''; ?>">
+                        <?php echo str_pad($day, 2, '0', STR_PAD_LEFT); ?>
+                    </div>
+                    <?php endfor; ?>
+                </div>
+                <div class="ssm-attendance-row">
+                    <div class="ssm-attendance-label">
+                        <div class="ssm-attendance-child-info">
+                            <div class="ssm-attendance-avatar" style="background: <?php echo $progress['current_tier']['color']; ?>;">
+                                <?php echo strtoupper(substr($viewing_child->first_name, 0, 1)); ?>
+                            </div>
+                            <span><?php echo esc_html($viewing_child->first_name . ' ' . substr($viewing_child->last_name, 0, 1) . '.'); ?></span>
+                        </div>
+                    </div>
+                    <?php for ($day = 1; $day <= $days_in_month; $day++): ?>
+                    <div class="ssm-attendance-cell">
+                        <?php if (isset($attendance_by_day[$day])): ?>
+                            <?php
+                            $day_status = 'present';
+                            foreach ($attendance_by_day[$day] as $session) {
+                                if ($session->status === 'absent') {
+                                    $day_status = 'absent';
+                                    break;
+                                } elseif ($session->status !== 'present') {
+                                    $day_status = 'unknown';
+                                }
+                            }
+                            ?>
+                            <?php if ($day_status === 'present'): ?>
+                                <span class="ssm-attendance-present"><i class="ri-check-line"></i></span>
+                            <?php elseif ($day_status === 'absent'): ?>
+                                <span class="ssm-attendance-absent"><i class="ri-close-line"></i></span>
+                            <?php else: ?>
+                                <span class="ssm-attendance-unknown">--</span>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <span class="ssm-attendance-none">--</span>
+                        <?php endif; ?>
+                    </div>
+                    <?php endfor; ?>
+                </div>
+            </div>
+
+            <!-- Legenda -->
+            <div class="ssm-attendance-legend">
+                <div class="ssm-legend-item">
+                    <span class="ssm-attendance-present"><i class="ri-check-line"></i></span>
+                    <span><?php echo ssm_t('present'); ?></span>
+                </div>
+                <div class="ssm-legend-item">
+                    <span class="ssm-attendance-absent"><i class="ri-close-line"></i></span>
+                    <span><?php echo ssm_t('absent'); ?></span>
+                </div>
+                <div class="ssm-legend-item">
+                    <span class="ssm-attendance-none">--</span>
+                    <span><?php echo ssm_t('no_class'); ?></span>
+                </div>
+            </div>
+        </div>
+
         <!-- Dodatkowe info -->
         <?php if ($viewing_child->medical_notes || $viewing_child->skills_description): ?>
         <div class="ssm-section">
@@ -847,6 +1000,178 @@ if ($viewing_child_id) {
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
+/* ========================================
+   ATTENDANCE CALENDAR
+   ======================================== */
+
+.ssm-attendance-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ssm-attendance-month {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ssm-text);
+    min-width: 120px;
+    text-align: center;
+}
+
+.ssm-btn-sm {
+    padding: 6px 10px !important;
+    font-size: 14px !important;
+}
+
+.ssm-attendance-stats {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.ssm-attendance-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.ssm-attendance-stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--ssm-text);
+}
+
+.ssm-attendance-stat-label {
+    font-size: 12px;
+    color: var(--ssm-text-muted);
+}
+
+.ssm-text-success {
+    color: var(--ssm-success) !important;
+}
+
+.ssm-text-danger {
+    color: var(--ssm-danger) !important;
+}
+
+.ssm-text-warning {
+    color: var(--ssm-warning) !important;
+}
+
+.ssm-attendance-calendar {
+    background: var(--ssm-bg);
+    border-radius: var(--ssm-radius);
+    overflow-x: auto;
+    margin-bottom: 16px;
+}
+
+.ssm-attendance-header,
+.ssm-attendance-row {
+    display: flex;
+    min-width: max-content;
+}
+
+.ssm-attendance-header {
+    background: var(--ssm-bg-white);
+    border-bottom: 1px solid var(--ssm-border);
+}
+
+.ssm-attendance-label {
+    min-width: 160px;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ssm-text-muted);
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.ssm-attendance-child-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ssm-attendance-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.ssm-attendance-day-header {
+    width: 36px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ssm-text-muted);
+    flex-shrink: 0;
+}
+
+.ssm-attendance-day-header.ssm-today {
+    background: var(--ssm-primary);
+    color: white;
+    border-radius: 4px;
+}
+
+.ssm-attendance-cell {
+    width: 36px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ssm-attendance-present {
+    color: var(--ssm-success);
+    font-size: 18px;
+}
+
+.ssm-attendance-absent {
+    color: var(--ssm-danger);
+    font-size: 18px;
+}
+
+.ssm-attendance-unknown,
+.ssm-attendance-none {
+    color: var(--ssm-text-light);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.ssm-attendance-legend {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    padding-top: 8px;
+}
+
+.ssm-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--ssm-text-muted);
+}
+
+.ssm-legend-item .ssm-attendance-present,
+.ssm-legend-item .ssm-attendance-absent,
+.ssm-legend-item .ssm-attendance-none {
+    font-size: 14px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .ssm-children-cards {
@@ -868,6 +1193,21 @@ if ($viewing_child_id) {
 
     .ssm-achievements-grid {
         grid-template-columns: 1fr;
+    }
+
+    .ssm-attendance-stats {
+        justify-content: center;
+    }
+
+    .ssm-attendance-label {
+        min-width: 120px;
+        padding: 8px 12px;
+    }
+
+    .ssm-section-header {
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start !important;
     }
 }
 </style>

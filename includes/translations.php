@@ -181,6 +181,14 @@ class SSM_Translations {
                 'additional_info' => 'Dodatkowe informacje',
                 'view_details' => 'Zobacz szczegoly',
                 'contact_admin_to_add' => 'Skontaktuj sie z administracja aby dodac dzieci',
+
+                // Attendance
+                'attendance' => 'Obecnosc',
+                'present' => 'Obecny',
+                'total_classes' => 'Wszystkich zajec',
+                'attendance_rate' => 'Frekwencja',
+                'day' => 'Dzien',
+                'no_class' => 'Brak zajec',
             ),
 
             // ========================================
@@ -300,6 +308,14 @@ class SSM_Translations {
                 'additional_info' => 'Additional information',
                 'view_details' => 'View Details',
                 'contact_admin_to_add' => 'Contact administration to add children',
+
+                // Attendance
+                'attendance' => 'Attendance',
+                'present' => 'Present',
+                'total_classes' => 'Total classes',
+                'attendance_rate' => 'Attendance rate',
+                'day' => 'Day',
+                'no_class' => 'No class',
             ),
 
             // ========================================
@@ -419,6 +435,14 @@ class SSM_Translations {
                 'additional_info' => 'Додаткова інформація',
                 'view_details' => 'Переглянути деталі',
                 'contact_admin_to_add' => 'Зверніться до адміністрації, щоб додати дітей',
+
+                // Attendance
+                'attendance' => 'Відвідуваність',
+                'present' => 'Присутній',
+                'total_classes' => 'Всього занять',
+                'attendance_rate' => 'Відвідуваність',
+                'day' => 'День',
+                'no_class' => 'Немає заняття',
             ),
 
             // ========================================
@@ -538,6 +562,14 @@ class SSM_Translations {
                 'additional_info' => 'Дополнительная информация',
                 'view_details' => 'Подробнее',
                 'contact_admin_to_add' => 'Свяжитесь с администрацией, чтобы добавить детей',
+
+                // Attendance
+                'attendance' => 'Посещаемость',
+                'present' => 'Присутствует',
+                'total_classes' => 'Всего занятий',
+                'attendance_rate' => 'Посещаемость',
+                'day' => 'День',
+                'no_class' => 'Нет занятия',
             ),
         );
     }
