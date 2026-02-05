@@ -73,14 +73,45 @@ $attendance_rate = $total_sessions_count > 0 ? round(($total_sessions_attended /
 $next_class = !empty($upcoming) ? $upcoming[0] : null;
 ?>
 
-<!-- Welcome Banner -->
+<!-- Welcome Banner - Premium Design -->
 <div class="ssm-welcome-banner">
+    <div class="ssm-welcome-decoration">
+        <div class="ssm-deco-circle ssm-deco-1"></div>
+        <div class="ssm-deco-circle ssm-deco-2"></div>
+        <div class="ssm-deco-circle ssm-deco-3"></div>
+        <div class="ssm-deco-wave">
+            <svg viewBox="0 0 1200 120" preserveAspectRatio="none">
+                <path d="M0,60 C150,120 350,0 600,60 C850,120 1050,0 1200,60 L1200,120 L0,120 Z" fill="rgba(255,255,255,0.1)"></path>
+            </svg>
+        </div>
+    </div>
     <div class="ssm-welcome-content">
-        <h1><?php echo ssm_t('welcome'); ?>, <?php echo esc_html($client->first_name); ?>!</h1>
+        <div class="ssm-welcome-greeting">
+            <span class="ssm-greeting-icon"><i class="ri-hand-heart-line"></i></span>
+            <span class="ssm-greeting-text"><?php echo ssm_t('welcome'); ?></span>
+        </div>
+        <h1><?php echo esc_html($client->first_name); ?> <?php echo esc_html($client->last_name); ?></h1>
         <p><?php echo ssm_t('dashboard_subtitle'); ?></p>
+        <div class="ssm-welcome-stats">
+            <div class="ssm-welcome-stat">
+                <i class="ri-user-heart-line"></i>
+                <span><?php echo count($children); ?> <?php echo ssm_t('children'); ?></span>
+            </div>
+            <div class="ssm-welcome-stat">
+                <i class="ri-calendar-check-line"></i>
+                <span><?php echo count($upcoming); ?> <?php echo ssm_t('upcoming'); ?></span>
+            </div>
+        </div>
     </div>
     <div class="ssm-welcome-illustration">
-        <i class="ri-swimming-line"></i>
+        <div class="ssm-illustration-main">
+            <i class="ri-swimming-line"></i>
+        </div>
+        <div class="ssm-illustration-bubbles">
+            <span class="ssm-bubble ssm-bubble-1"></span>
+            <span class="ssm-bubble ssm-bubble-2"></span>
+            <span class="ssm-bubble ssm-bubble-3"></span>
+        </div>
     </div>
 </div>
 
@@ -342,11 +373,11 @@ $next_class = !empty($upcoming) ? $upcoming[0] : null;
    DASHBOARD PREMIUM STYLES
    ======================================== */
 
-/* Welcome Banner */
+/* Welcome Banner - Premium Design */
 .ssm-welcome-banner {
-    background: linear-gradient(135deg, var(--ssm-primary) 0%, #6366f1 100%);
+    background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #6366f1 100%);
     border-radius: var(--ssm-radius-lg);
-    padding: 32px;
+    padding: 32px 40px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -354,23 +385,187 @@ $next_class = !empty($upcoming) ? $upcoming[0] : null;
     color: white;
     position: relative;
     overflow: hidden;
+    min-height: 180px;
+}
+
+.ssm-welcome-decoration {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+}
+
+.ssm-deco-circle {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+}
+
+.ssm-deco-1 {
+    width: 200px;
+    height: 200px;
+    top: -60px;
+    right: 100px;
+    animation: floatBubble 8s ease-in-out infinite;
+}
+
+.ssm-deco-2 {
+    width: 120px;
+    height: 120px;
+    bottom: -30px;
+    left: 20%;
+    animation: floatBubble 6s ease-in-out infinite 1s;
+}
+
+.ssm-deco-3 {
+    width: 80px;
+    height: 80px;
+    top: 20%;
+    left: 40%;
+    animation: floatBubble 7s ease-in-out infinite 2s;
+}
+
+.ssm-deco-wave {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+}
+
+.ssm-deco-wave svg {
+    width: 100%;
+    height: 100%;
+}
+
+@keyframes floatBubble {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-10px) scale(1.05); }
+}
+
+.ssm-welcome-content {
+    position: relative;
+    z-index: 2;
+    flex: 1;
+}
+
+.ssm-welcome-greeting {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.2);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 12px;
+}
+
+.ssm-greeting-icon {
+    font-size: 16px;
 }
 
 .ssm-welcome-content h1 {
-    font-size: 28px;
+    font-size: 32px;
     font-weight: 700;
     margin: 0 0 8px 0;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .ssm-welcome-content p {
-    font-size: 16px;
-    margin: 0;
+    font-size: 15px;
+    margin: 0 0 16px 0;
     opacity: 0.9;
 }
 
+.ssm-welcome-stats {
+    display: flex;
+    gap: 20px;
+}
+
+.ssm-welcome-stat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    background: rgba(255,255,255,0.15);
+    padding: 8px 16px;
+    border-radius: var(--ssm-radius);
+    backdrop-filter: blur(4px);
+}
+
+.ssm-welcome-stat i {
+    font-size: 18px;
+}
+
 .ssm-welcome-illustration {
-    font-size: 80px;
-    opacity: 0.3;
+    position: relative;
+    z-index: 2;
+    margin-left: 40px;
+}
+
+.ssm-illustration-main {
+    width: 120px;
+    height: 120px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 56px;
+    backdrop-filter: blur(4px);
+    animation: pulse 3s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,255,255,0.3); }
+    50% { transform: scale(1.05); box-shadow: 0 0 30px 10px rgba(255,255,255,0.1); }
+}
+
+.ssm-illustration-bubbles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.ssm-bubble {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: rgba(255,255,255,0.4);
+    border-radius: 50%;
+    animation: rise 4s ease-in-out infinite;
+}
+
+.ssm-bubble-1 {
+    left: 20%;
+    bottom: 0;
+    animation-delay: 0s;
+}
+
+.ssm-bubble-2 {
+    left: 50%;
+    bottom: 0;
+    width: 8px;
+    height: 8px;
+    animation-delay: 1s;
+}
+
+.ssm-bubble-3 {
+    left: 80%;
+    bottom: 0;
+    width: 10px;
+    height: 10px;
+    animation-delay: 2s;
+}
+
+@keyframes rise {
+    0% { transform: translateY(0); opacity: 0.8; }
+    100% { transform: translateY(-100px); opacity: 0; }
 }
 
 /* Stats Grid */
@@ -848,14 +1043,28 @@ $next_class = !empty($upcoming) ? $upcoming[0] : null;
 
     .ssm-welcome-banner {
         padding: 24px;
+        flex-direction: column;
+        text-align: center;
+        min-height: auto;
     }
 
     .ssm-welcome-content h1 {
-        font-size: 22px;
+        font-size: 24px;
+    }
+
+    .ssm-welcome-stats {
+        justify-content: center;
+        flex-wrap: wrap;
     }
 
     .ssm-welcome-illustration {
-        display: none;
+        margin: 20px 0 0 0;
+    }
+
+    .ssm-illustration-main {
+        width: 80px;
+        height: 80px;
+        font-size: 36px;
     }
 
     .ssm-quick-actions {

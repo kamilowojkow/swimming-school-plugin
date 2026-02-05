@@ -204,6 +204,19 @@ class SSM_Translations {
                 'no_upcoming_classes' => 'Brak nadchodzacych zajec',
                 'your_children' => 'Twoje dzieci',
                 'view_all' => 'Zobacz wszystkie',
+
+                // Courses
+                'courses_description' => 'Kursy na ktore zapisane sa Twoje dzieci',
+                'status_active' => 'Aktywny',
+                'completed' => 'Ukonczono',
+                'sessions_completed' => 'Zajec ukonczonych',
+                'sessions_remaining' => 'Zajec pozostalo',
+                'course_price' => 'Cena kursu',
+                'course_details' => 'Szczegoly kursu',
+                'start_date' => 'Data rozpoczecia',
+                'progress' => 'Postep',
+                'sessions' => 'zajec',
+                'contact_admin_to_enroll' => 'Skontaktuj sie z administracja aby zapisac dziecko',
             ),
 
             // ========================================
@@ -346,6 +359,19 @@ class SSM_Translations {
                 'no_upcoming_classes' => 'No upcoming classes',
                 'your_children' => 'Your children',
                 'view_all' => 'View all',
+
+                // Courses
+                'courses_description' => 'Courses your children are enrolled in',
+                'status_active' => 'Active',
+                'completed' => 'Completed',
+                'sessions_completed' => 'Sessions completed',
+                'sessions_remaining' => 'Sessions remaining',
+                'course_price' => 'Course price',
+                'course_details' => 'Course details',
+                'start_date' => 'Start date',
+                'progress' => 'Progress',
+                'sessions' => 'sessions',
+                'contact_admin_to_enroll' => 'Contact administration to enroll your child',
             ),
 
             // ========================================
@@ -488,6 +514,19 @@ class SSM_Translations {
                 'no_upcoming_classes' => 'Немає найближчих занять',
                 'your_children' => 'Ваші діти',
                 'view_all' => 'Переглянути всі',
+
+                // Courses
+                'courses_description' => 'Курси на які записані ваші діти',
+                'status_active' => 'Активний',
+                'completed' => 'Завершено',
+                'sessions_completed' => 'Занять завершено',
+                'sessions_remaining' => 'Занять залишилося',
+                'course_price' => 'Ціна курсу',
+                'course_details' => 'Деталі курсу',
+                'start_date' => 'Дата початку',
+                'progress' => 'Прогрес',
+                'sessions' => 'занять',
+                'contact_admin_to_enroll' => 'Зверніться до адміністрації щоб записати дитину',
             ),
 
             // ========================================
@@ -630,6 +669,19 @@ class SSM_Translations {
                 'no_upcoming_classes' => 'Нет ближайших занятий',
                 'your_children' => 'Ваши дети',
                 'view_all' => 'Посмотреть все',
+
+                // Courses
+                'courses_description' => 'Курсы на которые записаны ваши дети',
+                'status_active' => 'Активный',
+                'completed' => 'Завершено',
+                'sessions_completed' => 'Занятий завершено',
+                'sessions_remaining' => 'Занятий осталось',
+                'course_price' => 'Цена курса',
+                'course_details' => 'Детали курса',
+                'start_date' => 'Дата начала',
+                'progress' => 'Прогресс',
+                'sessions' => 'занятий',
+                'contact_admin_to_enroll' => 'Свяжитесь с администрацией чтобы записать ребенка',
             ),
         );
     }
