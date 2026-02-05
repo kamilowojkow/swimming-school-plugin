@@ -54,7 +54,7 @@ $menu_sections = array(
         'label' => ssm_t('menu_main'),
         'items' => array(
             'dashboard' => array('icon' => 'ri-dashboard-line', 'label' => ssm_t('dashboard')),
-            'schedule' => array('icon' => 'ri-calendar-schedule-line', 'label' => ssm_t('schedule')),
+            'schedule' => array('icon' => 'ri-calendar-todo-line', 'label' => ssm_t('schedule')),
             'history' => array('icon' => 'ri-history-line', 'label' => ssm_t('history')),
         )
     ),
