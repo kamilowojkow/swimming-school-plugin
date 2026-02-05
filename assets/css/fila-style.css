@@ -50,11 +50,20 @@
    BASE LAYOUT
    ======================================== */
 
+/* Reset WordPress theme margins within plugin scope */
 .ssm-parent-dashboard.ssm-fila {
     display: flex;
     min-height: 100vh;
     background: var(--ssm-bg);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 /* ========================================
@@ -67,10 +76,10 @@
     border-right: 1px solid var(--ssm-border);
     display: flex;
     flex-direction: column;
-    position: fixed;
+    position: absolute;
     top: 0;
     left: 0;
-    height: 100vh;
+    height: 100%;
     z-index: 1000;
     transition: all 0.3s ease;
     overflow-y: auto;
@@ -250,7 +259,8 @@
     margin-left: var(--ssm-sidebar-width);
     display: flex;
     flex-direction: column;
-    min-height: 100vh;
+    height: 100%;
+    overflow: hidden;
 }
 
 /* ========================================
@@ -532,6 +542,7 @@
     padding: 24px;
     background: var(--ssm-bg);
     margin-left: 0;
+    overflow-y: auto;
 }
 
 /* ========================================
