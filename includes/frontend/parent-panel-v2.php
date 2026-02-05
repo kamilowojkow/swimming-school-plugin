@@ -5,6 +5,9 @@
  */
 if (!defined('ABSPATH')) exit;
 
+// Ukryj pasek admina WordPress
+add_filter('show_admin_bar', '__return_false');
+
 // Load translations
 require_once dirname(dirname(__FILE__)) . '/translations.php';
 $trans = SSM_Translations::get_instance();
@@ -105,6 +108,12 @@ $school_name = get_option('ssm_school_name', ssm_t('swimming_school'));
 
 <!-- Remix Icon CDN -->
 <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+
+<!-- Ukryj pasek admina WordPress -->
+<style>
+#wpadminbar, html.wp-toolbar { display: none !important; margin-top: 0 !important; padding-top: 0 !important; }
+html { margin-top: 0 !important; }
+</style>
 
 <div class="ssm-parent-dashboard ssm-fila">
 
