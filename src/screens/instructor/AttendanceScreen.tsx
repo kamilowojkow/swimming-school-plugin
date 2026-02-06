@@ -15,6 +15,18 @@ import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import api from '../../api/client';
 
+// Safe date formatting helper
+const safeFormatDate = (dateStr: string | undefined, formatStr: string): string => {
+  if (!dateStr) return '-';
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '-';
+    return format(date, formatStr, { locale: pl });
+  } catch {
+    return '-';
+  }
+};
+
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused' | 'unmarked';
 
 interface Participant {
@@ -69,11 +81,15 @@ export default function AttendanceScreen() {
   const fetchSessionDetails = async () => {
     try {
       const data = await api.getSessionDetails(sessionId);
+      // Ensure participants is an array
+      if (data && !Array.isArray(data.participants)) {
+        data.participants = [];
+      }
       setSession(data);
 
       // Initialize attendance map
       const attendanceMap = new Map<number, { status: AttendanceStatus; notes: string }>();
-      data.participants.forEach((p: Participant) => {
+      (data.participants || []).forEach((p: Participant) => {
         attendanceMap.set(p.enrollment_id, {
           status: p.status || 'unmarked',
           notes: p.notes || '',
@@ -178,13 +194,13 @@ export default function AttendanceScreen() {
         <View style={styles.sessionInfo}>
           <Text style={styles.sessionTitle}>{session.class_name}</Text>
           <Text style={styles.sessionMeta}>
-            {format(new Date(session.session_date), 'EEEE, d MMMM yyyy', { locale: pl })}
+            {safeFormatDate(session.session_date, 'EEEE, d MMMM yyyy')}
           </Text>
           <View style={styles.sessionDetails}>
             <View style={styles.sessionDetail}>
               <Ionicons name="time-outline" size={16} color="#6b7280" />
               <Text style={styles.sessionDetailText}>
-                {formatTime(session.time_start)} - {formatTime(session.time_end)}
+                {session.time_start?.substring(0, 5) || '-'} - {session.time_end?.substring(0, 5) || '-'}
               </Text>
             </View>
             <View style={styles.sessionDetail}>

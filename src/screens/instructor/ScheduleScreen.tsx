@@ -14,6 +14,18 @@ import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import api from '../../api/client';
 
+// Safe date parsing helper
+const safeParseDateISO = (dateStr: string | undefined): Date | null => {
+  if (!dateStr) return null;
+  try {
+    const date = parseISO(dateStr);
+    if (isNaN(date.getTime())) return null;
+    return date;
+  } catch {
+    return null;
+  }
+};
+
 interface Session {
   id: number;
   session_date: string;
@@ -42,7 +54,9 @@ export default function InstructorScheduleScreen() {
       const dateFrom = format(weekStart, 'yyyy-MM-dd');
       const dateTo = format(addDays(weekStart, 13), 'yyyy-MM-dd');
       const data = await api.getInstructorSchedule(dateFrom, dateTo);
-      setSessions(data);
+      // Handle both array and object API responses
+      const sessionsArray = Array.isArray(data) ? data : (data?.sessions || []);
+      setSessions(sessionsArray);
     } catch (error) {
       console.error('Error fetching schedule:', error);
     } finally {
@@ -75,7 +89,10 @@ export default function InstructorScheduleScreen() {
   };
 
   const getSessionsForDate = (date: Date) => {
-    return sessions.filter((s) => isSameDay(parseISO(s.session_date), date));
+    return sessions.filter((s) => {
+      const sessionDate = safeParseDateISO(s.session_date);
+      return sessionDate && isSameDay(sessionDate, date);
+    });
   };
 
   const formatTime = (time: string) => time.substring(0, 5);
@@ -87,7 +104,8 @@ export default function InstructorScheduleScreen() {
 
   const getStatusColor = (session: Session) => {
     if (session.attendance_marked > 0) return '#10b981';
-    if (isSameDay(parseISO(session.session_date), new Date())) return '#3b82f6';
+    const sessionDate = safeParseDateISO(session.session_date);
+    if (sessionDate && isSameDay(sessionDate, new Date())) return '#3b82f6';
     return '#6b7280';
   };
 

@@ -102,6 +102,43 @@ add_action('rest_api_init', function () {
         'permission_callback' => 'ssm_api_check_auth',
     ));
 
+    // Instructor endpoints
+    register_rest_route($namespace, '/instructor/schedule', array(
+        'methods' => 'GET',
+        'callback' => 'ssm_api_get_instructor_schedule',
+        'permission_callback' => 'ssm_api_check_auth',
+    ));
+
+    register_rest_route($namespace, '/instructor/sessions/(?P<id>\d+)', array(
+        'methods' => 'GET',
+        'callback' => 'ssm_api_get_session_details',
+        'permission_callback' => 'ssm_api_check_auth',
+    ));
+
+    register_rest_route($namespace, '/instructor/sessions/(?P<id>\d+)/attendance', array(
+        'methods' => array('GET', 'POST'),
+        'callback' => 'ssm_api_session_attendance',
+        'permission_callback' => 'ssm_api_check_auth',
+    ));
+
+    register_rest_route($namespace, '/instructor/substitutions', array(
+        'methods' => array('GET', 'POST'),
+        'callback' => 'ssm_api_substitutions',
+        'permission_callback' => 'ssm_api_check_auth',
+    ));
+
+    register_rest_route($namespace, '/instructor/substitutions/(?P<id>\d+)/take', array(
+        'methods' => 'POST',
+        'callback' => 'ssm_api_take_substitution',
+        'permission_callback' => 'ssm_api_check_auth',
+    ));
+
+    register_rest_route($namespace, '/instructor/salary', array(
+        'methods' => 'GET',
+        'callback' => 'ssm_api_get_salary',
+        'permission_callback' => 'ssm_api_check_auth',
+    ));
+
     // Notifications
     register_rest_route($namespace, '/notifications', array(
         'methods' => 'GET',
@@ -610,4 +647,305 @@ function ssm_api_register_push_token($request) {
     }
 
     return array('success' => true);
+}
+
+// ============ INSTRUCTOR ENDPOINTS ============
+
+function ssm_api_get_instructor_schedule($request) {
+    $date_from = $request->get_param('date_from') ?: date('Y-m-d');
+    $date_to = $request->get_param('date_to') ?: date('Y-m-d', strtotime('+14 days'));
+
+    // Przykładowe dane
+    return array(
+        array(
+            'id' => 101,
+            'session_date' => date('Y-m-d'),
+            'time_start' => '09:00:00',
+            'time_end' => '09:45:00',
+            'class_name' => 'Kurs pływania - początkujący',
+            'level' => 'Początkujący',
+            'facility_name' => 'Basen Główny',
+            'facility_address' => 'ul. Sportowa 15',
+            'enrolled_count' => 8,
+            'max_participants' => 10,
+            'attendance_marked' => 0,
+            'status' => 'scheduled'
+        ),
+        array(
+            'id' => 102,
+            'session_date' => date('Y-m-d'),
+            'time_start' => '10:00:00',
+            'time_end' => '10:45:00',
+            'class_name' => 'Kurs pływania - średniozaawansowany',
+            'level' => 'Średniozaawansowany',
+            'facility_name' => 'Basen Główny',
+            'facility_address' => 'ul. Sportowa 15',
+            'enrolled_count' => 6,
+            'max_participants' => 8,
+            'attendance_marked' => 1,
+            'status' => 'completed'
+        ),
+        array(
+            'id' => 103,
+            'session_date' => date('Y-m-d', strtotime('+1 day')),
+            'time_start' => '16:00:00',
+            'time_end' => '16:45:00',
+            'class_name' => 'Kurs pływania - zaawansowany',
+            'level' => 'Zaawansowany',
+            'facility_name' => 'Basen Mały',
+            'facility_address' => 'ul. Wodna 8',
+            'enrolled_count' => 5,
+            'max_participants' => 6,
+            'attendance_marked' => 0,
+            'status' => 'scheduled'
+        ),
+        array(
+            'id' => 104,
+            'session_date' => date('Y-m-d', strtotime('+2 days')),
+            'time_start' => '09:00:00',
+            'time_end' => '09:45:00',
+            'class_name' => 'Kurs pływania - początkujący',
+            'level' => 'Początkujący',
+            'facility_name' => 'Basen Główny',
+            'facility_address' => 'ul. Sportowa 15',
+            'enrolled_count' => 8,
+            'max_participants' => 10,
+            'attendance_marked' => 0,
+            'status' => 'scheduled'
+        )
+    );
+}
+
+function ssm_api_get_session_details($request) {
+    $session_id = $request->get_param('id');
+
+    return array(
+        'id' => $session_id,
+        'session_date' => date('Y-m-d'),
+        'time_start' => '09:00:00',
+        'time_end' => '09:45:00',
+        'class_name' => 'Kurs pływania - początkujący',
+        'level' => 'Początkujący',
+        'facility_name' => 'Basen Główny',
+        'facility_address' => 'ul. Sportowa 15',
+        'max_participants' => 10,
+        'description' => 'Zajęcia dla początkujących - nauka podstaw pływania.',
+        'participants' => array(
+            array(
+                'enrollment_id' => 1,
+                'child_id' => 1,
+                'first_name' => 'Jan',
+                'last_name' => 'Kowalski',
+                'status' => 'unmarked',
+                'notes' => '',
+                'swimming_level' => 'Początkujący',
+                'medical_notes' => ''
+            ),
+            array(
+                'enrollment_id' => 2,
+                'child_id' => 2,
+                'first_name' => 'Anna',
+                'last_name' => 'Nowak',
+                'status' => 'unmarked',
+                'notes' => '',
+                'swimming_level' => 'Początkujący',
+                'medical_notes' => 'Alergia na chlor - wymaga okularów'
+            ),
+            array(
+                'enrollment_id' => 3,
+                'child_id' => 3,
+                'first_name' => 'Piotr',
+                'last_name' => 'Wiśniewski',
+                'status' => 'unmarked',
+                'notes' => '',
+                'swimming_level' => 'Początkujący',
+                'medical_notes' => ''
+            ),
+            array(
+                'enrollment_id' => 4,
+                'child_id' => 4,
+                'first_name' => 'Maria',
+                'last_name' => 'Dąbrowska',
+                'status' => 'unmarked',
+                'notes' => '',
+                'swimming_level' => 'Początkujący',
+                'medical_notes' => ''
+            )
+        )
+    );
+}
+
+function ssm_api_session_attendance($request) {
+    $session_id = $request->get_param('id');
+
+    if ($request->get_method() === 'POST') {
+        $params = $request->get_json_params();
+        $attendance = $params['attendance'] ?? array();
+
+        // W prawdziwej implementacji: zapisz obecność do bazy danych
+        return array(
+            'success' => true,
+            'message' => 'Obecność została zapisana',
+            'session_id' => $session_id,
+            'attendance_count' => count($attendance)
+        );
+    }
+
+    // GET - zwróć obecność dla sesji
+    return array(
+        array(
+            'enrollment_id' => 1,
+            'child_id' => 1,
+            'first_name' => 'Jan',
+            'last_name' => 'Kowalski',
+            'status' => 'present',
+            'notes' => ''
+        ),
+        array(
+            'enrollment_id' => 2,
+            'child_id' => 2,
+            'first_name' => 'Anna',
+            'last_name' => 'Nowak',
+            'status' => 'absent',
+            'notes' => 'Choroba'
+        )
+    );
+}
+
+function ssm_api_substitutions($request) {
+    if ($request->get_method() === 'POST') {
+        $params = $request->get_json_params();
+        return array(
+            'success' => true,
+            'message' => 'Prośba o zastępstwo została wysłana',
+            'substitution_id' => rand(100, 999)
+        );
+    }
+
+    $type = $request->get_param('type') ?: 'available';
+
+    if ($type === 'available') {
+        return array(
+            array(
+                'id' => 1,
+                'session_id' => 201,
+                'session_date' => date('Y-m-d', strtotime('+2 days')),
+                'time_start' => '14:00:00',
+                'time_end' => '14:45:00',
+                'class_name' => 'Kurs pływania - średniozaawansowany',
+                'facility_name' => 'Basen Główny',
+                'instructor_name' => 'Anna Kowalska',
+                'reason' => 'Choroba',
+                'created_at' => date('Y-m-d H:i:s', strtotime('-1 day'))
+            ),
+            array(
+                'id' => 2,
+                'session_id' => 202,
+                'session_date' => date('Y-m-d', strtotime('+3 days')),
+                'time_start' => '16:00:00',
+                'time_end' => '16:45:00',
+                'class_name' => 'Kurs pływania - początkujący',
+                'facility_name' => 'Basen Mały',
+                'instructor_name' => 'Piotr Nowak',
+                'reason' => 'Wyjazd służbowy',
+                'created_at' => date('Y-m-d H:i:s', strtotime('-2 days'))
+            )
+        );
+    } elseif ($type === 'my_requests') {
+        return array(
+            array(
+                'id' => 10,
+                'session_id' => 301,
+                'session_date' => date('Y-m-d', strtotime('+5 days')),
+                'time_start' => '10:00:00',
+                'time_end' => '10:45:00',
+                'class_name' => 'Kurs pływania - zaawansowany',
+                'facility_name' => 'Basen Główny',
+                'reason' => 'Wizyta lekarska',
+                'replacement_name' => null,
+                'created_at' => date('Y-m-d H:i:s', strtotime('-1 day'))
+            )
+        );
+    } else { // my_taken
+        return array(
+            array(
+                'id' => 20,
+                'session_id' => 401,
+                'session_date' => date('Y-m-d', strtotime('+1 day')),
+                'time_start' => '11:00:00',
+                'time_end' => '11:45:00',
+                'class_name' => 'Kurs pływania - początkujący',
+                'facility_name' => 'Basen Główny',
+                'original_instructor_name' => 'Maria Wiśniewska',
+                'reason' => 'Urlop',
+                'created_at' => date('Y-m-d H:i:s', strtotime('-3 days'))
+            )
+        );
+    }
+}
+
+function ssm_api_take_substitution($request) {
+    $substitution_id = $request->get_param('id');
+
+    return array(
+        'success' => true,
+        'message' => 'Zastępstwo zostało przyjęte',
+        'substitution_id' => $substitution_id
+    );
+}
+
+function ssm_api_get_salary($request) {
+    $month = $request->get_param('month') ?: date('n');
+    $year = $request->get_param('year') ?: date('Y');
+
+    return array(
+        'month' => intval($month),
+        'year' => intval($year),
+        'hourly_rate' => 80,
+        'total_hours' => 32.5,
+        'total_salary' => 2600,
+        'sessions_count' => 43,
+        'sessions' => array(
+            array(
+                'id' => 1,
+                'session_date' => date('Y-m-d', strtotime('-1 day')),
+                'time_start' => '09:00:00',
+                'time_end' => '09:45:00',
+                'class_name' => 'Kurs pływania - początkujący',
+                'duration_minutes' => 45
+            ),
+            array(
+                'id' => 2,
+                'session_date' => date('Y-m-d', strtotime('-1 day')),
+                'time_start' => '10:00:00',
+                'time_end' => '10:45:00',
+                'class_name' => 'Kurs pływania - średniozaawansowany',
+                'duration_minutes' => 45
+            ),
+            array(
+                'id' => 3,
+                'session_date' => date('Y-m-d', strtotime('-2 days')),
+                'time_start' => '16:00:00',
+                'time_end' => '16:45:00',
+                'class_name' => 'Kurs pływania - zaawansowany',
+                'duration_minutes' => 45
+            ),
+            array(
+                'id' => 4,
+                'session_date' => date('Y-m-d', strtotime('-3 days')),
+                'time_start' => '09:00:00',
+                'time_end' => '09:45:00',
+                'class_name' => 'Kurs pływania - początkujący',
+                'duration_minutes' => 45
+            ),
+            array(
+                'id' => 5,
+                'session_date' => date('Y-m-d', strtotime('-4 days')),
+                'time_start' => '14:00:00',
+                'time_end' => '14:45:00',
+                'class_name' => 'Kurs pływania - średniozaawansowany',
+                'duration_minutes' => 45
+            )
+        )
+    );
 }

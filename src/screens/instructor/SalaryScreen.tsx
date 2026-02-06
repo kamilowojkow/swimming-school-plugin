@@ -13,6 +13,18 @@ import { format, subMonths, addMonths } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import api from '../../api/client';
 
+// Safe date formatting helper
+const safeFormatDate = (dateStr: string | undefined, formatStr: string): string => {
+  if (!dateStr) return '-';
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '-';
+    return format(date, formatStr, { locale: pl });
+  } catch {
+    return '-';
+  }
+};
+
 interface Session {
   id: number;
   session_date: string;
@@ -43,6 +55,10 @@ export default function SalaryScreen() {
       const month = selectedDate.getMonth() + 1;
       const year = selectedDate.getFullYear();
       const data = await api.getSalary(month, year);
+      // Ensure sessions is an array
+      if (data && !Array.isArray(data.sessions)) {
+        data.sessions = [];
+      }
       setSalaryData(data);
     } catch (error) {
       console.error('Error fetching salary:', error);
@@ -185,7 +201,7 @@ export default function SalaryScreen() {
                 <View key={date} style={styles.dayGroup}>
                   <View style={styles.dayHeader}>
                     <Text style={styles.dayDate}>
-                      {format(new Date(date), 'EEEE, d MMMM', { locale: pl })}
+                      {safeFormatDate(date, 'EEEE, d MMMM')}
                     </Text>
                     <Text style={styles.daySessions}>
                       {sessionsByDate[date].length}{' '}
@@ -201,10 +217,10 @@ export default function SalaryScreen() {
                       <View key={session.id} style={styles.sessionCard}>
                         <View style={styles.sessionTime}>
                           <Text style={styles.sessionTimeText}>
-                            {formatTime(session.time_start)}
+                            {session.time_start?.substring(0, 5) || '-'}
                           </Text>
                           <Text style={styles.sessionTimeEnd}>
-                            {formatTime(session.time_end)}
+                            {session.time_end?.substring(0, 5) || '-'}
                           </Text>
                         </View>
                         <View style={styles.sessionInfo}>

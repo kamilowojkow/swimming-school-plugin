@@ -15,6 +15,18 @@ import api from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
 import { useNotificationStore } from '../../store/notificationStore';
 
+// Safe date formatting helper
+const safeFormatDate = (dateStr: string | undefined, formatStr: string): string => {
+  if (!dateStr) return '-';
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '-';
+    return format(date, formatStr, { locale: pl });
+  } catch {
+    return '-';
+  }
+};
+
 interface Session {
   id: number;
   session_date: string;
@@ -55,12 +67,16 @@ export default function InstructorDashboard() {
         api.getSalary(),
       ]);
 
-      setTodaySessions(scheduleData);
-      setAvailableSubstitutions(substitutionsData.slice(0, 3));
+      // Handle both array and object API responses
+      const sessionsArray = Array.isArray(scheduleData) ? scheduleData : (scheduleData?.sessions || []);
+      const substitutionsArray = Array.isArray(substitutionsData) ? substitutionsData : (substitutionsData?.substitutions || []);
+
+      setTodaySessions(sessionsArray);
+      setAvailableSubstitutions(substitutionsArray.slice(0, 3));
       setMonthStats({
-        sessions: salaryData.sessions_count,
-        hours: salaryData.total_hours,
-        salary: salaryData.total_salary,
+        sessions: salaryData?.sessions_count || 0,
+        hours: salaryData?.total_hours || 0,
+        salary: salaryData?.total_salary || 0,
       });
       await fetchUnreadCount();
     } catch (error) {
@@ -186,7 +202,7 @@ export default function InstructorDashboard() {
               <View style={styles.substitutionInfo}>
                 <Text style={styles.substitutionTitle}>{sub.class_name}</Text>
                 <Text style={styles.substitutionMeta}>
-                  {format(new Date(sub.session_date), 'd MMM', { locale: pl })} o {formatTime(sub.time_start)}
+                  {safeFormatDate(sub.session_date, 'd MMM')} o {sub.time_start?.substring(0, 5) || '-'}
                 </Text>
                 <Text style={styles.substitutionInstructor}>Za: {sub.instructor_name}</Text>
               </View>

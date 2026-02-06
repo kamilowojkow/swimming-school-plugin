@@ -16,6 +16,18 @@ import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import api from '../../api/client';
 
+// Safe date formatting helper
+const safeFormatDate = (dateStr: string | undefined, formatStr: string): string => {
+  if (!dateStr) return '-';
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '-';
+    return format(date, formatStr, { locale: pl });
+  } catch {
+    return '-';
+  }
+};
+
 type TabType = 'available' | 'my_requests' | 'my_taken';
 
 interface Substitution {
@@ -54,12 +66,21 @@ export default function SubstitutionsScreen() {
   const fetchData = useCallback(async () => {
     try {
       const data = await api.getSubstitutions(activeTab);
-      setSubstitutions(data);
+      // Handle both array and object API responses
+      const substitutionsArray = Array.isArray(data) ? data : (data?.substitutions || []);
+      setSubstitutions(substitutionsArray);
 
       // Fetch my sessions for request modal
       if (activeTab === 'available') {
         const scheduleData = await api.getInstructorSchedule();
-        setMySessions(scheduleData.filter((s: Session) => new Date(s.session_date) >= new Date()));
+        const sessionsArray = Array.isArray(scheduleData) ? scheduleData : (scheduleData?.sessions || []);
+        setMySessions(sessionsArray.filter((s: Session) => {
+          try {
+            return new Date(s.session_date) >= new Date();
+          } catch {
+            return false;
+          }
+        }));
       }
     } catch (error) {
       console.error('Error fetching substitutions:', error);
@@ -137,10 +158,10 @@ export default function SubstitutionsScreen() {
         <View style={styles.cardHeader}>
           <View style={styles.cardDate}>
             <Text style={styles.cardDateDay}>
-              {format(new Date(item.session_date), 'd', { locale: pl })}
+              {safeFormatDate(item.session_date, 'd')}
             </Text>
             <Text style={styles.cardDateMonth}>
-              {format(new Date(item.session_date), 'MMM', { locale: pl })}
+              {safeFormatDate(item.session_date, 'MMM')}
             </Text>
           </View>
           <View style={styles.cardInfo}>
@@ -148,7 +169,7 @@ export default function SubstitutionsScreen() {
             <View style={styles.cardMeta}>
               <Ionicons name="time-outline" size={14} color="#6b7280" />
               <Text style={styles.cardMetaText}>
-                {formatTime(item.time_start)} - {formatTime(item.time_end)}
+                {item.time_start?.substring(0, 5) || '-'} - {item.time_end?.substring(0, 5) || '-'}
               </Text>
             </View>
             <View style={styles.cardMeta}>
@@ -295,17 +316,17 @@ export default function SubstitutionsScreen() {
                 >
                   <View style={styles.sessionOptionDate}>
                     <Text style={styles.sessionOptionDay}>
-                      {format(new Date(session.session_date), 'd', { locale: pl })}
+                      {safeFormatDate(session.session_date, 'd')}
                     </Text>
                     <Text style={styles.sessionOptionMonth}>
-                      {format(new Date(session.session_date), 'MMM', { locale: pl })}
+                      {safeFormatDate(session.session_date, 'MMM')}
                     </Text>
                   </View>
                   <View style={styles.sessionOptionInfo}>
                     <Text style={styles.sessionOptionTitle}>{session.class_name}</Text>
                     <Text style={styles.sessionOptionTime}>
-                      {formatTime(session.time_start)} •{' '}
-                      {format(new Date(session.session_date), 'EEEE', { locale: pl })}
+                      {session.time_start?.substring(0, 5) || '-'} •{' '}
+                      {safeFormatDate(session.session_date, 'EEEE')}
                     </Text>
                   </View>
                   {selectedSession?.id === session.id && (
