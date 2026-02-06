@@ -176,25 +176,29 @@ export default function ChildDetailsScreen() {
       <View style={styles.headerCard}>
         <View style={styles.avatarLarge}>
           <Text style={styles.avatarLargeText}>
-            {child.first_name[0]}{child.last_name[0]}
+            {(child.first_name || '')[0] || '?'}{(child.last_name || '')[0] || '?'}
           </Text>
         </View>
-        <Text style={styles.childName}>{child.first_name} {child.last_name}</Text>
-        <Text style={styles.childAge}>
-          {getAge(child.birth_date)} {language === 'pl' ? 'lat' : 'years'}
-        </Text>
+        <Text style={styles.childName}>{child.first_name || ''} {child.last_name || ''}</Text>
+        {child.birth_date && (
+          <Text style={styles.childAge}>
+            {getAge(child.birth_date)} {language === 'pl' ? 'lat' : 'years'}
+          </Text>
+        )}
 
-        <View style={[styles.levelBadgeLarge, { backgroundColor: levelStyle.bg }]}>
-          <Text style={styles.levelIcon}>{levelStyle.icon}</Text>
-          <Text style={[styles.levelTextLarge, { color: levelStyle.text }]}>
-            {child.swimming_level}
-          </Text>
-        </View>
+        {child.swimming_level && (
+          <View style={[styles.levelBadgeLarge, { backgroundColor: levelStyle.bg }]}>
+            <Text style={styles.levelIcon}>{levelStyle.icon}</Text>
+            <Text style={[styles.levelTextLarge, { color: levelStyle.text }]}>
+              {child.swimming_level}
+            </Text>
+          </View>
+        )}
 
         <View style={styles.pointsContainer}>
           <Ionicons name="star" size={20} color={colors.warning} />
           <Text style={styles.pointsText}>
-            {child.total_points} {language === 'pl' ? 'punktow' : 'points'}
+            {child.total_points || 0} {language === 'pl' ? 'punktow' : 'points'}
           </Text>
         </View>
       </View>
@@ -315,51 +319,63 @@ export default function ChildDetailsScreen() {
               child.courses.map((course) => (
                 <View key={course.id} style={styles.courseCard}>
                   <View style={styles.courseHeader}>
-                    <Text style={styles.courseName}>{course.name}</Text>
-                    <View style={styles.sessionsBadge}>
-                      <Text style={styles.sessionsText}>
-                        {course.sessions_remaining}/{course.sessions_total}
-                      </Text>
-                    </View>
+                    <Text style={styles.courseName}>{course.name || (language === 'pl' ? 'Kurs' : 'Course')}</Text>
+                    {typeof course.sessions_remaining === 'number' && typeof course.sessions_total === 'number' && (
+                      <View style={styles.sessionsBadge}>
+                        <Text style={styles.sessionsText}>
+                          {course.sessions_remaining}/{course.sessions_total}
+                        </Text>
+                      </View>
+                    )}
                   </View>
 
                   <View style={styles.courseDetails}>
-                    <View style={styles.courseDetail}>
-                      <Ionicons name="person" size={14} color={colors.textSecondary} />
-                      <Text style={styles.courseDetailText}>{course.instructor_name}</Text>
-                    </View>
-                    <View style={styles.courseDetail}>
-                      <Ionicons name="calendar" size={14} color={colors.textSecondary} />
-                      <Text style={styles.courseDetailText}>{getDayName(course.day_of_week)}</Text>
-                    </View>
-                    <View style={styles.courseDetail}>
-                      <Ionicons name="time" size={14} color={colors.textSecondary} />
-                      <Text style={styles.courseDetailText}>
-                        {course.time_start.substring(0, 5)} - {course.time_end.substring(0, 5)}
-                      </Text>
-                    </View>
-                    <View style={styles.courseDetail}>
-                      <Ionicons name="location" size={14} color={colors.textSecondary} />
-                      <Text style={styles.courseDetailText}>{course.facility_name}</Text>
-                    </View>
+                    {course.instructor_name && (
+                      <View style={styles.courseDetail}>
+                        <Ionicons name="person" size={14} color={colors.textSecondary} />
+                        <Text style={styles.courseDetailText}>{course.instructor_name}</Text>
+                      </View>
+                    )}
+                    {course.day_of_week && (
+                      <View style={styles.courseDetail}>
+                        <Ionicons name="calendar" size={14} color={colors.textSecondary} />
+                        <Text style={styles.courseDetailText}>{getDayName(course.day_of_week)}</Text>
+                      </View>
+                    )}
+                    {(course.time_start || course.time_end) && (
+                      <View style={styles.courseDetail}>
+                        <Ionicons name="time" size={14} color={colors.textSecondary} />
+                        <Text style={styles.courseDetailText}>
+                          {course.time_start?.substring(0, 5) || '--:--'} - {course.time_end?.substring(0, 5) || '--:--'}
+                        </Text>
+                      </View>
+                    )}
+                    {course.facility_name && (
+                      <View style={styles.courseDetail}>
+                        <Ionicons name="location" size={14} color={colors.textSecondary} />
+                        <Text style={styles.courseDetailText}>{course.facility_name}</Text>
+                      </View>
+                    )}
                   </View>
 
                   {/* Progress Bar */}
-                  <View style={styles.progressContainer}>
-                    <View style={styles.progressBar}>
-                      <View
-                        style={[
-                          styles.progressFill,
-                          {
-                            width: `${((course.sessions_total - course.sessions_remaining) / course.sessions_total) * 100}%`,
-                          },
-                        ]}
-                      />
+                  {typeof course.sessions_total === 'number' && course.sessions_total > 0 && (
+                    <View style={styles.progressContainer}>
+                      <View style={styles.progressBar}>
+                        <View
+                          style={[
+                            styles.progressFill,
+                            {
+                              width: `${(((course.sessions_total || 0) - (course.sessions_remaining || 0)) / (course.sessions_total || 1)) * 100}%`,
+                            },
+                          ]}
+                        />
+                      </View>
+                      <Text style={styles.progressText}>
+                        {(course.sessions_total || 0) - (course.sessions_remaining || 0)} / {course.sessions_total || 0} {language === 'pl' ? 'zajec' : 'sessions'}
+                      </Text>
                     </View>
-                    <Text style={styles.progressText}>
-                      {course.sessions_total - course.sessions_remaining} / {course.sessions_total} {language === 'pl' ? 'zajec' : 'sessions'}
-                    </Text>
-                  </View>
+                  )}
                 </View>
               ))
             )}
@@ -383,18 +399,18 @@ export default function ChildDetailsScreen() {
               <View style={styles.achievementsGrid}>
                 {child.achievements.map((achievement) => (
                   <View key={achievement.id} style={styles.achievementCard}>
-                    <Text style={styles.achievementIcon}>{achievement.icon}</Text>
-                    <Text style={styles.achievementName}>{achievement.name}</Text>
+                    <Text style={styles.achievementIcon}>{achievement.icon || '🏅'}</Text>
+                    <Text style={styles.achievementName}>{achievement.name || ''}</Text>
                     <Text style={styles.achievementDesc} numberOfLines={2}>
-                      {achievement.description}
+                      {achievement.description || ''}
                     </Text>
                     <View style={styles.achievementFooter}>
                       <View style={styles.achievementPoints}>
                         <Ionicons name="star" size={12} color={colors.warning} />
-                        <Text style={styles.achievementPointsText}>+{achievement.points}</Text>
+                        <Text style={styles.achievementPointsText}>+{achievement.points || 0}</Text>
                       </View>
                       <Text style={styles.achievementDate}>
-                        {format(new Date(achievement.earned_at), 'd MMM', { locale: dateLocale })}
+                        {achievement.earned_at ? format(new Date(achievement.earned_at), 'd MMM', { locale: dateLocale }) : ''}
                       </Text>
                     </View>
                   </View>
@@ -416,21 +432,22 @@ export default function ChildDetailsScreen() {
               </View>
             ) : (
               child.recent_attendance.map((record) => {
-                const statusInfo = ATTENDANCE_STATUS[record.status];
+                const statusInfo = ATTENDANCE_STATUS[record.status] || ATTENDANCE_STATUS.present;
+                const sessionDate = record.session_date ? new Date(record.session_date) : new Date();
                 return (
                   <View key={record.id} style={styles.attendanceRow}>
                     <View style={styles.attendanceDate}>
                       <Text style={styles.attendanceDateDay}>
-                        {format(new Date(record.session_date), 'd', { locale: dateLocale })}
+                        {format(sessionDate, 'd', { locale: dateLocale })}
                       </Text>
                       <Text style={styles.attendanceDateMonth}>
-                        {format(new Date(record.session_date), 'MMM', { locale: dateLocale })}
+                        {format(sessionDate, 'MMM', { locale: dateLocale })}
                       </Text>
                     </View>
                     <View style={styles.attendanceInfo}>
-                      <Text style={styles.attendanceClass}>{record.class_name}</Text>
+                      <Text style={styles.attendanceClass}>{record.class_name || ''}</Text>
                       <Text style={styles.attendanceDayName}>
-                        {format(new Date(record.session_date), 'EEEE', { locale: dateLocale })}
+                        {format(sessionDate, 'EEEE', { locale: dateLocale })}
                       </Text>
                     </View>
                     <View style={[styles.attendanceStatus, { backgroundColor: statusInfo.bg }]}>
