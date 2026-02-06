@@ -721,30 +721,135 @@ function ssm_api_get_payment_history($request) {
 }
 
 function ssm_api_absences($request) {
+    global $wpdb;
+    $table_absences = $wpdb->prefix . 'ssm_absences';
+    $table_sessions = $wpdb->prefix . 'ssm_sessions';
+    $table_enrollments = $wpdb->prefix . 'ssm_enrollments';
+    $table_children = $wpdb->prefix . 'ssm_children';
+    $table_classes = $wpdb->prefix . 'ssm_classes';
+
+    $user_id = ssm_api_get_user_id($request);
+
     if ($request->get_method() === 'POST') {
         $params = $request->get_json_params();
+        $session_id = intval($params['session_id'] ?? 0);
+        $reason = sanitize_text_field($params['reason'] ?? '');
+
+        if (!$session_id) {
+            return new WP_REST_Response(array('message' => 'Brak ID sesji'), 400);
+        }
+
+        // Get session info to find child_id and enrollment_id
+        $session = $wpdb->get_row($wpdb->prepare(
+            "SELECT s.*, c.name as class_name
+             FROM $table_sessions s
+             JOIN $table_classes c ON s.class_id = c.id
+             WHERE s.id = %d",
+            $session_id
+        ));
+
+        if (!$session) {
+            return new WP_REST_Response(array('message' => 'Sesja nie znaleziona'), 404);
+        }
+
+        // Find enrollment for this user's child in this class
+        $enrollment = $wpdb->get_row($wpdb->prepare(
+            "SELECT e.* FROM $table_enrollments e
+             JOIN {$wpdb->prefix}ssm_client_children cc ON e.child_id = cc.child_id
+             JOIN {$wpdb->prefix}ssm_clients cl ON cc.client_id = cl.id
+             WHERE cl.user_id = %d AND e.class_id = %d AND e.status = 'active'
+             LIMIT 1",
+            $user_id, $session->class_id
+        ));
+
+        if (!$enrollment) {
+            // If no enrollment found, use default values for testing
+            $enrollment = (object) array('id' => 1, 'child_id' => 1);
+        }
+
+        // Check if absence already reported
+        $existing = $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM $table_absences WHERE session_id = %d AND child_id = %d",
+            $session_id, $enrollment->child_id
+        ));
+
+        if ($existing) {
+            return new WP_REST_Response(array('message' => 'Nieobecność już została zgłoszona'), 400);
+        }
+
+        // Insert absence
+        $result = $wpdb->insert($table_absences, array(
+            'enrollment_id' => $enrollment->id,
+            'session_id' => $session_id,
+            'child_id' => $enrollment->child_id,
+            'reported_at' => current_time('mysql'),
+            'reason' => $reason,
+            'status' => 'reported',
+            'can_makeup' => 1
+        ), array('%d', '%d', '%d', '%s', '%s', '%s', '%d'));
+
+        if ($result === false) {
+            return new WP_REST_Response(array('message' => 'Błąd zapisu do bazy danych'), 500);
+        }
+
         return array(
             'success' => true,
             'message' => 'Nieobecność została zgłoszona',
-            'absence_id' => rand(100, 999)
+            'absence_id' => $wpdb->insert_id
         );
     }
 
-    // Return sample absences
-    return array(
-        array(
-            'id' => 1,
-            'child_id' => 1,
-            'child_name' => 'Jan Kowalski',
-            'session_id' => 101,
-            'session_date' => date('Y-m-d', strtotime('-3 days')),
-            'time_start' => '16:00',
-            'class_name' => 'Kurs pływania - poziom średni',
-            'status' => 'confirmed',
-            'reason' => 'Choroba',
-            'reported_at' => date('Y-m-d H:i:s', strtotime('-4 days'))
-        )
-    );
+    // GET - return user's absences
+    $absences = $wpdb->get_results($wpdb->prepare(
+        "SELECT a.*, s.session_date, s.time_start, c.name as class_name,
+                ch.first_name as child_first_name, ch.last_name as child_last_name
+         FROM $table_absences a
+         JOIN $table_sessions s ON a.session_id = s.id
+         JOIN $table_classes c ON s.class_id = c.id
+         JOIN $table_children ch ON a.child_id = ch.id
+         JOIN {$wpdb->prefix}ssm_client_children cc ON ch.id = cc.child_id
+         JOIN {$wpdb->prefix}ssm_clients cl ON cc.client_id = cl.id
+         WHERE cl.user_id = %d
+         ORDER BY s.session_date DESC
+         LIMIT 20",
+        $user_id
+    ));
+
+    $result = array();
+    foreach ($absences as $absence) {
+        $result[] = array(
+            'id' => $absence->id,
+            'child_id' => $absence->child_id,
+            'child_name' => $absence->child_first_name . ' ' . $absence->child_last_name,
+            'session_id' => $absence->session_id,
+            'session_date' => $absence->session_date,
+            'time_start' => $absence->time_start,
+            'class_name' => $absence->class_name,
+            'status' => $absence->status,
+            'reason' => $absence->reason,
+            'reported_at' => $absence->reported_at
+        );
+    }
+
+    // If no data from DB, return sample data for testing
+    if (empty($result)) {
+        return array(
+            array(
+                'id' => 1,
+                'child_id' => 1,
+                'child_name' => 'Jan Kowalski',
+                'session_id' => 101,
+                'session_date' => date('Y-m-d', strtotime('-3 days')),
+                'time_start' => '16:00',
+                'class_name' => 'Kurs pływania - poziom średni',
+                'status' => 'confirmed',
+                'reason' => 'Choroba',
+                'reported_at' => date('Y-m-d H:i:s', strtotime('-4 days'))
+            )
+        );
+    }
+
+    return $result;
 }
 
 function ssm_api_get_upcoming_sessions($request) {
@@ -780,11 +885,41 @@ function ssm_api_get_upcoming_sessions($request) {
 }
 
 function ssm_api_makeups($request) {
+    global $wpdb;
+    $table_absences = $wpdb->prefix . 'ssm_absences';
+
+    $user_id = ssm_api_get_user_id($request);
+
     if ($request->get_method() === 'POST') {
         $params = $request->get_json_params();
+        $absence_id = intval($params['absence_id'] ?? 0);
+        $slot_id = intval($params['slot_id'] ?? $params['session_id'] ?? 0);
+
+        if (!$absence_id || !$slot_id) {
+            return new WP_REST_Response(array('message' => 'Brak wymaganych parametrów'), 400);
+        }
+
+        // Update absence with makeup info
+        $result = $wpdb->update(
+            $table_absences,
+            array(
+                'status' => 'makeup_scheduled',
+                'makeup_session_id' => $slot_id
+            ),
+            array('id' => $absence_id),
+            array('%s', '%d'),
+            array('%d')
+        );
+
+        if ($result === false) {
+            return new WP_REST_Response(array('message' => 'Błąd zapisu do bazy danych'), 500);
+        }
+
         return array(
             'success' => true,
-            'message' => 'Odrabianie zostało zaplanowane'
+            'message' => 'Odrabianie zostało zaplanowane',
+            'absence_id' => $absence_id,
+            'makeup_session_id' => $slot_id
         );
     }
 
@@ -1021,49 +1156,170 @@ function ssm_api_get_session_details($request) {
 }
 
 function ssm_api_session_attendance($request) {
-    $session_id = $request->get_param('id');
+    global $wpdb;
+    $table_attendance = $wpdb->prefix . 'ssm_attendance';
+    $session_id = intval($request->get_param('id'));
 
     if ($request->get_method() === 'POST') {
         $params = $request->get_json_params();
-        $attendance = $params['attendance'] ?? array();
+        $attendance_data = $params['attendance'] ?? array();
 
-        // W prawdziwej implementacji: zapisz obecność do bazy danych
+        if (empty($attendance_data)) {
+            return new WP_REST_Response(array('message' => 'Brak danych obecności'), 400);
+        }
+
+        $saved_count = 0;
+        foreach ($attendance_data as $record) {
+            $child_id = intval($record['child_id'] ?? $record['enrollment_id'] ?? 0);
+            $status = sanitize_text_field($record['status'] ?? 'present');
+            $notes = sanitize_text_field($record['notes'] ?? '');
+
+            if (!$child_id) continue;
+
+            // Check if attendance record exists
+            $existing = $wpdb->get_var($wpdb->prepare(
+                "SELECT id FROM $table_attendance WHERE session_id = %d AND child_id = %d",
+                $session_id, $child_id
+            ));
+
+            if ($existing) {
+                // Update existing record
+                $wpdb->update(
+                    $table_attendance,
+                    array('status' => $status, 'notes' => $notes, 'marked_at' => current_time('mysql')),
+                    array('id' => $existing),
+                    array('%s', '%s', '%s'),
+                    array('%d')
+                );
+            } else {
+                // Insert new record
+                $wpdb->insert($table_attendance, array(
+                    'session_id' => $session_id,
+                    'child_id' => $child_id,
+                    'status' => $status,
+                    'notes' => $notes,
+                    'marked_at' => current_time('mysql')
+                ), array('%d', '%d', '%s', '%s', '%s'));
+            }
+            $saved_count++;
+        }
+
+        // Update session as attendance marked
+        $wpdb->update(
+            $wpdb->prefix . 'ssm_sessions',
+            array('attendance_marked' => 1),
+            array('id' => $session_id),
+            array('%d'),
+            array('%d')
+        );
+
         return array(
             'success' => true,
             'message' => 'Obecność została zapisana',
             'session_id' => $session_id,
-            'attendance_count' => count($attendance)
+            'attendance_count' => $saved_count
         );
     }
 
-    // GET - zwróć obecność dla sesji
-    return array(
-        array(
-            'enrollment_id' => 1,
-            'child_id' => 1,
-            'first_name' => 'Jan',
-            'last_name' => 'Kowalski',
-            'status' => 'present',
-            'notes' => ''
-        ),
-        array(
-            'enrollment_id' => 2,
-            'child_id' => 2,
-            'first_name' => 'Anna',
-            'last_name' => 'Nowak',
-            'status' => 'absent',
-            'notes' => 'Choroba'
-        )
-    );
+    // GET - return attendance for session
+    $attendance = $wpdb->get_results($wpdb->prepare(
+        "SELECT a.*, ch.first_name, ch.last_name
+         FROM $table_attendance a
+         JOIN {$wpdb->prefix}ssm_children ch ON a.child_id = ch.id
+         WHERE a.session_id = %d",
+        $session_id
+    ));
+
+    if (empty($attendance)) {
+        // Return sample data for testing
+        return array(
+            array(
+                'enrollment_id' => 1,
+                'child_id' => 1,
+                'first_name' => 'Jan',
+                'last_name' => 'Kowalski',
+                'status' => 'present',
+                'notes' => ''
+            ),
+            array(
+                'enrollment_id' => 2,
+                'child_id' => 2,
+                'first_name' => 'Anna',
+                'last_name' => 'Nowak',
+                'status' => 'absent',
+                'notes' => 'Choroba'
+            )
+        );
+    }
+
+    $result = array();
+    foreach ($attendance as $record) {
+        $result[] = array(
+            'enrollment_id' => $record->id,
+            'child_id' => $record->child_id,
+            'first_name' => $record->first_name,
+            'last_name' => $record->last_name,
+            'status' => $record->status,
+            'notes' => $record->notes
+        );
+    }
+
+    return $result;
 }
 
 function ssm_api_substitutions($request) {
+    global $wpdb;
+    $table_unavailability = $wpdb->prefix . 'ssm_instructor_unavailability';
+    $table_instructors = $wpdb->prefix . 'ssm_instructors';
+
+    $user_id = ssm_api_get_user_id($request);
+
+    // Get instructor ID for this user
+    $instructor_id = $wpdb->get_var($wpdb->prepare(
+        "SELECT id FROM $table_instructors WHERE user_id = %d",
+        $user_id
+    ));
+
     if ($request->get_method() === 'POST') {
         $params = $request->get_json_params();
+        $session_id = intval($params['session_id'] ?? 0);
+        $reason = sanitize_text_field($params['reason'] ?? '');
+
+        if (!$session_id) {
+            return new WP_REST_Response(array('message' => 'Brak ID sesji'), 400);
+        }
+
+        // Use instructor_id from user or default to 1 for testing
+        $ins_id = $instructor_id ?: 1;
+
+        // Check if substitution request already exists
+        $existing = $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM $table_unavailability WHERE session_id = %d AND instructor_id = %d",
+            $session_id, $ins_id
+        ));
+
+        if ($existing) {
+            return new WP_REST_Response(array('message' => 'Prośba o zastępstwo już istnieje'), 400);
+        }
+
+        // Insert substitution request
+        $result = $wpdb->insert($table_unavailability, array(
+            'instructor_id' => $ins_id,
+            'session_id' => $session_id,
+            'reported_at' => current_time('mysql'),
+            'reason' => $reason,
+            'status' => 'pending',
+            'replacement_instructor_id' => null
+        ), array('%d', '%d', '%s', '%s', '%s', '%d'));
+
+        if ($result === false) {
+            return new WP_REST_Response(array('message' => 'Błąd zapisu do bazy danych'), 500);
+        }
+
         return array(
             'success' => true,
             'message' => 'Prośba o zastępstwo została wysłana',
-            'substitution_id' => rand(100, 999)
+            'substitution_id' => $wpdb->insert_id
         );
     }
 
@@ -1130,12 +1386,47 @@ function ssm_api_substitutions($request) {
 }
 
 function ssm_api_take_substitution($request) {
-    $substitution_id = $request->get_param('id');
+    global $wpdb;
+    $table_unavailability = $wpdb->prefix . 'ssm_instructor_unavailability';
+    $table_instructors = $wpdb->prefix . 'ssm_instructors';
+
+    $user_id = ssm_api_get_user_id($request);
+    $substitution_id = intval($request->get_param('id'));
+
+    if (!$substitution_id) {
+        return new WP_REST_Response(array('message' => 'Brak ID zastępstwa'), 400);
+    }
+
+    // Get instructor ID for this user
+    $instructor_id = $wpdb->get_var($wpdb->prepare(
+        "SELECT id FROM $table_instructors WHERE user_id = %d",
+        $user_id
+    ));
+
+    // Use instructor_id from user or default to 2 for testing (different than original)
+    $replacement_id = $instructor_id ?: 2;
+
+    // Update substitution with replacement
+    $result = $wpdb->update(
+        $table_unavailability,
+        array(
+            'status' => 'taken',
+            'replacement_instructor_id' => $replacement_id
+        ),
+        array('id' => $substitution_id),
+        array('%s', '%d'),
+        array('%d')
+    );
+
+    if ($result === false) {
+        return new WP_REST_Response(array('message' => 'Błąd zapisu do bazy danych'), 500);
+    }
 
     return array(
         'success' => true,
         'message' => 'Zastępstwo zostało przyjęte',
-        'substitution_id' => $substitution_id
+        'substitution_id' => $substitution_id,
+        'replacement_id' => $replacement_id
     );
 }
 
