@@ -11,6 +11,8 @@
     "build:preview": "eas build --profile preview --platform all",
     "build:prod": "eas build --profile production --platform all",
     "build:android": "eas build --profile production --platform android",
+    "build:apk": "eas build --profile local-apk --platform android",
+    "build:apk:local": "npx expo run:android --variant release",
     "build:ios": "eas build --profile production --platform ios",
     "submit:android": "eas submit --platform android",
     "submit:ios": "eas submit --platform ios",

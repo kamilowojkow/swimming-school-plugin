@@ -22,6 +22,16 @@
         "buildType": "apk"
       }
     },
+    "local-apk": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      },
+      "env": {
+        "APP_VARIANT": "local"
+      }
+    },
     "production": {
       "ios": {
         "resourceClass": "m-medium"
