@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
+    "scheme": "swimmingschool",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -14,12 +15,31 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "locales": {
+      "pl": "./locales/pl.json"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yourcompany.swimmingschool",
+      "buildNumber": "1",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
       "infoPlist": {
         "NSCameraUsageDescription": "Aplikacja może używać aparatu do skanowania kodów QR.",
-        "NSPhotoLibraryUsageDescription": "Aplikacja może zapisywać zdjęcia w galerii."
+        "NSPhotoLibraryUsageDescription": "Aplikacja może zapisywać zdjęcia w galerii.",
+        "CFBundleLocalizations": ["pl"],
+        "CFBundleDevelopmentRegion": "pl",
+        "UIBackgroundModes": ["remote-notification"]
+      },
+      "associatedDomains": [],
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          }
+        ]
       }
     },
     "android": {
@@ -28,14 +48,20 @@
         "backgroundColor": "#3b82f6"
       },
       "package": "com.yourcompany.swimmingschool",
+      "versionCode": 1,
       "permissions": [
         "CAMERA",
         "RECEIVE_BOOT_COMPLETED",
-        "VIBRATE"
-      ]
+        "VIBRATE",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ],
+      "googleServicesFile": "./google-services.json",
+      "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
     },
     "plugins": [
       [
@@ -43,14 +69,39 @@
         {
           "icon": "./assets/notification-icon.png",
           "color": "#3b82f6",
-          "sounds": []
+          "sounds": [],
+          "mode": "production"
         }
-      ]
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "buildToolsVersion": "34.0.0"
+          },
+          "ios": {
+            "deploymentTarget": "13.4"
+          }
+        }
+      ],
+      "expo-localization",
+      "expo-secure-store"
     ],
     "extra": {
       "eas": {
         "projectId": "your-project-id"
-      }
+      },
+      "apiUrl": "https://your-wordpress-site.com/wp-json/ssm/v1"
+    },
+    "owner": "your-expo-username",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/your-project-id",
+      "fallbackToCacheTimeout": 30000
     }
   }
 }

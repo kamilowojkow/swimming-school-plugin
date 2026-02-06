@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1284 2778">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6"/>
+      <stop offset="100%" style="stop-color:#1d4ed8"/>
+    </linearGradient>
+  </defs>
+  <rect width="1284" height="2778" fill="url(#bgGradient)"/>
+
+  <!-- Decorative waves at bottom -->
+  <path d="M0 2400 Q160 2350 320 2400 T640 2400 T960 2400 T1284 2400 L1284 2778 L0 2778 Z" fill="#2563eb" opacity="0.3"/>
+  <path d="M0 2500 Q160 2450 320 2500 T640 2500 T960 2500 T1284 2500 L1284 2778 L0 2778 Z" fill="#1d4ed8" opacity="0.3"/>
+  <path d="M0 2600 Q160 2550 320 2600 T640 2600 T960 2600 T1284 2600 L1284 2778 L0 2778 Z" fill="#1e3a8a" opacity="0.3"/>
+
+  <!-- Decorative waves at top -->
+  <path d="M0 200 Q160 250 320 200 T640 200 T960 200 T1284 200 L1284 0 L0 0 Z" fill="#60a5fa" opacity="0.2"/>
+
+  <!-- Center icon container -->
+  <g transform="translate(642, 1100)">
+    <!-- Icon background circle -->
+    <circle cx="0" cy="0" r="200" fill="white" opacity="0.15"/>
+
+    <!-- Swimmer icon (scaled down from main icon) -->
+    <g transform="scale(0.35)" fill="white">
+      <!-- Head -->
+      <circle cx="0" cy="-120" r="70"/>
+      <!-- Body -->
+      <ellipse cx="0" cy="20" rx="85" ry="120"/>
+      <!-- Left arm -->
+      <path d="M-70 -30 Q-200 -80 -280 20" stroke="white" stroke-width="45" fill="none" stroke-linecap="round"/>
+      <!-- Right arm -->
+      <path d="M70 -20 Q150 40 200 -10" stroke="white" stroke-width="45" fill="none" stroke-linecap="round"/>
+      <!-- Legs -->
+      <path d="M-30 130 Q-60 220 -40 280" stroke="white" stroke-width="40" fill="none" stroke-linecap="round"/>
+      <path d="M30 130 Q60 200 80 260" stroke="white" stroke-width="40" fill="none" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <!-- App name -->
+  <text x="642" y="1450" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="700" fill="white">
+    Szkółka Pływania
+  </text>
+
+  <!-- Tagline -->
+  <text x="642" y="1530" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="36" fill="white" opacity="0.8">
+    Nauka pływania dla każdego
+  </text>
+
+  <!-- Loading indicator area -->
+  <g transform="translate(642, 1700)">
+    <circle cx="-40" cy="0" r="10" fill="white" opacity="0.6"/>
+    <circle cx="0" cy="0" r="10" fill="white" opacity="0.8"/>
+    <circle cx="40" cy="0" r="10" fill="white" opacity="0.6"/>
+  </g>
+</svg>

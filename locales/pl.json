@@ -1,0 +1,5 @@
+{
+  "CFBundleDisplayName": "Szkółka Pływania",
+  "NSCameraUsageDescription": "Aplikacja może używać aparatu do skanowania kodów QR podczas sprawdzania obecności.",
+  "NSPhotoLibraryUsageDescription": "Aplikacja może zapisywać zdjęcia certyfikatów i odznak w galerii."
+}
