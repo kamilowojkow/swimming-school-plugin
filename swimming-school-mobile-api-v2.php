@@ -393,21 +393,21 @@ function ssm_api_get_payment_history($request) {
         array(
             'id' => 1,
             'amount' => 280.00,
-            'payment_date' => date('Y-m-d', strtotime('-25 days')),
+            'payment_date' => date('Y-m-d\TH:i:s', strtotime('-25 days')),
             'payment_method' => 'Przelew',
             'invoice_title' => 'Kurs pływania - styczeń 2026'
         ),
         array(
             'id' => 2,
             'amount' => 350.00,
-            'payment_date' => date('Y-m-d', strtotime('-55 days')),
+            'payment_date' => date('Y-m-d\TH:i:s', strtotime('-55 days')),
             'payment_method' => 'Karta',
             'invoice_title' => 'Kurs pływania - grudzień 2025'
         ),
         array(
             'id' => 3,
             'amount' => 350.00,
-            'payment_date' => date('Y-m-d', strtotime('-85 days')),
+            'payment_date' => date('Y-m-d\TH:i:s', strtotime('-85 days')),
             'payment_method' => 'Przelew',
             'invoice_title' => 'Kurs pływania - listopad 2025'
         )
