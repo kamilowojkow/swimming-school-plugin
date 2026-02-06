@@ -19,7 +19,7 @@ register_activation_hook(__FILE__, 'ssm_api_create_tables');
 add_action('init', 'ssm_api_maybe_create_tables');
 
 function ssm_api_maybe_create_tables() {
-    if (get_option('ssm_api_db_version') !== '2.1.0') {
+    if (get_option('ssm_api_db_version') !== '2.1.1') {
         ssm_api_create_tables();
     }
 }
@@ -98,12 +98,12 @@ function ssm_api_create_tables() {
         session_date date NOT NULL,
         time_start time NOT NULL,
         time_end time NOT NULL,
-        class_name varchar(255) DEFAULT '',
-        facility_name varchar(255) DEFAULT '',
-        max_spots int DEFAULT 5,
-        booked_spots int DEFAULT 0,
-        status varchar(50) DEFAULT 'available',
-        created_at datetime DEFAULT CURRENT_TIMESTAMP,
+        class_name varchar(255) NOT NULL DEFAULT '',
+        facility_name varchar(255) NOT NULL DEFAULT '',
+        max_spots int(11) NOT NULL DEFAULT 5,
+        booked_spots int(11) NOT NULL DEFAULT 0,
+        status varchar(50) NOT NULL DEFAULT 'available',
+        created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY  (id),
         KEY session_date (session_date),
         KEY status (status)
@@ -119,7 +119,7 @@ function ssm_api_create_tables() {
     $results['enrollments'] = dbDelta($sql_enrollments);
     $results['makeup_slots'] = dbDelta($sql_makeup_slots);
 
-    update_option('ssm_api_db_version', '2.1.0');
+    update_option('ssm_api_db_version', '2.1.1');
 
     error_log('SSM API: Database tables created/updated. Results: ' . print_r($results, true));
 }
