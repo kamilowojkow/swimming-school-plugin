@@ -85,16 +85,63 @@ export default function ChildDetailsScreen() {
     excused: { label: t.attendance.excused, color: colors.textSecondary, bg: colors.surfaceSecondary },
   };
 
+  // Normalize course data from API
+  const normalizeCourse = (data: any): Course => ({
+    id: data.id || 0,
+    name: data.name || data.course_name || data.courseName || data.class_name || data.className || '',
+    instructor_name: data.instructor_name || data.instructorName || data.instructor || data.teacher || data.teacher_name || '',
+    day_of_week: data.day_of_week || data.dayOfWeek || data.day || data.weekday || '',
+    time_start: data.time_start || data.timeStart || data.start_time || data.startTime || data.start || '',
+    time_end: data.time_end || data.timeEnd || data.end_time || data.endTime || data.end || '',
+    facility_name: data.facility_name || data.facilityName || data.facility || data.location || data.pool || '',
+    sessions_remaining: data.sessions_remaining ?? data.sessionsRemaining ?? data.remaining ?? data.lessons_left ?? 0,
+    sessions_total: data.sessions_total ?? data.sessionsTotal ?? data.total ?? data.total_lessons ?? 0,
+  });
+
+  // Normalize achievement data from API
+  const normalizeAchievement = (data: any): Achievement => ({
+    id: data.id || 0,
+    name: data.name || data.title || data.badge_name || data.badgeName || '',
+    description: data.description || data.desc || '',
+    icon: data.icon || data.emoji || data.badge_icon || '🏅',
+    earned_at: data.earned_at || data.earnedAt || data.date || data.awarded_at || data.created_at || '',
+    points: data.points ?? data.value ?? data.score ?? 0,
+  });
+
+  // Normalize attendance record from API
+  const normalizeAttendance = (data: any): AttendanceRecord => ({
+    id: data.id || 0,
+    session_date: data.session_date || data.sessionDate || data.date || '',
+    status: data.status || 'present',
+    class_name: data.class_name || data.className || data.course_name || data.courseName || data.name || '',
+  });
+
+  // Normalize child details from API
+  const normalizeChildDetails = (data: any): ChildDetails => {
+    const coursesRaw = data.courses || data.enrollments || data.classes || [];
+    const achievementsRaw = data.achievements || data.badges || data.awards || [];
+    const attendanceRaw = data.recent_attendance || data.recentAttendance || data.attendance || data.attendance_history || [];
+
+    return {
+      id: data.id,
+      first_name: data.first_name || data.firstName || data.name?.split(' ')[0] || '',
+      last_name: data.last_name || data.lastName || data.name?.split(' ')[1] || '',
+      birth_date: data.birth_date || data.birthDate || data.date_of_birth || data.dob || '',
+      swimming_level: data.swimming_level || data.swimmingLevel || data.level || data.skill_level || data.skillLevel || '',
+      total_points: data.total_points ?? data.totalPoints ?? data.points ?? 0,
+      medical_notes: data.medical_notes || data.medicalNotes || data.health_notes || undefined,
+      courses: Array.isArray(coursesRaw) ? coursesRaw.map(normalizeCourse) : [],
+      achievements: Array.isArray(achievementsRaw) ? achievementsRaw.map(normalizeAchievement) : [],
+      recent_attendance: Array.isArray(attendanceRaw) ? attendanceRaw.map(normalizeAttendance) : [],
+    };
+  };
+
   const fetchChildDetails = async () => {
     try {
       const data = await api.getChildDetails(childId);
-      // Ensure arrays are defined
-      setChild({
-        ...data,
-        courses: data.courses || [],
-        achievements: data.achievements || [],
-        recent_attendance: data.recent_attendance || [],
-      });
+      const normalizedChild = normalizeChildDetails(data);
+      setChild(normalizedChild);
+      console.log('Child details loaded:', normalizedChild);
     } catch (error) {
       console.error('Error fetching child details:', error);
       Alert.alert(t.common.error, language === 'pl' ? 'Nie udalo sie pobrac danych dziecka' : 'Failed to load child data');

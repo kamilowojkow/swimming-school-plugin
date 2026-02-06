@@ -46,10 +46,30 @@ export default function ChildrenScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Normalize child data from API to handle different field names
+  const normalizeChild = (data: any): Child => {
+    return {
+      id: data.id,
+      first_name: data.first_name || data.firstName || data.name?.split(' ')[0] || '',
+      last_name: data.last_name || data.lastName || data.name?.split(' ')[1] || '',
+      birth_date: data.birth_date || data.birthDate || data.date_of_birth || data.dob || '',
+      swimming_level: data.swimming_level || data.swimmingLevel || data.level || data.skill_level || data.skillLevel || '',
+      active_courses: data.active_courses ?? data.activeCourses ?? data.courses_count ?? data.coursesCount ?? data.enrollments_count ?? 0,
+      total_points: data.total_points ?? data.totalPoints ?? data.points ?? 0,
+      achievements_count: data.achievements_count ?? data.achievementsCount ?? data.badges_count ?? data.badgesCount ?? data.achievements?.length ?? 0,
+      medical_notes: data.medical_notes || data.medicalNotes || data.health_notes || undefined,
+      next_session: data.next_session || data.nextSession || data.upcoming_session || undefined,
+    };
+  };
+
   const fetchChildren = async () => {
     try {
       const data = await api.getChildren();
-      setChildren(data);
+      // Handle both array and object with children property
+      const childrenArray = Array.isArray(data) ? data : (data.children || data.data || []);
+      const normalizedChildren = childrenArray.map(normalizeChild);
+      setChildren(normalizedChildren);
+      console.log('Children data loaded:', normalizedChildren);
     } catch (error) {
       console.error('Error fetching children:', error);
     } finally {
@@ -123,7 +143,7 @@ export default function ChildrenScreen() {
                 <View style={styles.avatarContainer}>
                   <View style={styles.avatar}>
                     <Text style={styles.avatarText}>
-                      {child.first_name[0]}{child.last_name[0]}
+                      {(child.first_name || '')[0] || '?'}{(child.last_name || '')[0] || '?'}
                     </Text>
                   </View>
                   {child.medical_notes && (
@@ -134,17 +154,21 @@ export default function ChildrenScreen() {
                 </View>
                 <View style={styles.childMainInfo}>
                   <Text style={styles.childName}>
-                    {child.first_name} {child.last_name}
+                    {child.first_name || ''} {child.last_name || ''}
                   </Text>
-                  <Text style={styles.childAge}>
-                    {getAge(child.birth_date)} {language === 'pl' ? 'lat' : 'years'}
-                  </Text>
+                  {child.birth_date ? (
+                    <Text style={styles.childAge}>
+                      {getAge(child.birth_date)} {language === 'pl' ? 'lat' : 'years'}
+                    </Text>
+                  ) : null}
                 </View>
-                <View style={[styles.levelBadge, { backgroundColor: levelStyle.bg }]}>
-                  <Text style={[styles.levelText, { color: levelStyle.text }]}>
-                    {child.swimming_level}
-                  </Text>
-                </View>
+                {child.swimming_level ? (
+                  <View style={[styles.levelBadge, { backgroundColor: levelStyle.bg }]}>
+                    <Text style={[styles.levelText, { color: levelStyle.text }]}>
+                      {child.swimming_level}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
 
               {/* Stats Row */}
