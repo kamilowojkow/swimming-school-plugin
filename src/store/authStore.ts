@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import api from '../api/client';
-import { initializePushNotifications } from '../services/pushNotifications';
+// TODO: Re-enable push notifications when SDK compatibility is resolved
+// import { initializePushNotifications } from '../services/pushNotifications';
 
 export type UserType = 'parent' | 'instructor';
 
@@ -73,8 +74,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: true,
         isLoading: false,
       });
-      // Register for push notifications after successful login
-      initializePushNotifications().catch(console.error);
+      // TODO: Re-enable push notifications when SDK compatibility is resolved
+      // initializePushNotifications().catch(console.error);
     } catch (error: any) {
       const message = error.response?.data?.message || 'Błąd logowania';
       set({ error: message, isLoading: false });
@@ -114,8 +115,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: true,
         isLoading: false,
       });
-      // Register for push notifications
-      initializePushNotifications().catch(console.error);
+      // TODO: Re-enable push notifications when SDK compatibility is resolved
+      // initializePushNotifications().catch(console.error);
     } catch (error) {
       await api.clearTokens();
       set({
