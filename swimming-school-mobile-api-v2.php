@@ -460,27 +460,22 @@ function ssm_api_password_reset($request) {
 function ssm_api_get_children($request) {
     $user_id = ssm_api_get_user_id($request);
 
-    // Zwróć przykładowe dane testowe
+    // Zwróć przykładowe dane testowe z poprawnymi nazwami pól
     return array(
         array(
             'id' => 1,
             'first_name' => 'Jan',
             'last_name' => 'Kowalski',
             'birth_date' => '2018-05-15',
-            'level' => 'Delfinek',
+            'swimming_level' => 'Delfinek',
+            'active_courses' => 1,
+            'total_points' => 150,
+            'achievements_count' => 3,
             'medical_notes' => '',
-            'avatar' => null,
-            'courses' => array(
-                array(
-                    'id' => 1,
-                    'name' => 'Kurs pływania - poziom średni',
-                    'progress' => 65
-                )
-            ),
-            'stats' => array(
-                'attendance_rate' => 92,
-                'completed_lessons' => 12,
-                'achievements' => 3
+            'next_session' => array(
+                'date' => date('Y-m-d', strtotime('next monday')),
+                'time' => '16:00',
+                'class_name' => 'Kurs pływania - poziom średni'
             )
         ),
         array(
@@ -488,69 +483,155 @@ function ssm_api_get_children($request) {
             'first_name' => 'Anna',
             'last_name' => 'Kowalska',
             'birth_date' => '2020-03-22',
-            'level' => 'Żółwik',
+            'swimming_level' => 'Żółwik',
+            'active_courses' => 1,
+            'total_points' => 45,
+            'achievements_count' => 1,
             'medical_notes' => '',
-            'avatar' => null,
-            'courses' => array(
-                array(
-                    'id' => 2,
-                    'name' => 'Kurs pływania - początkujący',
-                    'progress' => 30
-                )
-            ),
-            'stats' => array(
-                'attendance_rate' => 88,
-                'completed_lessons' => 5,
-                'achievements' => 1
+            'next_session' => array(
+                'date' => date('Y-m-d', strtotime('next wednesday')),
+                'time' => '17:00',
+                'class_name' => 'Kurs pływania - początkujący'
             )
         )
     );
 }
 
 function ssm_api_get_child_details($request) {
-    $child_id = $request->get_param('id');
+    $child_id = intval($request->get_param('id'));
 
-    return array(
-        'id' => $child_id,
-        'first_name' => 'Jan',
-        'last_name' => 'Kowalski',
-        'birth_date' => '2018-05-15',
-        'level' => 'Delfinek',
-        'medical_notes' => '',
-        'courses' => array(
-            array(
-                'id' => 1,
-                'name' => 'Kurs pływania - poziom średni',
-                'instructor' => 'Anna Nowak',
-                'schedule' => 'Poniedziałek 16:00',
-                'progress' => 65,
-                'start_date' => '2025-09-01',
-                'end_date' => '2026-06-30'
-            )
-        ),
-        'achievements' => array(
-            array(
-                'id' => 1,
-                'name' => 'Pierwsza długość',
-                'description' => 'Przepłynięcie pierwszej długości basenu',
-                'earned_date' => '2025-10-15',
-                'icon' => 'medal'
+    // Różne dane dla różnych dzieci
+    $children_data = array(
+        1 => array(
+            'id' => 1,
+            'first_name' => 'Jan',
+            'last_name' => 'Kowalski',
+            'birth_date' => '2018-05-15',
+            'swimming_level' => 'Delfinek',
+            'total_points' => 150,
+            'medical_notes' => '',
+            'courses' => array(
+                array(
+                    'id' => 1,
+                    'name' => 'Kurs pływania - poziom średni',
+                    'instructor_name' => 'Anna Nowak',
+                    'day_of_week' => 'monday',
+                    'time_start' => '16:00:00',
+                    'time_end' => '16:45:00',
+                    'facility_name' => 'Basen Główny',
+                    'sessions_remaining' => 14,
+                    'sessions_total' => 40
+                )
             ),
-            array(
-                'id' => 2,
-                'name' => 'Nurek',
-                'description' => 'Nurkowanie na głębokość 2m',
-                'earned_date' => '2025-11-20',
-                'icon' => 'star'
+            'achievements' => array(
+                array(
+                    'id' => 1,
+                    'name' => 'Pierwsza długość',
+                    'description' => 'Przepłynięcie pierwszej długości basenu',
+                    'icon' => '🏊',
+                    'earned_at' => '2025-10-15',
+                    'points' => 50
+                ),
+                array(
+                    'id' => 2,
+                    'name' => 'Nurek',
+                    'description' => 'Nurkowanie na głębokość 2m',
+                    'icon' => '🤿',
+                    'earned_at' => '2025-11-20',
+                    'points' => 75
+                ),
+                array(
+                    'id' => 3,
+                    'name' => 'Regularny',
+                    'description' => '10 zajęć pod rząd bez nieobecności',
+                    'icon' => '⭐',
+                    'earned_at' => '2025-12-01',
+                    'points' => 25
+                )
+            ),
+            'recent_attendance' => array(
+                array(
+                    'id' => 1,
+                    'session_date' => date('Y-m-d', strtotime('-7 days')),
+                    'status' => 'present',
+                    'class_name' => 'Kurs pływania - poziom średni'
+                ),
+                array(
+                    'id' => 2,
+                    'session_date' => date('Y-m-d', strtotime('-14 days')),
+                    'status' => 'present',
+                    'class_name' => 'Kurs pływania - poziom średni'
+                ),
+                array(
+                    'id' => 3,
+                    'session_date' => date('Y-m-d', strtotime('-21 days')),
+                    'status' => 'absent',
+                    'class_name' => 'Kurs pływania - poziom średni'
+                ),
+                array(
+                    'id' => 4,
+                    'session_date' => date('Y-m-d', strtotime('-28 days')),
+                    'status' => 'present',
+                    'class_name' => 'Kurs pływania - poziom średni'
+                )
             )
         ),
-        'attendance' => array(
-            'rate' => 92,
-            'present' => 12,
-            'absent' => 1,
-            'excused' => 0
+        2 => array(
+            'id' => 2,
+            'first_name' => 'Anna',
+            'last_name' => 'Kowalska',
+            'birth_date' => '2020-03-22',
+            'swimming_level' => 'Żółwik',
+            'total_points' => 45,
+            'medical_notes' => '',
+            'courses' => array(
+                array(
+                    'id' => 2,
+                    'name' => 'Kurs pływania - początkujący',
+                    'instructor_name' => 'Piotr Wiśniewski',
+                    'day_of_week' => 'wednesday',
+                    'time_start' => '17:00:00',
+                    'time_end' => '17:45:00',
+                    'facility_name' => 'Basen Mały',
+                    'sessions_remaining' => 28,
+                    'sessions_total' => 40
+                )
+            ),
+            'achievements' => array(
+                array(
+                    'id' => 4,
+                    'name' => 'Pierwszy skok',
+                    'description' => 'Pierwszy skok do wody z brzegu basenu',
+                    'icon' => '🌊',
+                    'earned_at' => '2026-01-10',
+                    'points' => 45
+                )
+            ),
+            'recent_attendance' => array(
+                array(
+                    'id' => 5,
+                    'session_date' => date('Y-m-d', strtotime('-5 days')),
+                    'status' => 'present',
+                    'class_name' => 'Kurs pływania - początkujący'
+                ),
+                array(
+                    'id' => 6,
+                    'session_date' => date('Y-m-d', strtotime('-12 days')),
+                    'status' => 'late',
+                    'class_name' => 'Kurs pływania - początkujący'
+                ),
+                array(
+                    'id' => 7,
+                    'session_date' => date('Y-m-d', strtotime('-19 days')),
+                    'status' => 'present',
+                    'class_name' => 'Kurs pływania - początkujący'
+                )
+            )
         )
     );
+
+    // Zwróć dane dla wybranego dziecka lub domyślne dla id=1
+    return isset($children_data[$child_id]) ? $children_data[$child_id] : $children_data[1];
 }
 
 function ssm_api_get_schedule($request) {
