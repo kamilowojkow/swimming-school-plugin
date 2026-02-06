@@ -36,11 +36,16 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     set({ isLoading: true });
     try {
       const data = await api.getNotifications(limit, offset);
+      // Handle both array and object with notifications key
+      const notificationsArray = Array.isArray(data) ? data : (data?.notifications || []);
       if (offset === 0) {
-        set({ notifications: data });
+        set({ notifications: notificationsArray });
       } else {
-        set({ notifications: [...get().notifications, ...data] });
+        set({ notifications: [...get().notifications, ...notificationsArray] });
       }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      set({ notifications: [] });
     } finally {
       set({ isLoading: false });
     }
