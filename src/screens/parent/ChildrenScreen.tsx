@@ -31,10 +31,14 @@ interface Child {
 }
 
 const LEVEL_COLORS: Record<string, { bg: string; text: string }> = {
+  // Without Polish diacritics
   'Zolwik': { bg: '#fef9c3', text: '#ca8a04' },
   'Delfinek': { bg: '#dbeafe', text: '#2563eb' },
   'Rekin': { bg: '#dcfce7', text: '#16a34a' },
   'Mistrz': { bg: '#f3e8ff', text: '#9333ea' },
+  // With Polish diacritics
+  'Żółwik': { bg: '#fef9c3', text: '#ca8a04' },
+  'Żołwik': { bg: '#fef9c3', text: '#ca8a04' },
 };
 
 export default function ChildrenScreen() {

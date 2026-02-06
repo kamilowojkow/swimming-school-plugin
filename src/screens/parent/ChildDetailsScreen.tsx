@@ -58,10 +58,14 @@ interface ChildDetails {
 }
 
 const LEVEL_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
+  // Without Polish diacritics
   'Zolwik': { bg: '#fef9c3', text: '#ca8a04', icon: '🐢' },
   'Delfinek': { bg: '#dbeafe', text: '#2563eb', icon: '🐬' },
   'Rekin': { bg: '#dcfce7', text: '#16a34a', icon: '🦈' },
   'Mistrz': { bg: '#f3e8ff', text: '#9333ea', icon: '🏆' },
+  // With Polish diacritics
+  'Żółwik': { bg: '#fef9c3', text: '#ca8a04', icon: '🐢' },
+  'Żołwik': { bg: '#fef9c3', text: '#ca8a04', icon: '🐢' },
 };
 
 export default function ChildDetailsScreen() {
