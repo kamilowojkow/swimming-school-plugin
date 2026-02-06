@@ -33,6 +33,7 @@ import SalaryScreen from '../screens/instructor/SalaryScreen';
 import NotificationsScreen from '../screens/common/NotificationsScreen';
 import ProfileScreen from '../screens/common/ProfileScreen';
 import SettingsScreen from '../screens/common/SettingsScreen';
+import SplashScreen from '../screens/SplashScreen';
 
 // Types
 export type RootStackParamList = {
@@ -409,7 +410,7 @@ export default function AppNavigator() {
   const colors = useThemeColors(activeRole);
 
   if (isLoading) {
-    return null; // Or a loading screen
+    return <SplashScreen />;
   }
 
   const accentColor = activeRole === 'instructor' ? colors.secondary : colors.primary;
