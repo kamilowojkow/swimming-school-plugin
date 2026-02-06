@@ -72,6 +72,12 @@ add_action('rest_api_init', function () {
         'permission_callback' => 'ssm_api_check_auth',
     ));
 
+    register_rest_route($namespace, '/parent/payment-history', array(
+        'methods' => 'GET',
+        'callback' => 'ssm_api_get_payment_history',
+        'permission_callback' => 'ssm_api_check_auth',
+    ));
+
     register_rest_route($namespace, '/parent/absences', array(
         'methods' => array('GET', 'POST'),
         'callback' => 'ssm_api_absences',
@@ -349,31 +355,55 @@ function ssm_api_get_schedule($request) {
 
 function ssm_api_get_payments($request) {
     return array(
-        'payments' => array(
-            array(
-                'id' => 1,
-                'amount' => 350.00,
-                'currency' => 'PLN',
-                'status' => 'pending',
-                'due_date' => date('Y-m-d', strtotime('+7 days')),
-                'description' => 'Kurs pływania - luty 2026',
-                'child_name' => 'Jan Kowalski'
-            ),
-            array(
-                'id' => 2,
-                'amount' => 280.00,
-                'currency' => 'PLN',
-                'status' => 'paid',
-                'due_date' => date('Y-m-d', strtotime('-23 days')),
-                'paid_date' => date('Y-m-d', strtotime('-25 days')),
-                'description' => 'Kurs pływania - styczeń 2026',
-                'child_name' => 'Jan Kowalski'
-            )
+        array(
+            'id' => 1,
+            'title' => 'Kurs pływania - luty 2026',
+            'description' => 'Opłata miesięczna za kurs',
+            'total_amount' => 350.00,
+            'paid_amount' => 0,
+            'remaining_amount' => 350.00,
+            'due_date' => date('Y-m-d', strtotime('+7 days')),
+            'status' => 'pending',
+            'child_name' => 'Jan Kowalski',
+            'created_at' => date('Y-m-d H:i:s', strtotime('-5 days'))
         ),
-        'summary' => array(
-            'total_due' => 350.00,
-            'total_paid' => 280.00,
-            'currency' => 'PLN'
+        array(
+            'id' => 2,
+            'title' => 'Kurs pływania - styczeń 2026',
+            'description' => 'Opłata miesięczna za kurs',
+            'total_amount' => 280.00,
+            'paid_amount' => 280.00,
+            'remaining_amount' => 0,
+            'due_date' => date('Y-m-d', strtotime('-23 days')),
+            'status' => 'paid',
+            'child_name' => 'Jan Kowalski',
+            'created_at' => date('Y-m-d H:i:s', strtotime('-35 days'))
+        )
+    );
+}
+
+function ssm_api_get_payment_history($request) {
+    return array(
+        array(
+            'id' => 1,
+            'amount' => 280.00,
+            'payment_date' => date('Y-m-d', strtotime('-25 days')),
+            'payment_method' => 'Przelew',
+            'invoice_title' => 'Kurs pływania - styczeń 2026'
+        ),
+        array(
+            'id' => 2,
+            'amount' => 350.00,
+            'payment_date' => date('Y-m-d', strtotime('-55 days')),
+            'payment_method' => 'Karta',
+            'invoice_title' => 'Kurs pływania - grudzień 2025'
+        ),
+        array(
+            'id' => 3,
+            'amount' => 350.00,
+            'payment_date' => date('Y-m-d', strtotime('-85 days')),
+            'payment_method' => 'Przelew',
+            'invoice_title' => 'Kurs pływania - listopad 2025'
         )
     );
 }
