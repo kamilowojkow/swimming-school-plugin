@@ -40,6 +40,7 @@ export type RootStackParamList = {
   ParentTabs: undefined;
   InstructorTabs: undefined;
   ChildDetails: { childId: number };
+  Absences: undefined;
   Attendance: { sessionId: number };
   Notifications: undefined;
   Profile: undefined;
@@ -284,6 +285,15 @@ function MoreParentScreen() {
 
       <TouchableOpacity
         style={styles.menuItem}
+        onPress={() => navigation.navigate('Absences')}
+      >
+        <Ionicons name="calendar-outline" size={24} color={colors.text} />
+        <Text style={styles.menuText}>{t.absences?.title || 'Nieobecności'}</Text>
+        <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.menuItem}
         onPress={() => navigation.navigate('Settings')}
       >
         <Ionicons name="settings-outline" size={24} color={colors.text} />
@@ -432,6 +442,16 @@ export default function AppNavigator() {
               options={{
                 headerShown: true,
                 title: t.children.title,
+                headerStyle: { backgroundColor: colors.primary },
+                headerTintColor: '#fff',
+              }}
+            />
+            <RootStack.Screen
+              name="Absences"
+              component={AbsencesScreen}
+              options={{
+                headerShown: true,
+                title: t.absences?.title || 'Nieobecności',
                 headerStyle: { backgroundColor: colors.primary },
                 headerTintColor: '#fff',
               }}
