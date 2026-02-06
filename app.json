@@ -11,7 +11,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#3b82f6"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.kamilowojkow.swimmingschool"
@@ -25,8 +27,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "b423cb16-2f1f-4e26-a981-e6ddba3f0c70"
+        "projectId": "dd07ecca-fce9-409f-ba38-992a5cbbc907"
       }
-    }
+    },
+    "owner": "kamilowojkow"
   }
 }
