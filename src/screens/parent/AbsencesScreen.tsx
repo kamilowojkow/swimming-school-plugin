@@ -139,7 +139,7 @@ export default function AbsencesScreen() {
 
     setIsSubmitting(true);
     try {
-      await api.reportAbsence(selectedSession.id, absenceReason);
+      await api.reportAbsence(selectedSession.id, selectedSession.child_id, absenceReason);
       Alert.alert(
         language === 'pl' ? 'Sukces' : 'Success',
         language === 'pl' ? 'Nieobecnosc zostala zgloszona' : 'Absence has been reported'

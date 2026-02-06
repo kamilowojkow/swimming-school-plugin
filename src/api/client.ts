@@ -225,9 +225,10 @@ class ApiClient {
     return response.data;
   }
 
-  async reportAbsence(sessionId: number, reason?: string) {
+  async reportAbsence(sessionId: number, childId: number, reason?: string) {
     const response = await this.client.post('/parent/absences', {
       session_id: sessionId,
+      child_id: childId,
       reason,
     });
     return response.data;
@@ -292,7 +293,8 @@ class ApiClient {
   }
 
   async saveAttendance(sessionId: number, attendance: Array<{
-    enrollment_id: number;
+    child_id: number;
+    enrollment_id?: number; // kept for backwards compatibility
     status: 'present' | 'absent' | 'late' | 'excused';
     notes?: string;
   }>) {

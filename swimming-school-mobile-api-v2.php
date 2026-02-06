@@ -19,7 +19,7 @@ register_activation_hook(__FILE__, 'ssm_api_create_tables');
 add_action('init', 'ssm_api_maybe_create_tables');
 
 function ssm_api_maybe_create_tables() {
-    if (get_option('ssm_api_db_version') !== '2.0.0') {
+    if (get_option('ssm_api_db_version') !== '2.1.0') {
         ssm_api_create_tables();
     }
 }
@@ -74,6 +74,41 @@ function ssm_api_create_tables() {
         KEY session_id (session_id)
     ) $charset_collate;";
 
+    // Table for enrollments - links children to courses/classes
+    $table_enrollments = $wpdb->prefix . 'ssm_enrollments';
+    $sql_enrollments = "CREATE TABLE $table_enrollments (
+        id bigint(20) NOT NULL AUTO_INCREMENT,
+        child_id bigint(20) NOT NULL,
+        course_id bigint(20) NOT NULL,
+        parent_id bigint(20) NOT NULL,
+        enrolled_at datetime DEFAULT CURRENT_TIMESTAMP,
+        status varchar(50) DEFAULT 'active',
+        sessions_total int DEFAULT 0,
+        sessions_remaining int DEFAULT 0,
+        PRIMARY KEY  (id),
+        KEY child_id (child_id),
+        KEY course_id (course_id),
+        KEY parent_id (parent_id)
+    ) $charset_collate;";
+
+    // Table for makeup slots - available times for makeup sessions
+    $table_makeup_slots = $wpdb->prefix . 'ssm_makeup_slots';
+    $sql_makeup_slots = "CREATE TABLE $table_makeup_slots (
+        id bigint(20) NOT NULL AUTO_INCREMENT,
+        session_date date NOT NULL,
+        time_start time NOT NULL,
+        time_end time NOT NULL,
+        class_name varchar(255) DEFAULT '',
+        facility_name varchar(255) DEFAULT '',
+        max_spots int DEFAULT 5,
+        booked_spots int DEFAULT 0,
+        status varchar(50) DEFAULT 'available',
+        created_at datetime DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY  (id),
+        KEY session_date (session_date),
+        KEY status (status)
+    ) $charset_collate;";
+
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
     // dbDelta will create tables if they don't exist or update if they do
@@ -81,8 +116,10 @@ function ssm_api_create_tables() {
     $results['absences'] = dbDelta($sql_absences);
     $results['attendance'] = dbDelta($sql_attendance);
     $results['unavailability'] = dbDelta($sql_unavailability);
+    $results['enrollments'] = dbDelta($sql_enrollments);
+    $results['makeup_slots'] = dbDelta($sql_makeup_slots);
 
-    update_option('ssm_api_db_version', '2.0.0');
+    update_option('ssm_api_db_version', '2.1.0');
 
     error_log('SSM API: Database tables created/updated. Results: ' . print_r($results, true));
 }
@@ -299,7 +336,9 @@ function ssm_api_setup_database() {
     $tables_to_check = array(
         'ssm_absences',
         'ssm_attendance',
-        'ssm_instructor_unavailability'
+        'ssm_instructor_unavailability',
+        'ssm_enrollments',
+        'ssm_makeup_slots'
     );
 
     foreach ($tables_to_check as $table) {
@@ -1362,8 +1401,12 @@ function ssm_api_substitutions($request) {
             return new WP_REST_Response(array('message' => 'Brak ID sesji'), 400);
         }
 
-        // Use instructor_id 1 for testing
-        $ins_id = 1;
+        // Get instructor_id from authenticated user (fallback to user_id for user meta lookup)
+        $ins_id = get_user_meta($user_id, 'ssm_instructor_id', true);
+        if (!$ins_id) {
+            // Use user_id as instructor_id if no specific instructor_id set
+            $ins_id = $user_id;
+        }
 
         // Check if substitution request already exists
         $existing = $wpdb->get_var($wpdb->prepare(
@@ -1466,13 +1509,18 @@ function ssm_api_take_substitution($request) {
     $table_unavailability = $wpdb->prefix . 'ssm_instructor_unavailability';
 
     $substitution_id = intval($request->get_param('id'));
+    $user_id = ssm_api_get_user_id($request);
 
     if (!$substitution_id) {
         return new WP_REST_Response(array('message' => 'Brak ID zastępstwa'), 400);
     }
 
-    // Use instructor_id 2 for testing (different than original)
-    $replacement_id = 2;
+    // Get instructor_id from authenticated user
+    $replacement_id = get_user_meta($user_id, 'ssm_instructor_id', true);
+    if (!$replacement_id) {
+        // Use user_id as instructor_id if no specific instructor_id set
+        $replacement_id = $user_id;
+    }
 
     // Update substitution with replacement
     $result = $wpdb->update(

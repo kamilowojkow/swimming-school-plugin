@@ -142,11 +142,16 @@ export default function AttendanceScreen() {
 
     setIsSaving(true);
     try {
-      const attendanceData = Array.from(attendance.entries()).map(([enrollment_id, data]) => ({
-        enrollment_id,
-        status: data.status === 'unmarked' ? 'absent' : data.status,
-        notes: data.notes,
-      }));
+      const attendanceData = Array.from(attendance.entries()).map(([enrollment_id, data]) => {
+        // Find participant to get child_id
+        const participant = session.participants.find(p => p.enrollment_id === enrollment_id);
+        return {
+          enrollment_id,
+          child_id: participant?.child_id || enrollment_id, // Use child_id for database
+          status: data.status === 'unmarked' ? 'absent' : data.status,
+          notes: data.notes,
+        };
+      });
 
       await api.saveAttendance(sessionId, attendanceData);
       Alert.alert(
