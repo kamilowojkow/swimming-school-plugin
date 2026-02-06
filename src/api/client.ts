@@ -220,9 +220,13 @@ class ApiClient {
     return response.data;
   }
 
-  async reportAbsence(enrollmentId: number, sessionId: number, reason?: string) {
+  async getUpcomingSessions() {
+    const response = await this.client.get('/parent/upcoming-sessions');
+    return response.data;
+  }
+
+  async reportAbsence(sessionId: number, reason?: string) {
     const response = await this.client.post('/parent/absences', {
-      enrollment_id: enrollmentId,
       session_id: sessionId,
       reason,
     });
@@ -231,6 +235,19 @@ class ApiClient {
 
   async getMakeupOptions() {
     const response = await this.client.get('/parent/makeups');
+    return response.data;
+  }
+
+  async getMakeupSlots() {
+    const response = await this.client.get('/parent/makeup-slots');
+    return response.data;
+  }
+
+  async scheduleMakeup(absenceId: number, slotId: number) {
+    const response = await this.client.post('/parent/makeups', {
+      absence_id: absenceId,
+      slot_id: slotId,
+    });
     return response.data;
   }
 

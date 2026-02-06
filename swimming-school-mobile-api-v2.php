@@ -84,9 +84,21 @@ add_action('rest_api_init', function () {
         'permission_callback' => 'ssm_api_check_auth',
     ));
 
-    register_rest_route($namespace, '/parent/makeups', array(
+    register_rest_route($namespace, '/parent/upcoming-sessions', array(
         'methods' => 'GET',
-        'callback' => 'ssm_api_get_makeups',
+        'callback' => 'ssm_api_get_upcoming_sessions',
+        'permission_callback' => 'ssm_api_check_auth',
+    ));
+
+    register_rest_route($namespace, '/parent/makeups', array(
+        'methods' => array('GET', 'POST'),
+        'callback' => 'ssm_api_makeups',
+        'permission_callback' => 'ssm_api_check_auth',
+    ));
+
+    register_rest_route($namespace, '/parent/makeup-slots', array(
+        'methods' => 'GET',
+        'callback' => 'ssm_api_get_makeup_slots',
         'permission_callback' => 'ssm_api_check_auth',
     ));
 
@@ -436,13 +448,103 @@ function ssm_api_absences($request) {
         );
     }
 
+    // Return sample absences
     return array(
-        'absences' => array(),
-        'makeups_available' => 2
+        array(
+            'id' => 1,
+            'child_id' => 1,
+            'child_name' => 'Jan Kowalski',
+            'session_id' => 101,
+            'session_date' => date('Y-m-d', strtotime('-3 days')),
+            'time_start' => '16:00',
+            'class_name' => 'Kurs pływania - poziom średni',
+            'status' => 'confirmed',
+            'reason' => 'Choroba',
+            'reported_at' => date('Y-m-d H:i:s', strtotime('-4 days'))
+        )
     );
 }
 
-function ssm_api_get_makeups($request) {
+function ssm_api_get_upcoming_sessions($request) {
+    return array(
+        array(
+            'id' => 201,
+            'session_date' => date('Y-m-d', strtotime('+2 days')),
+            'time_start' => '16:00',
+            'class_name' => 'Kurs pływania - poziom średni',
+            'child_id' => 1,
+            'child_name' => 'Jan Kowalski',
+            'can_report_absence' => true
+        ),
+        array(
+            'id' => 202,
+            'session_date' => date('Y-m-d', strtotime('+4 days')),
+            'time_start' => '17:00',
+            'class_name' => 'Kurs pływania - początkujący',
+            'child_id' => 2,
+            'child_name' => 'Anna Kowalska',
+            'can_report_absence' => true
+        ),
+        array(
+            'id' => 203,
+            'session_date' => date('Y-m-d', strtotime('+7 days')),
+            'time_start' => '16:00',
+            'class_name' => 'Kurs pływania - poziom średni',
+            'child_id' => 1,
+            'child_name' => 'Jan Kowalski',
+            'can_report_absence' => true
+        )
+    );
+}
+
+function ssm_api_makeups($request) {
+    if ($request->get_method() === 'POST') {
+        $params = $request->get_json_params();
+        return array(
+            'success' => true,
+            'message' => 'Odrabianie zostało zaplanowane'
+        );
+    }
+
+    return array(
+        'available_slots' => array(),
+        'booked_makeups' => array()
+    );
+}
+
+function ssm_api_get_makeup_slots($request) {
+    return array(
+        array(
+            'id' => 1,
+            'date' => date('Y-m-d', strtotime('+3 days')),
+            'time_start' => '15:00',
+            'time_end' => '15:45',
+            'class_name' => 'Kurs pływania - odrabianie',
+            'facility_name' => 'Basen Główny',
+            'available_spots' => 3
+        ),
+        array(
+            'id' => 2,
+            'date' => date('Y-m-d', strtotime('+5 days')),
+            'time_start' => '14:00',
+            'time_end' => '14:45',
+            'class_name' => 'Kurs pływania - odrabianie',
+            'facility_name' => 'Basen Główny',
+            'available_spots' => 2
+        ),
+        array(
+            'id' => 3,
+            'date' => date('Y-m-d', strtotime('+7 days')),
+            'time_start' => '16:00',
+            'time_end' => '16:45',
+            'class_name' => 'Kurs pływania - odrabianie',
+            'facility_name' => 'Basen Mały',
+            'available_spots' => 4
+        )
+    );
+}
+
+function ssm_api_get_makeups_legacy($request) {
     return array(
         'available_slots' => array(
             array(
