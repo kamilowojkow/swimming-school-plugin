@@ -19,7 +19,7 @@ register_activation_hook(__FILE__, 'ssm_api_create_tables');
 add_action('init', 'ssm_api_maybe_create_tables');
 
 function ssm_api_maybe_create_tables() {
-    if (get_option('ssm_api_db_version') !== '2.1.1') {
+    if (get_option('ssm_api_db_version') !== '2.1.2') {
         ssm_api_create_tables();
     }
 }
@@ -119,7 +119,28 @@ function ssm_api_create_tables() {
     $results['enrollments'] = dbDelta($sql_enrollments);
     $results['makeup_slots'] = dbDelta($sql_makeup_slots);
 
-    update_option('ssm_api_db_version', '2.1.1');
+    // Fallback: Create ssm_makeup_slots table manually if dbDelta failed
+    $makeup_table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_makeup_slots'") === $table_makeup_slots;
+    if (!$makeup_table_exists) {
+        $wpdb->query("CREATE TABLE IF NOT EXISTS $table_makeup_slots (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            session_date date NOT NULL,
+            time_start time NOT NULL,
+            time_end time NOT NULL,
+            class_name varchar(255) DEFAULT '',
+            facility_name varchar(255) DEFAULT '',
+            max_spots int(11) DEFAULT 5,
+            booked_spots int(11) DEFAULT 0,
+            status varchar(50) DEFAULT 'available',
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY session_date (session_date),
+            KEY status (status)
+        ) $charset_collate");
+        $results['makeup_slots_fallback'] = $wpdb->last_error ?: 'Created via fallback';
+    }
+
+    update_option('ssm_api_db_version', '2.1.2');
 
     error_log('SSM API: Database tables created/updated. Results: ' . print_r($results, true));
 }
