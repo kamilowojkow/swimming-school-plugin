@@ -41,6 +41,24 @@ add_action('rest_api_init', function () {
         'permission_callback' => 'ssm_api_check_auth',
     ));
 
+    register_rest_route($namespace, '/user/profile', array(
+        'methods' => 'PUT',
+        'callback' => 'ssm_api_update_profile',
+        'permission_callback' => 'ssm_api_check_auth',
+    ));
+
+    register_rest_route($namespace, '/user/password', array(
+        'methods' => 'PUT',
+        'callback' => 'ssm_api_change_password',
+        'permission_callback' => 'ssm_api_check_auth',
+    ));
+
+    register_rest_route($namespace, '/auth/password-reset', array(
+        'methods' => 'POST',
+        'callback' => 'ssm_api_password_reset',
+        'permission_callback' => '__return_true',
+    ));
+
     register_rest_route($namespace, '/user/push-token', array(
         'methods' => 'POST',
         'callback' => 'ssm_api_register_push_token',
@@ -330,6 +348,110 @@ function ssm_api_get_me($request) {
         'phone' => get_user_meta($user_id, 'phone', true),
         'type' => $primary_type,
         'roles' => $roles
+    );
+}
+
+function ssm_api_update_profile($request) {
+    $user_id = ssm_api_get_user_id($request);
+    $params = $request->get_json_params();
+
+    // Update allowed fields
+    $allowed_fields = array('first_name', 'last_name', 'phone', 'address', 'bio');
+
+    foreach ($allowed_fields as $field) {
+        if (isset($params[$field])) {
+            update_user_meta($user_id, $field, sanitize_text_field($params[$field]));
+        }
+    }
+
+    // Update display name if first_name or last_name changed
+    if (isset($params['first_name']) || isset($params['last_name'])) {
+        $first_name = isset($params['first_name']) ? $params['first_name'] : get_user_meta($user_id, 'first_name', true);
+        $last_name = isset($params['last_name']) ? $params['last_name'] : get_user_meta($user_id, 'last_name', true);
+        wp_update_user(array(
+            'ID' => $user_id,
+            'display_name' => trim($first_name . ' ' . $last_name)
+        ));
+    }
+
+    return array(
+        'success' => true,
+        'message' => 'Profil został zaktualizowany'
+    );
+}
+
+function ssm_api_change_password($request) {
+    $user_id = ssm_api_get_user_id($request);
+    $params = $request->get_json_params();
+
+    $current_password = $params['current_password'] ?? '';
+    $new_password = $params['new_password'] ?? '';
+
+    if (empty($current_password) || empty($new_password)) {
+        return new WP_REST_Response(array('message' => 'Podaj aktualne i nowe hasło'), 400);
+    }
+
+    if (strlen($new_password) < 6) {
+        return new WP_REST_Response(array('message' => 'Nowe hasło musi mieć minimum 6 znaków'), 400);
+    }
+
+    $user = get_userdata($user_id);
+    if (!wp_check_password($current_password, $user->user_pass, $user_id)) {
+        return new WP_REST_Response(array('message' => 'Nieprawidłowe aktualne hasło'), 401);
+    }
+
+    wp_set_password($new_password, $user_id);
+
+    // Re-generate token after password change
+    $token = ssm_api_generate_token($user_id);
+
+    return array(
+        'success' => true,
+        'message' => 'Hasło zostało zmienione',
+        'token' => $token
+    );
+}
+
+function ssm_api_password_reset($request) {
+    $params = $request->get_json_params();
+    $email = sanitize_email($params['email'] ?? '');
+
+    if (empty($email) || !is_email($email)) {
+        return new WP_REST_Response(array('message' => 'Podaj prawidłowy adres email'), 400);
+    }
+
+    $user = get_user_by('email', $email);
+    if (!$user) {
+        // Return success even if user not found (security: don't reveal if email exists)
+        return array(
+            'success' => true,
+            'message' => 'Jeśli konto istnieje, wysłaliśmy instrukcje resetowania hasła'
+        );
+    }
+
+    // Generate reset key
+    $reset_key = get_password_reset_key($user);
+    if (is_wp_error($reset_key)) {
+        return new WP_REST_Response(array('message' => 'Nie udało się wygenerować klucza resetowania'), 500);
+    }
+
+    // Build reset link (WordPress admin reset page)
+    $reset_link = network_site_url("wp-login.php?action=rp&key=$reset_key&login=" . rawurlencode($user->user_login), 'login');
+
+    // Send email
+    $subject = 'Resetowanie hasła - Szkółka Pływania';
+    $message = "Cześć {$user->display_name},\n\n";
+    $message .= "Otrzymaliśmy prośbę o zresetowanie hasła do Twojego konta.\n\n";
+    $message .= "Aby zresetować hasło, kliknij poniższy link:\n";
+    $message .= "$reset_link\n\n";
+    $message .= "Jeśli nie prosiłeś o reset hasła, zignoruj tę wiadomość.\n\n";
+    $message .= "Pozdrawiamy,\nZespół Szkółki Pływania";
+
+    $sent = wp_mail($email, $subject, $message);
+
+    return array(
+        'success' => true,
+        'message' => 'Jeśli konto istnieje, wysłaliśmy instrukcje resetowania hasła'
     );
 }
 

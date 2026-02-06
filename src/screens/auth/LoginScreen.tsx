@@ -13,10 +13,13 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
+import { useSettingsStore, useThemeColors } from '../../store/settingsStore';
 
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
   const { login, isLoading, error, clearError } = useAuthStore();
+  const { t, isDark } = useSettingsStore();
+  const colors = useThemeColors();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,7 +27,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Błąd', 'Wprowadź email i hasło');
+      Alert.alert(t.common.error, t.auth.enterCredentials);
       return;
     }
 
@@ -35,6 +38,8 @@ export default function LoginScreen() {
     }
   };
 
+  const styles = createStyles(colors, isDark);
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -44,30 +49,35 @@ export default function LoginScreen() {
         {/* Logo / Header */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Ionicons name="water" size={64} color="#3b82f6" />
+            <Ionicons name="water" size={64} color={colors.primary} />
           </View>
           <Text style={styles.title}>Szkółka Pływania</Text>
-          <Text style={styles.subtitle}>Zaloguj się do aplikacji</Text>
+          <Text style={styles.subtitle}>{t.auth.login}</Text>
         </View>
 
         {/* Form */}
         <View style={styles.form}>
           {error && (
             <View style={styles.errorContainer}>
-              <Ionicons name="alert-circle" size={20} color="#ef4444" />
+              <Ionicons name="alert-circle" size={20} color={colors.error} />
               <Text style={styles.errorText}>{error}</Text>
               <TouchableOpacity onPress={clearError}>
-                <Ionicons name="close" size={20} color="#ef4444" />
+                <Ionicons name="close" size={20} color={colors.error} />
               </TouchableOpacity>
             </View>
           )}
 
           <View style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={20} color="#6b7280" style={styles.inputIcon} />
+            <Ionicons
+              name="mail-outline"
+              size={20}
+              color={colors.textSecondary}
+              style={styles.inputIcon}
+            />
             <TextInput
               style={styles.input}
-              placeholder="Email"
-              placeholderTextColor="#9ca3af"
+              placeholder={t.auth.email}
+              placeholderTextColor={colors.textTertiary}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -77,11 +87,16 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color="#6b7280" style={styles.inputIcon} />
+            <Ionicons
+              name="lock-closed-outline"
+              size={20}
+              color={colors.textSecondary}
+              style={styles.inputIcon}
+            />
             <TextInput
               style={styles.input}
-              placeholder="Hasło"
-              placeholderTextColor="#9ca3af"
+              placeholder={t.auth.password}
+              placeholderTextColor={colors.textTertiary}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
@@ -90,7 +105,7 @@ export default function LoginScreen() {
               <Ionicons
                 name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                 size={20}
-                color="#6b7280"
+                color={colors.textSecondary}
               />
             </TouchableOpacity>
           </View>
@@ -99,7 +114,7 @@ export default function LoginScreen() {
             style={styles.forgotPassword}
             onPress={() => navigation.navigate('ForgotPassword')}
           >
-            <Text style={styles.forgotPasswordText}>Zapomniałeś hasła?</Text>
+            <Text style={styles.forgotPasswordText}>{t.auth.forgotPassword}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -110,7 +125,7 @@ export default function LoginScreen() {
             {isLoading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.loginButtonText}>Zaloguj się</Text>
+              <Text style={styles.loginButtonText}>{t.auth.login}</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -126,103 +141,104 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  logoContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#eff6ff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6b7280',
-  },
-  form: {
-    marginBottom: 24,
-  },
-  errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fef2f2',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
-    gap: 8,
-  },
-  errorText: {
-    flex: 1,
-    color: '#ef4444',
-    fontSize: 14,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    paddingHorizontal: 16,
-    marginBottom: 16,
-    height: 56,
-  },
-  inputIcon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: '#111827',
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: 24,
-  },
-  forgotPasswordText: {
-    color: '#3b82f6',
-    fontSize: 14,
-  },
-  loginButton: {
-    backgroundColor: '#3b82f6',
-    borderRadius: 12,
-    height: 56,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loginButtonDisabled: {
-    opacity: 0.7,
-  },
-  loginButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  footer: {
-    alignItems: 'center',
-  },
-  footerText: {
-    color: '#9ca3af',
-    fontSize: 14,
-  },
-});
+const createStyles = (colors: ReturnType<typeof useThemeColors>, isDark: boolean) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      flex: 1,
+      justifyContent: 'center',
+      paddingHorizontal: 24,
+    },
+    header: {
+      alignItems: 'center',
+      marginBottom: 40,
+    },
+    logoContainer: {
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      backgroundColor: colors.primaryLight,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
+    form: {
+      marginBottom: 24,
+    },
+    errorContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.errorLight,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 16,
+      gap: 8,
+    },
+    errorText: {
+      flex: 1,
+      color: colors.error,
+      fontSize: 14,
+    },
+    inputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 16,
+      marginBottom: 16,
+      height: 56,
+    },
+    inputIcon: {
+      marginRight: 12,
+    },
+    input: {
+      flex: 1,
+      fontSize: 16,
+      color: colors.text,
+    },
+    forgotPassword: {
+      alignSelf: 'flex-end',
+      marginBottom: 24,
+    },
+    forgotPasswordText: {
+      color: colors.primary,
+      fontSize: 14,
+    },
+    loginButton: {
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      height: 56,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    loginButtonDisabled: {
+      opacity: 0.7,
+    },
+    loginButtonText: {
+      color: '#fff',
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    footer: {
+      alignItems: 'center',
+    },
+    footerText: {
+      color: colors.textTertiary,
+      fontSize: 14,
+    },
+  });
