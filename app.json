@@ -6,93 +6,27 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "scheme": "swimmingschool",
     "splash": {
-  "image": "./assets/splash.png",
-  "resizeMode": "contain",
-  "backgroundColor": "#3b82f6"
-},
-    "assetBundlePatterns": [
-      "**/*"
-    ],
-    "locales": {
-      "pl": "./locales/pl.json"
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#3b82f6"
     },
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourcompany.swimmingschool",
-      "buildNumber": "1",
-      "config": {
-        "usesNonExemptEncryption": false
-      },
-      "infoPlist": {
-        "NSCameraUsageDescription": "Aplikacja może używać aparatu do skanowania kodów QR.",
-        "NSPhotoLibraryUsageDescription": "Aplikacja może zapisywać zdjęcia w galerii.",
-        "CFBundleLocalizations": [
-          "pl"
-        ],
-        "CFBundleDevelopmentRegion": "pl",
-        "UIBackgroundModes": [
-          "remote-notification"
-        ]
-      },
-      "associatedDomains": [],
-      "privacyManifests": {
-        "NSPrivacyAccessedAPITypes": [
-          {
-            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
-            "NSPrivacyAccessedAPITypeReasons": [
-              "CA92.1"
-            ]
-          }
-        ]
-      }
+      "bundleIdentifier": "com.kamilowojkow.swimmingschool"
     },
     "android": {
       "adaptiveIcon": {
-    "foregroundImage": "./assets/adaptive-icon.png",
-    "backgroundColor": "#3b82f6"
-  },
-      "package": "com.yourcompany.swimmingschool",
-      "versionCode": 1,
-      "permissions": [
-        "CAMERA",
-        "RECEIVE_BOOT_COMPLETED",
-        "VIBRATE",
-        "INTERNET",
-        "ACCESS_NETWORK_STATE"
-      ],
-       "softwareKeyboardLayoutMode": "pan"
-    },
-    "web": {
-      "favicon": "./assets/favicon.png",
-      "bundler": "metro"
-    },
-    "plugins": [      
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "compileSdkVersion": 34,
-            "targetSdkVersion": 34,
-            "buildToolsVersion": "34.0.0"
-          },
-          "ios": {
-            "deploymentTarget": "15.1"
-          }
-        }
-      ],
-      "expo-localization",
-      "expo-secure-store"
-    ],
-    "runtimeVersion": {
-      "policy": "appVersion"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#3b82f6"
+      },
+      "package": "com.kamilowojkow.swimmingschool"
     },
     "extra": {
       "eas": {
-        "projectId": "dd07ecca-fce9-409f-ba38-992a5cbbc907"
+        "projectId": "b423cb16-2f1f-4e26-a981-e6ddba3f0c70"
       }
-    },
-    "owner": "kamilowojkow"
+    }
   }
 }
