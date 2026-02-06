@@ -19,7 +19,7 @@ register_activation_hook(__FILE__, 'ssm_api_create_tables');
 add_action('init', 'ssm_api_maybe_create_tables');
 
 function ssm_api_maybe_create_tables() {
-    if (get_option('ssm_api_db_version') !== '2.1.2') {
+    if (get_option('ssm_api_db_version') !== '2.1.3') {
         ssm_api_create_tables();
     }
 }
@@ -140,7 +140,7 @@ function ssm_api_create_tables() {
         $results['makeup_slots_fallback'] = $wpdb->last_error ?: 'Created via fallback';
     }
 
-    update_option('ssm_api_db_version', '2.1.2');
+    update_option('ssm_api_db_version', '2.1.3');
 
     error_log('SSM API: Database tables created/updated. Results: ' . print_r($results, true));
 }
@@ -346,14 +346,45 @@ add_action('rest_api_init', function () {
 
 function ssm_api_setup_database() {
     global $wpdb;
+    $prefix = $wpdb->prefix;
+    $debug_info = array();
 
     // Force create tables
     ssm_api_create_tables();
 
+    // Extra fallback for makeup_slots - try direct SQL
+    $table_makeup_slots = $prefix . 'ssm_makeup_slots';
+    $makeup_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_makeup_slots'") === $table_makeup_slots;
+
+    if (!$makeup_exists) {
+        // Try very simple table creation
+        $charset = $wpdb->charset ? "DEFAULT CHARACTER SET {$wpdb->charset}" : '';
+        $collate = $wpdb->collate ? "COLLATE {$wpdb->collate}" : '';
+
+        $simple_sql = "CREATE TABLE `$table_makeup_slots` (
+            `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            `session_date` date DEFAULT NULL,
+            `time_start` varchar(10) DEFAULT NULL,
+            `time_end` varchar(10) DEFAULT NULL,
+            `class_name` varchar(255) DEFAULT NULL,
+            `facility_name` varchar(255) DEFAULT NULL,
+            `max_spots` int(11) DEFAULT 5,
+            `booked_spots` int(11) DEFAULT 0,
+            `status` varchar(50) DEFAULT 'available',
+            `created_at` datetime DEFAULT NULL,
+            PRIMARY KEY (`id`)
+        ) ENGINE=InnoDB $charset $collate";
+
+        $result = $wpdb->query($simple_sql);
+        $debug_info['makeup_slots_direct_create'] = array(
+            'result' => $result,
+            'error' => $wpdb->last_error,
+            'sql' => $simple_sql
+        );
+    }
+
     // Check if tables exist
     $tables_status = array();
-    $prefix = $wpdb->prefix;
-
     $tables_to_check = array(
         'ssm_absences',
         'ssm_attendance',
@@ -377,7 +408,8 @@ function ssm_api_setup_database() {
         'message' => 'Baza danych została skonfigurowana',
         'db_version' => get_option('ssm_api_db_version'),
         'tables' => $tables_status,
-        'prefix' => $prefix
+        'prefix' => $prefix,
+        'debug' => $debug_info
     );
 }
 
