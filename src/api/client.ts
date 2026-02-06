@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Adres WordPressa
 const API_BASE_URL = 'https://woykow.pl/wp-json/ssm/v1';
@@ -24,7 +24,7 @@ class ApiClient {
     // Interceptor - dodaj token do każdego żądania
     this.client.interceptors.request.use(
       async (config) => {
-        const token = await SecureStore.getItemAsync(TOKEN_KEY);
+        const token = await AsyncStorage.getItem(TOKEN_KEY);
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -77,17 +77,17 @@ class ApiClient {
   // ============================================
 
   async saveTokens(accessToken: string, refreshToken: string) {
-    await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
-    await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
+    await AsyncStorage.setItem(TOKEN_KEY, accessToken);
+    await AsyncStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
   }
 
   async clearTokens() {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
-    await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+    await AsyncStorage.removeItem(TOKEN_KEY);
+    await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
   }
 
   async getAccessToken() {
-    return SecureStore.getItemAsync(TOKEN_KEY);
+    return AsyncStorage.getItem(TOKEN_KEY);
   }
 
   async hasValidToken() {
@@ -96,7 +96,7 @@ class ApiClient {
   }
 
   private async refreshToken(): Promise<string> {
-    const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+    const refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
     if (!refreshToken) {
       throw new Error('No refresh token');
     }
