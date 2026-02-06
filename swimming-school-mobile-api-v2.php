@@ -97,6 +97,12 @@ add_action('rest_api_init', function () {
         'permission_callback' => 'ssm_api_check_auth',
     ));
 
+    register_rest_route($namespace, '/notifications/unread-count', array(
+        'methods' => 'GET',
+        'callback' => 'ssm_api_get_unread_count',
+        'permission_callback' => 'ssm_api_check_auth',
+    ));
+
     register_rest_route($namespace, '/notifications/register', array(
         'methods' => 'POST',
         'callback' => 'ssm_api_register_push_token',
@@ -328,26 +334,26 @@ function ssm_api_get_schedule($request) {
     return array(
         array(
             'id' => 1,
-            'date' => date('Y-m-d', strtotime('next monday')),
-            'start_time' => '16:00',
-            'end_time' => '16:45',
-            'pool_name' => 'Basen Główny',
+            'session_date' => date('Y-m-d', strtotime('next monday')),
+            'time_start' => '16:00',
+            'time_end' => '16:45',
+            'facility_name' => 'Basen Główny',
             'instructor_name' => 'Anna Nowak',
             'child_id' => 1,
-            'child_name' => 'Jan Kowalski',
-            'course_name' => 'Kurs pływania - poziom średni',
+            'child_first_name' => 'Jan',
+            'class_name' => 'Kurs pływania - poziom średni',
             'status' => 'scheduled'
         ),
         array(
             'id' => 2,
-            'date' => date('Y-m-d', strtotime('next wednesday')),
-            'start_time' => '17:00',
-            'end_time' => '17:45',
-            'pool_name' => 'Basen Mały',
+            'session_date' => date('Y-m-d', strtotime('next wednesday')),
+            'time_start' => '17:00',
+            'time_end' => '17:45',
+            'facility_name' => 'Basen Mały',
             'instructor_name' => 'Piotr Wiśniewski',
             'child_id' => 2,
-            'child_name' => 'Anna Kowalska',
-            'course_name' => 'Kurs pływania - początkujący',
+            'child_first_name' => 'Anna',
+            'class_name' => 'Kurs pływania - początkujący',
             'status' => 'scheduled'
         )
     );
@@ -442,16 +448,22 @@ function ssm_api_get_makeups($request) {
 
 function ssm_api_get_notifications($request) {
     return array(
-        'notifications' => array(
-            array(
-                'id' => 1,
-                'title' => 'Przypomnienie o zajęciach',
-                'message' => 'Jutro o 16:00 zajęcia pływania dla Jana',
-                'created_at' => date('Y-m-d H:i:s', strtotime('-1 hour')),
-                'read' => false,
-                'type' => 'reminder'
-            )
-        ),
+        array(
+            'id' => 1,
+            'title' => 'Przypomnienie o zajęciach',
+            'message' => 'Jutro o 16:00 zajęcia pływania dla Jana',
+            'created_at' => date('Y-m-d H:i:s', strtotime('-1 hour')),
+            'is_read' => false,
+            'type' => 'reminder',
+            'icon' => 'notifications',
+            'color' => '#3b82f6',
+            'time_ago' => '1 godzinę temu'
+        )
+    );
+}
+
+function ssm_api_get_unread_count($request) {
+    return array(
         'unread_count' => 1
     );
 }
