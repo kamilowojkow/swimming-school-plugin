@@ -48,9 +48,11 @@ export default function ScheduleScreen() {
   const fetchSchedule = async () => {
     try {
       const data = await api.getParentSchedule();
-      setSessions(data);
+      const sessionsArray = Array.isArray(data) ? data : (data?.sessions || data?.schedule || []);
+      setSessions(sessionsArray);
     } catch (error) {
       console.error('Error fetching schedule:', error);
+      setSessions([]);
     } finally {
       setIsLoading(false);
     }
