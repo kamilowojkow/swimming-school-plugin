@@ -3,8 +3,12 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { View, TouchableOpacity, Text, StyleSheet, ScrollView } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../store/authStore';
 import { useNotificationStore } from '../store/notificationStore';
+import { useSettingsStore, useThemeColors } from '../store/settingsStore';
+import RoleSwitcher from '../components/RoleSwitcher';
 
 // Auth Screens
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -87,6 +91,8 @@ function AuthNavigator() {
 
 function ParentTabNavigator() {
   const unreadCount = useNotificationStore((state) => state.unreadCount);
+  const { t, isDark } = useSettingsStore();
+  const colors = useThemeColors('parent');
 
   return (
     <ParentTabs.Navigator
@@ -116,37 +122,41 @@ function ParentTabNavigator() {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#3b82f6',
-        tabBarInactiveTintColor: '#6b7280',
-        headerStyle: { backgroundColor: '#3b82f6' },
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.tabBarInactive,
+        tabBarStyle: {
+          backgroundColor: colors.tabBarBackground,
+          borderTopColor: colors.tabBarBorder,
+        },
+        headerStyle: { backgroundColor: colors.primary },
         headerTintColor: '#fff',
       })}
     >
       <ParentTabs.Screen
         name="Dashboard"
         component={ParentDashboard}
-        options={{ title: 'Panel główny' }}
+        options={{ title: t.nav.dashboard }}
       />
       <ParentTabs.Screen
         name="Children"
         component={ChildrenScreen}
-        options={{ title: 'Dzieci' }}
+        options={{ title: t.nav.children }}
       />
       <ParentTabs.Screen
         name="Schedule"
         component={ParentScheduleScreen}
-        options={{ title: 'Harmonogram' }}
+        options={{ title: t.nav.schedule }}
       />
       <ParentTabs.Screen
         name="Payments"
         component={PaymentsScreen}
-        options={{ title: 'Płatności' }}
+        options={{ title: t.nav.payments }}
       />
       <ParentTabs.Screen
         name="More"
         component={MoreParentScreen}
         options={{
-          title: 'Więcej',
+          title: t.nav.more,
           tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
         }}
       />
@@ -160,6 +170,8 @@ function ParentTabNavigator() {
 
 function InstructorTabNavigator() {
   const unreadCount = useNotificationStore((state) => state.unreadCount);
+  const { t, isDark } = useSettingsStore();
+  const colors = useThemeColors('instructor');
 
   return (
     <InstructorTabs.Navigator
@@ -189,37 +201,41 @@ function InstructorTabNavigator() {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#10b981',
-        tabBarInactiveTintColor: '#6b7280',
-        headerStyle: { backgroundColor: '#10b981' },
+        tabBarActiveTintColor: colors.secondary,
+        tabBarInactiveTintColor: colors.tabBarInactive,
+        tabBarStyle: {
+          backgroundColor: colors.tabBarBackground,
+          borderTopColor: colors.tabBarBorder,
+        },
+        headerStyle: { backgroundColor: colors.secondary },
         headerTintColor: '#fff',
       })}
     >
       <InstructorTabs.Screen
         name="Dashboard"
         component={InstructorDashboard}
-        options={{ title: 'Panel główny' }}
+        options={{ title: t.nav.dashboard }}
       />
       <InstructorTabs.Screen
         name="Schedule"
         component={InstructorScheduleScreen}
-        options={{ title: 'Harmonogram' }}
+        options={{ title: t.nav.schedule }}
       />
       <InstructorTabs.Screen
         name="Substitutions"
         component={SubstitutionsScreen}
-        options={{ title: 'Zastępstwa' }}
+        options={{ title: t.nav.substitutions }}
       />
       <InstructorTabs.Screen
         name="Salary"
         component={SalaryScreen}
-        options={{ title: 'Wynagrodzenie' }}
+        options={{ title: t.nav.salary }}
       />
       <InstructorTabs.Screen
         name="More"
         component={MoreInstructorScreen}
         options={{
-          title: 'Więcej',
+          title: t.nav.more,
           tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
         }}
       />
@@ -231,14 +247,13 @@ function InstructorTabNavigator() {
 // MORE SCREENS (common menu)
 // ============================================
 
-import { View, TouchableOpacity, Text, StyleSheet, ScrollView } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import RoleSwitcher from '../components/RoleSwitcher';
-
 function MoreParentScreen() {
   const navigation = useNavigation<any>();
   const logout = useAuthStore((state) => state.logout);
   const unreadCount = useNotificationStore((state) => state.unreadCount);
+  const { t, isDark } = useSettingsStore();
+  const colors = useThemeColors('parent');
+  const styles = createMoreStyles(colors, isDark);
 
   return (
     <ScrollView style={styles.moreContainer}>
@@ -248,37 +263,37 @@ function MoreParentScreen() {
         style={styles.menuItem}
         onPress={() => navigation.navigate('Notifications')}
       >
-        <Ionicons name="notifications-outline" size={24} color="#374151" />
-        <Text style={styles.menuText}>Powiadomienia</Text>
+        <Ionicons name="notifications-outline" size={24} color={colors.text} />
+        <Text style={styles.menuText}>{t.nav.notifications}</Text>
         {unreadCount > 0 && (
-          <View style={styles.badge}>
+          <View style={[styles.badge, { backgroundColor: colors.primary }]}>
             <Text style={styles.badgeText}>{unreadCount}</Text>
           </View>
         )}
-        <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+        <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.menuItem}
         onPress={() => navigation.navigate('Profile')}
       >
-        <Ionicons name="person-outline" size={24} color="#374151" />
-        <Text style={styles.menuText}>Profil</Text>
-        <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+        <Ionicons name="person-outline" size={24} color={colors.text} />
+        <Text style={styles.menuText}>{t.nav.profile}</Text>
+        <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.menuItem}
         onPress={() => navigation.navigate('Settings')}
       >
-        <Ionicons name="settings-outline" size={24} color="#374151" />
-        <Text style={styles.menuText}>Ustawienia</Text>
-        <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+        <Ionicons name="settings-outline" size={24} color={colors.text} />
+        <Text style={styles.menuText}>{t.nav.settings}</Text>
+        <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
       </TouchableOpacity>
 
       <TouchableOpacity style={[styles.menuItem, styles.logoutItem]} onPress={logout}>
-        <Ionicons name="log-out-outline" size={24} color="#ef4444" />
-        <Text style={[styles.menuText, styles.logoutText]}>Wyloguj</Text>
+        <Ionicons name="log-out-outline" size={24} color={colors.error} />
+        <Text style={[styles.menuText, { color: colors.error }]}>{t.auth.logout}</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -288,6 +303,9 @@ function MoreInstructorScreen() {
   const navigation = useNavigation<any>();
   const logout = useAuthStore((state) => state.logout);
   const unreadCount = useNotificationStore((state) => state.unreadCount);
+  const { t, isDark } = useSettingsStore();
+  const colors = useThemeColors('instructor');
+  const styles = createMoreStyles(colors, isDark);
 
   return (
     <ScrollView style={styles.moreContainer}>
@@ -297,82 +315,79 @@ function MoreInstructorScreen() {
         style={styles.menuItem}
         onPress={() => navigation.navigate('Notifications')}
       >
-        <Ionicons name="notifications-outline" size={24} color="#374151" />
-        <Text style={styles.menuText}>Powiadomienia</Text>
+        <Ionicons name="notifications-outline" size={24} color={colors.text} />
+        <Text style={styles.menuText}>{t.nav.notifications}</Text>
         {unreadCount > 0 && (
-          <View style={[styles.badge, { backgroundColor: '#10b981' }]}>
+          <View style={[styles.badge, { backgroundColor: colors.secondary }]}>
             <Text style={styles.badgeText}>{unreadCount}</Text>
           </View>
         )}
-        <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+        <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.menuItem}
         onPress={() => navigation.navigate('Profile')}
       >
-        <Ionicons name="person-outline" size={24} color="#374151" />
-        <Text style={styles.menuText}>Profil</Text>
-        <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+        <Ionicons name="person-outline" size={24} color={colors.text} />
+        <Text style={styles.menuText}>{t.nav.profile}</Text>
+        <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.menuItem}
         onPress={() => navigation.navigate('Settings')}
       >
-        <Ionicons name="settings-outline" size={24} color="#374151" />
-        <Text style={styles.menuText}>Ustawienia</Text>
-        <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+        <Ionicons name="settings-outline" size={24} color={colors.text} />
+        <Text style={styles.menuText}>{t.nav.settings}</Text>
+        <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
       </TouchableOpacity>
 
       <TouchableOpacity style={[styles.menuItem, styles.logoutItem]} onPress={logout}>
-        <Ionicons name="log-out-outline" size={24} color="#ef4444" />
-        <Text style={[styles.menuText, styles.logoutText]}>Wyloguj</Text>
+        <Ionicons name="log-out-outline" size={24} color={colors.error} />
+        <Text style={[styles.menuText, { color: colors.error }]}>{t.auth.logout}</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  moreContainer: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-    paddingTop: 16,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  menuText: {
-    flex: 1,
-    marginLeft: 16,
-    fontSize: 16,
-    color: '#374151',
-  },
-  badge: {
-    backgroundColor: '#3b82f6',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    marginRight: 8,
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  logoutItem: {
-    marginTop: 24,
-  },
-  logoutText: {
-    color: '#ef4444',
-  },
-});
+const createMoreStyles = (colors: ReturnType<typeof useThemeColors>, isDark: boolean) =>
+  StyleSheet.create({
+    moreContainer: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingTop: 16,
+    },
+    menuItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    menuText: {
+      flex: 1,
+      marginLeft: 16,
+      fontSize: 16,
+      color: colors.text,
+    },
+    badge: {
+      borderRadius: 12,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      marginRight: 8,
+    },
+    badgeText: {
+      color: '#fff',
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    logoutItem: {
+      marginTop: 24,
+    },
+  });
 
 // ============================================
 // ROOT NAVIGATOR
@@ -380,10 +395,14 @@ const styles = StyleSheet.create({
 
 export default function AppNavigator() {
   const { isAuthenticated, isLoading, activeRole } = useAuthStore();
+  const { t } = useSettingsStore();
+  const colors = useThemeColors(activeRole);
 
   if (isLoading) {
     return null; // Or a loading screen
   }
+
+  const accentColor = activeRole === 'instructor' ? colors.secondary : colors.primary;
 
   return (
     <NavigationContainer>
@@ -396,7 +415,12 @@ export default function AppNavigator() {
             <RootStack.Screen
               name="Attendance"
               component={AttendanceScreen}
-              options={{ headerShown: true, title: 'Obecność', headerStyle: { backgroundColor: '#10b981' }, headerTintColor: '#fff' }}
+              options={{
+                headerShown: true,
+                title: t.nav.attendance,
+                headerStyle: { backgroundColor: colors.secondary },
+                headerTintColor: '#fff',
+              }}
             />
           </>
         ) : (
@@ -405,7 +429,12 @@ export default function AppNavigator() {
             <RootStack.Screen
               name="ChildDetails"
               component={ChildDetailsScreen}
-              options={{ headerShown: true, title: 'Dziecko', headerStyle: { backgroundColor: '#3b82f6' }, headerTintColor: '#fff' }}
+              options={{
+                headerShown: true,
+                title: t.children.title,
+                headerStyle: { backgroundColor: colors.primary },
+                headerTintColor: '#fff',
+              }}
             />
           </>
         )}
@@ -414,8 +443,8 @@ export default function AppNavigator() {
           component={NotificationsScreen}
           options={{
             headerShown: true,
-            title: 'Powiadomienia',
-            headerStyle: { backgroundColor: activeRole === 'instructor' ? '#10b981' : '#3b82f6' },
+            title: t.nav.notifications,
+            headerStyle: { backgroundColor: accentColor },
             headerTintColor: '#fff',
           }}
         />
@@ -424,8 +453,8 @@ export default function AppNavigator() {
           component={ProfileScreen}
           options={{
             headerShown: true,
-            title: 'Profil',
-            headerStyle: { backgroundColor: activeRole === 'instructor' ? '#10b981' : '#3b82f6' },
+            title: t.nav.profile,
+            headerStyle: { backgroundColor: accentColor },
             headerTintColor: '#fff',
           }}
         />
@@ -434,8 +463,8 @@ export default function AppNavigator() {
           component={SettingsScreen}
           options={{
             headerShown: true,
-            title: 'Ustawienia',
-            headerStyle: { backgroundColor: activeRole === 'instructor' ? '#10b981' : '#3b82f6' },
+            title: t.nav.settings,
+            headerStyle: { backgroundColor: accentColor },
             headerTintColor: '#fff',
           }}
         />
