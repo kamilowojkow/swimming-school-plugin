@@ -16,6 +16,18 @@ import { format, addDays, isBefore, isAfter } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import api from '../../api/client';
 
+// Safe date formatting helper
+const safeFormatDate = (dateStr: string | undefined, formatStr: string): string => {
+  if (!dateStr) return '-';
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '-';
+    return format(date, formatStr, { locale: pl });
+  } catch {
+    return '-';
+  }
+};
+
 interface Absence {
   id: number;
   child_id: number;
@@ -85,9 +97,15 @@ export default function AbsencesScreen() {
         api.getUpcomingSessions(),
         api.getMakeupSlots(),
       ]);
-      setAbsences(absencesData);
-      setUpcomingSessions(sessionsData);
-      setMakeupSlots(slotsData);
+
+      // Handle both array and object API responses
+      const absencesArray = Array.isArray(absencesData) ? absencesData : (absencesData?.absences || []);
+      const sessionsArray = Array.isArray(sessionsData) ? sessionsData : (sessionsData?.sessions || []);
+      const slotsArray = Array.isArray(slotsData) ? slotsData : (slotsData?.slots || []);
+
+      setAbsences(absencesArray);
+      setUpcomingSessions(sessionsArray);
+      setMakeupSlots(slotsArray);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -232,16 +250,16 @@ export default function AbsencesScreen() {
                     >
                       <View style={styles.sessionDate}>
                         <Text style={styles.sessionDay}>
-                          {format(new Date(session.session_date), 'd')}
+                          {safeFormatDate(session.session_date, 'd')}
                         </Text>
                         <Text style={styles.sessionMonth}>
-                          {format(new Date(session.session_date), 'MMM', { locale: pl })}
+                          {safeFormatDate(session.session_date, 'MMM')}
                         </Text>
                       </View>
                       <View style={styles.sessionInfo}>
                         <Text style={styles.sessionClass}>{session.class_name}</Text>
                         <Text style={styles.sessionMeta}>
-                          {session.child_name} • {session.time_start.substring(0, 5)}
+                          {session.child_name} • {session.time_start?.substring(0, 5) || '-'}
                         </Text>
                       </View>
                       <View style={styles.reportButton}>
@@ -271,8 +289,8 @@ export default function AbsencesScreen() {
                         <View>
                           <Text style={styles.absenceClass}>{absence.class_name}</Text>
                           <Text style={styles.absenceDate}>
-                            {format(new Date(absence.session_date), 'd MMMM yyyy', { locale: pl })} o{' '}
-                            {absence.time_start.substring(0, 5)}
+                            {safeFormatDate(absence.session_date, 'd MMMM yyyy')} o{' '}
+                            {absence.time_start?.substring(0, 5) || '-'}
                           </Text>
                           <Text style={styles.absenceChild}>{absence.child_name}</Text>
                         </View>
@@ -333,7 +351,7 @@ export default function AbsencesScreen() {
                       </Text>
                       {absence.makeup_session && (
                         <Text style={styles.makeupDate}>
-                          {format(new Date(absence.makeup_session.date), 'd MMMM', { locale: pl })} o{' '}
+                          {safeFormatDate(absence.makeup_session.date, 'd MMMM')} o{' '}
                           {absence.makeup_session.time}
                         </Text>
                       )}
@@ -365,7 +383,7 @@ export default function AbsencesScreen() {
                       <Text style={styles.completedClass}>{absence.class_name}</Text>
                       <Text style={styles.completedMeta}>
                         {absence.child_name} •{' '}
-                        {format(new Date(absence.session_date), 'd MMM', { locale: pl })}
+                        {safeFormatDate(absence.session_date, 'd MMM')}
                       </Text>
                     </View>
                   </View>
@@ -393,16 +411,16 @@ export default function AbsencesScreen() {
               <View style={styles.modalSession}>
                 <View style={styles.modalSessionDate}>
                   <Text style={styles.modalSessionDay}>
-                    {format(new Date(selectedSession.session_date), 'd')}
+                    {safeFormatDate(selectedSession.session_date, 'd')}
                   </Text>
                   <Text style={styles.modalSessionMonth}>
-                    {format(new Date(selectedSession.session_date), 'MMM', { locale: pl })}
+                    {safeFormatDate(selectedSession.session_date, 'MMM')}
                   </Text>
                 </View>
                 <View>
                   <Text style={styles.modalSessionClass}>{selectedSession.class_name}</Text>
                   <Text style={styles.modalSessionMeta}>
-                    {selectedSession.child_name} • {selectedSession.time_start.substring(0, 5)}
+                    {selectedSession.child_name} • {selectedSession.time_start?.substring(0, 5) || '-'}
                   </Text>
                 </View>
               </View>
@@ -461,16 +479,16 @@ export default function AbsencesScreen() {
                   >
                     <View style={styles.slotDate}>
                       <Text style={styles.slotDay}>
-                        {format(new Date(slot.date), 'd')}
+                        {safeFormatDate(slot.date, 'd')}
                       </Text>
                       <Text style={styles.slotMonth}>
-                        {format(new Date(slot.date), 'MMM', { locale: pl })}
+                        {safeFormatDate(slot.date, 'MMM')}
                       </Text>
                     </View>
                     <View style={styles.slotInfo}>
                       <Text style={styles.slotClass}>{slot.class_name}</Text>
                       <Text style={styles.slotTime}>
-                        {slot.time_start.substring(0, 5)} - {slot.time_end.substring(0, 5)}
+                        {slot.time_start?.substring(0, 5) || '-'} - {slot.time_end?.substring(0, 5) || '-'}
                       </Text>
                       <Text style={styles.slotFacility}>{slot.facility_name}</Text>
                     </View>
