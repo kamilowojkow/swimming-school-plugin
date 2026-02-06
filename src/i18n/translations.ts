@@ -66,6 +66,13 @@ export const translations = {
       viewAll: 'Zobacz wszystkie',
     },
 
+    // Dashboard (used in screens)
+    dashboard: {
+      welcome: 'Witaj',
+      yourChildren: 'Twoje dzieci',
+      upcomingLessons: 'Nadchodzące zajęcia',
+    },
+
     // Instructor Dashboard
     instructorDashboard: {
       todaySessions: 'Dzisiejsze zajęcia',
@@ -80,6 +87,7 @@ export const translations = {
 
     // Schedule
     schedule: {
+      title: 'Zajęcia',
       noLessons: 'Brak zajęć',
       participants: 'uczestników',
       attendanceChecked: 'Obecność sprawdzona',
@@ -287,6 +295,13 @@ export const translations = {
       viewAll: 'View all',
     },
 
+    // Dashboard (used in screens)
+    dashboard: {
+      welcome: 'Welcome',
+      yourChildren: 'Your children',
+      upcomingLessons: 'Upcoming lessons',
+    },
+
     // Instructor Dashboard
     instructorDashboard: {
       todaySessions: "Today's sessions",
@@ -301,6 +316,7 @@ export const translations = {
 
     // Schedule
     schedule: {
+      title: 'Sessions',
       noLessons: 'No lessons',
       participants: 'participants',
       attendanceChecked: 'Attendance checked',
