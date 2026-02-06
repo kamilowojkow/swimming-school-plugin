@@ -44,6 +44,17 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   overdue: { label: 'Zaległe', color: '#dc2626', bg: '#fef2f2', icon: 'alert-circle' },
 };
 
+const safeFormatDate = (dateStr: string | undefined, formatStr: string): string => {
+  if (!dateStr) return '-';
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '-';
+    return format(date, formatStr, { locale: pl });
+  } catch {
+    return '-';
+  }
+};
+
 export default function PaymentsScreen() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [history, setHistory] = useState<PaymentHistory[]>([]);
@@ -220,7 +231,7 @@ export default function PaymentsScreen() {
                       <View style={styles.dueDate}>
                         <Ionicons name="calendar-outline" size={14} color="#6b7280" />
                         <Text style={styles.dueDateText}>
-                          Termin: {format(new Date(payment.due_date), 'd MMM yyyy', { locale: pl })}
+                          Termin: {safeFormatDate(payment.due_date, 'd MMM yyyy')}
                         </Text>
                       </View>
 
@@ -251,7 +262,7 @@ export default function PaymentsScreen() {
                     <View style={styles.paidInfo}>
                       <Text style={styles.paidTitle}>{payment.title}</Text>
                       <Text style={styles.paidDate}>
-                        {format(new Date(payment.created_at), 'd MMM yyyy', { locale: pl })}
+                        {safeFormatDate(payment.created_at, 'd MMM yyyy')}
                       </Text>
                     </View>
                     <Text style={styles.paidAmount}>{payment.total_amount.toFixed(2)} zł</Text>
@@ -271,17 +282,16 @@ export default function PaymentsScreen() {
               </View>
             ) : (
               history.map((item, index) => {
-                const showDateHeader =
-                  index === 0 ||
-                  format(new Date(item.payment_date), 'yyyy-MM') !==
-                    format(new Date(history[index - 1].payment_date), 'yyyy-MM');
+                const currentMonth = safeFormatDate(item.payment_date, 'yyyy-MM');
+                const prevMonth = index > 0 ? safeFormatDate(history[index - 1].payment_date, 'yyyy-MM') : '';
+                const showDateHeader = index === 0 || currentMonth !== prevMonth;
 
                 return (
                   <View key={item.id}>
                     {showDateHeader && (
                       <View style={styles.historyDateHeader}>
                         <Text style={styles.historyDateText}>
-                          {format(new Date(item.payment_date), 'LLLL yyyy', { locale: pl })}
+                          {safeFormatDate(item.payment_date, 'LLLL yyyy')}
                         </Text>
                       </View>
                     )}
@@ -293,12 +303,12 @@ export default function PaymentsScreen() {
                         <Text style={styles.historyTitle}>{item.invoice_title}</Text>
                         <View style={styles.historyMeta}>
                           <Text style={styles.historyDate}>
-                            {format(new Date(item.payment_date), 'd MMM', { locale: pl })}
+                            {safeFormatDate(item.payment_date, 'd MMM')}
                           </Text>
                           <Text style={styles.historyMethod}>{item.payment_method}</Text>
                         </View>
                       </View>
-                      <Text style={styles.historyAmount}>{item.amount.toFixed(2)} zł</Text>
+                      <Text style={styles.historyAmount}>{item.amount?.toFixed(2) ?? '0.00'} zł</Text>
                     </View>
                   </View>
                 );
