@@ -39,19 +39,92 @@ interface AuthState {
   clearError: () => void;
 }
 
+// Helper to detect user type from various API formats
+const detectUserType = (user: any): UserType => {
+  // Check common field names for type/role
+  const typeValue = user.type || user.role || user.user_type || user.userType || user.account_type || '';
+  const typeStr = String(typeValue).toLowerCase();
+
+  // Check if it's instructor
+  if (typeStr === 'instructor' || typeStr === 'teacher' || typeStr === 'coach' || typeStr === 'instruktor') {
+    return 'instructor';
+  }
+
+  // Check in roles array
+  if (Array.isArray(user.roles)) {
+    const rolesStr = user.roles.map((r: any) => String(r).toLowerCase());
+    if (rolesStr.includes('instructor') || rolesStr.includes('teacher') || rolesStr.includes('instruktor')) {
+      return 'instructor';
+    }
+  }
+
+  // Check WordPress capabilities/role format
+  if (user.capabilities || user.caps || user.allcaps) {
+    const caps = user.capabilities || user.caps || user.allcaps || {};
+    if (caps.instructor || caps.teacher || caps.ssm_instructor) {
+      return 'instructor';
+    }
+  }
+
+  // Check WP role meta
+  if (user.meta?.wp_capabilities) {
+    const wpCaps = user.meta.wp_capabilities;
+    if (wpCaps.instructor || wpCaps.ssm_instructor) {
+      return 'instructor';
+    }
+  }
+
+  return 'parent';
+};
+
 // Helper to normalize user roles
 const normalizeUserRoles = (user: any): User => {
-  // Ensure roles array exists
+  const detectedType = detectUserType(user);
+
+  // Build roles array
   let roles: UserType[] = [];
   if (Array.isArray(user.roles) && user.roles.length > 0) {
-    roles = user.roles;
-  } else if (user.type) {
-    roles = [user.type];
+    // Map role strings to UserType
+    roles = user.roles.map((r: any) => {
+      const roleStr = String(r).toLowerCase();
+      if (roleStr === 'instructor' || roleStr === 'teacher' || roleStr === 'instruktor') {
+        return 'instructor';
+      }
+      return 'parent';
+    }).filter((r: UserType, i: number, arr: UserType[]) => arr.indexOf(r) === i); // unique
+  } else {
+    roles = [detectedType];
   }
-  return {
-    ...user,
+
+  // If user has both roles in some format, include both
+  if (user.is_instructor || user.isInstructor || user.can_instruct) {
+    if (!roles.includes('instructor')) roles.push('instructor');
+  }
+  if (user.is_parent || user.isParent || user.has_children || user.children_count > 0) {
+    if (!roles.includes('parent')) roles.push('parent');
+  }
+
+  const normalized: User = {
+    id: user.id || user.ID || 0,
+    type: detectedType,
     roles,
+    email: user.email || user.user_email || '',
+    first_name: user.first_name || user.firstName || user.display_name?.split(' ')[0] || '',
+    last_name: user.last_name || user.lastName || user.display_name?.split(' ')[1] || '',
+    phone: user.phone || user.phone_number || user.billing_phone || undefined,
+    photo: user.photo || user.avatar || user.avatar_url || user.profile_image || undefined,
+    children_count: user.children_count ?? user.childrenCount ?? undefined,
+    address: user.address || user.billing_address || undefined,
+    specialization: user.specialization || undefined,
+    bio: user.bio || user.description || undefined,
+    hourly_rate: user.hourly_rate ?? user.hourlyRate ?? undefined,
   };
+
+  console.log('User data from API:', user);
+  console.log('Normalized user:', normalized);
+  console.log('Detected type:', detectedType, 'Roles:', roles);
+
+  return normalized;
 };
 
 export const useAuthStore = create<AuthState>((set, get) => ({
