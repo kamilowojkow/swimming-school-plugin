@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import api from '../api/client';
 
@@ -41,8 +42,9 @@ export async function registerForPushNotifications(): Promise<string | null> {
     }
 
     // Get the Expo push token
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
     const response = await Notifications.getExpoPushTokenAsync({
-      projectId: process.env.EXPO_PROJECT_ID, // Set in app.json or env
+      projectId,
     });
     token = response.data;
 
@@ -142,9 +144,7 @@ export async function scheduleLocalNotification(
       data,
       sound: true,
     },
-    trigger: {
-      seconds: triggerSeconds,
-    },
+    trigger: triggerSeconds > 0 ? { seconds: triggerSeconds } : null,
   });
 }
 
