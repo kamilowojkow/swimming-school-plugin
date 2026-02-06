@@ -8,10 +8,10 @@
     "userInterfaceStyle": "automatic",
     "scheme": "swimmingschool",
     "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#3b82f6"
-    },
+  "image": "./assets/splash.png",
+  "resizeMode": "contain",
+  "backgroundColor": "#3b82f6"
+},
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -28,25 +28,31 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Aplikacja może używać aparatu do skanowania kodów QR.",
         "NSPhotoLibraryUsageDescription": "Aplikacja może zapisywać zdjęcia w galerii.",
-        "CFBundleLocalizations": ["pl"],
+        "CFBundleLocalizations": [
+          "pl"
+        ],
         "CFBundleDevelopmentRegion": "pl",
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       },
       "associatedDomains": [],
       "privacyManifests": {
         "NSPrivacyAccessedAPITypes": [
           {
             "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
-            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1"
+            ]
           }
         ]
       }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#3b82f6"
-      },
+    "foregroundImage": "./assets/adaptive-icon.png",
+    "backgroundColor": "#3b82f6"
+  },
       "package": "com.yourcompany.swimmingschool",
       "versionCode": 1,
       "permissions": [
@@ -56,23 +62,13 @@
         "INTERNET",
         "ACCESS_NETWORK_STATE"
       ],
-      "googleServicesFile": "./google-services.json",
-      "softwareKeyboardLayoutMode": "pan"
+       "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    "plugins": [
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/notification-icon.png",
-          "color": "#3b82f6",
-          "sounds": [],
-          "mode": "production"
-        }
-      ],
+    "plugins": [      
       [
         "expo-build-properties",
         {
@@ -89,19 +85,14 @@
       "expo-localization",
       "expo-secure-store"
     ],
-    "extra": {
-      "eas": {
-        "projectId": "your-project-id"
-      },
-      "apiUrl": "https://your-wordpress-site.com/wp-json/ssm/v1"
-    },
-    "owner": "your-expo-username",
     "runtimeVersion": {
       "policy": "appVersion"
     },
-    "updates": {
-      "url": "https://u.expo.dev/your-project-id",
-      "fallbackToCacheTimeout": 30000
-    }
+    "extra": {
+      "eas": {
+        "projectId": "dd07ecca-fce9-409f-ba38-992a5cbbc907"
+      }
+    },
+    "owner": "kamilowojkow"
   }
 }
