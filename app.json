@@ -16,15 +16,31 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.kamilowojkow.swimmingschool"
+      "bundleIdentifier": "com.kamilowojkow.swimmingschool",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Używamy Face ID do szybkiego logowania do aplikacji",
+        "NSCameraUsageDescription": "Potrzebujemy dostępu do kamery, aby robić zdjęcia profilowe"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#3b82f6"
       },
-      "package": "com.kamilowojkow.swimmingschool"
+      "package": "com.kamilowojkow.swimmingschool",
+      "permissions": [
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ]
     },
+    "plugins": [
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Używamy Face ID do szybkiego logowania do aplikacji"
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "dd07ecca-fce9-409f-ba38-992a5cbbc907"

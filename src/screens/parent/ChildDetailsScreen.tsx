@@ -12,8 +12,9 @@ import {
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
-import { pl } from 'date-fns/locale';
+import { pl, enUS } from 'date-fns/locale';
 import api from '../../api/client';
+import { useSettingsStore, useThemeColors } from '../../store/settingsStore';
 
 interface Achievement {
   id: number;
@@ -57,17 +58,10 @@ interface ChildDetails {
 }
 
 const LEVEL_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
-  'Żółwik': { bg: '#fef9c3', text: '#ca8a04', icon: '🐢' },
+  'Zolwik': { bg: '#fef9c3', text: '#ca8a04', icon: '🐢' },
   'Delfinek': { bg: '#dbeafe', text: '#2563eb', icon: '🐬' },
   'Rekin': { bg: '#dcfce7', text: '#16a34a', icon: '🦈' },
   'Mistrz': { bg: '#f3e8ff', text: '#9333ea', icon: '🏆' },
-};
-
-const ATTENDANCE_STATUS: Record<string, { label: string; color: string; bg: string }> = {
-  present: { label: 'Obecny', color: '#16a34a', bg: '#dcfce7' },
-  absent: { label: 'Nieobecny', color: '#dc2626', bg: '#fef2f2' },
-  late: { label: 'Spóźniony', color: '#f59e0b', bg: '#fef3c7' },
-  excused: { label: 'Usprawiedliwiony', color: '#6b7280', bg: '#f3f4f6' },
 };
 
 export default function ChildDetailsScreen() {
@@ -75,10 +69,21 @@ export default function ChildDetailsScreen() {
   const navigation = useNavigation<any>();
   const { childId } = route.params;
 
+  const { t, language, isDark } = useSettingsStore();
+  const colors = useThemeColors();
+  const dateLocale = language === 'pl' ? pl : enUS;
+
   const [child, setChild] = useState<ChildDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'courses' | 'achievements' | 'attendance'>('info');
+
+  const ATTENDANCE_STATUS: Record<string, { label: string; color: string; bg: string }> = {
+    present: { label: t.attendance.present, color: colors.success, bg: colors.successLight },
+    absent: { label: t.attendance.absent, color: colors.error, bg: colors.errorLight },
+    late: { label: t.attendance.late, color: colors.warning, bg: colors.warningLight },
+    excused: { label: t.attendance.excused, color: colors.textSecondary, bg: colors.surfaceSecondary },
+  };
 
   const fetchChildDetails = async () => {
     try {
@@ -86,7 +91,7 @@ export default function ChildDetailsScreen() {
       setChild(data);
     } catch (error) {
       console.error('Error fetching child details:', error);
-      Alert.alert('Błąd', 'Nie udało się pobrać danych dziecka');
+      Alert.alert(t.common.error, language === 'pl' ? 'Nie udalo sie pobrac danych dziecka' : 'Failed to load child data');
     } finally {
       setIsLoading(false);
     }
@@ -114,26 +119,29 @@ export default function ChildDetailsScreen() {
   };
 
   const getLevelStyle = (level: string) => {
-    return LEVEL_COLORS[level] || { bg: '#f3f4f6', text: '#6b7280', icon: '🏊' };
+    return LEVEL_COLORS[level] || { bg: colors.surfaceSecondary, text: colors.textSecondary, icon: '🏊' };
   };
 
   const getDayName = (day: string) => {
-    const days: Record<string, string> = {
-      monday: 'Poniedziałek',
-      tuesday: 'Wtorek',
-      wednesday: 'Środa',
-      thursday: 'Czwartek',
-      friday: 'Piątek',
-      saturday: 'Sobota',
-      sunday: 'Niedziela',
+    const days: Record<string, { pl: string; en: string }> = {
+      monday: { pl: 'Poniedzialek', en: 'Monday' },
+      tuesday: { pl: 'Wtorek', en: 'Tuesday' },
+      wednesday: { pl: 'Sroda', en: 'Wednesday' },
+      thursday: { pl: 'Czwartek', en: 'Thursday' },
+      friday: { pl: 'Piatek', en: 'Friday' },
+      saturday: { pl: 'Sobota', en: 'Saturday' },
+      sunday: { pl: 'Niedziela', en: 'Sunday' },
     };
-    return days[day.toLowerCase()] || day;
+    const dayInfo = days[day.toLowerCase()];
+    return dayInfo ? dayInfo[language] : day;
   };
+
+  const styles = createStyles(colors, isDark);
 
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -141,7 +149,9 @@ export default function ChildDetailsScreen() {
   if (!child) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.errorText}>Nie znaleziono dziecka</Text>
+        <Text style={styles.errorText}>
+          {language === 'pl' ? 'Nie znaleziono dziecka' : 'Child not found'}
+        </Text>
       </View>
     );
   }
@@ -151,7 +161,9 @@ export default function ChildDetailsScreen() {
   return (
     <ScrollView
       style={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+      }
     >
       {/* Header Card */}
       <View style={styles.headerCard}>
@@ -161,7 +173,9 @@ export default function ChildDetailsScreen() {
           </Text>
         </View>
         <Text style={styles.childName}>{child.first_name} {child.last_name}</Text>
-        <Text style={styles.childAge}>{getAge(child.birth_date)} lat</Text>
+        <Text style={styles.childAge}>
+          {getAge(child.birth_date)} {language === 'pl' ? 'lat' : 'years'}
+        </Text>
 
         <View style={[styles.levelBadgeLarge, { backgroundColor: levelStyle.bg }]}>
           <Text style={styles.levelIcon}>{levelStyle.icon}</Text>
@@ -171,17 +185,19 @@ export default function ChildDetailsScreen() {
         </View>
 
         <View style={styles.pointsContainer}>
-          <Ionicons name="star" size={20} color="#f59e0b" />
-          <Text style={styles.pointsText}>{child.total_points} punktów</Text>
+          <Ionicons name="star" size={20} color={colors.warning} />
+          <Text style={styles.pointsText}>
+            {child.total_points} {language === 'pl' ? 'punktow' : 'points'}
+          </Text>
         </View>
       </View>
 
       {/* Medical Notes Warning */}
       {child.medical_notes && (
         <View style={styles.medicalWarning}>
-          <Ionicons name="medical" size={20} color="#dc2626" />
+          <Ionicons name="medical" size={20} color={colors.error} />
           <View style={styles.medicalContent}>
-            <Text style={styles.medicalTitle}>Uwagi medyczne</Text>
+            <Text style={styles.medicalTitle}>{t.attendance.medicalNotes}</Text>
             <Text style={styles.medicalText}>{child.medical_notes}</Text>
           </View>
         </View>
@@ -202,7 +218,7 @@ export default function ChildDetailsScreen() {
           onPress={() => setActiveTab('courses')}
         >
           <Text style={[styles.tabText, activeTab === 'courses' && styles.tabTextActive]}>
-            Kursy
+            {t.children.courses}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -210,7 +226,7 @@ export default function ChildDetailsScreen() {
           onPress={() => setActiveTab('achievements')}
         >
           <Text style={[styles.tabText, activeTab === 'achievements' && styles.tabTextActive]}>
-            Odznaki
+            {language === 'pl' ? 'Odznaki' : 'Badges'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -218,7 +234,7 @@ export default function ChildDetailsScreen() {
           onPress={() => setActiveTab('attendance')}
         >
           <Text style={[styles.tabText, activeTab === 'attendance' && styles.tabTextActive]}>
-            Obecność
+            {language === 'pl' ? 'Obecnosc' : 'Attendance'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -229,33 +245,37 @@ export default function ChildDetailsScreen() {
         {activeTab === 'info' && (
           <View style={styles.infoTab}>
             <View style={styles.infoRow}>
-              <View style={[styles.infoIcon, { backgroundColor: '#eff6ff' }]}>
-                <Ionicons name="calendar" size={20} color="#3b82f6" />
+              <View style={[styles.infoIcon, { backgroundColor: colors.primaryLight }]}>
+                <Ionicons name="calendar" size={20} color={colors.primary} />
               </View>
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Data urodzenia</Text>
+                <Text style={styles.infoLabel}>
+                  {language === 'pl' ? 'Data urodzenia' : 'Birth date'}
+                </Text>
                 <Text style={styles.infoValue}>
-                  {format(new Date(child.birth_date), 'd MMMM yyyy', { locale: pl })}
+                  {format(new Date(child.birth_date), 'd MMMM yyyy', { locale: dateLocale })}
                 </Text>
               </View>
             </View>
 
             <View style={styles.infoRow}>
-              <View style={[styles.infoIcon, { backgroundColor: '#dcfce7' }]}>
-                <Ionicons name="water" size={20} color="#16a34a" />
+              <View style={[styles.infoIcon, { backgroundColor: colors.successLight }]}>
+                <Ionicons name="water" size={20} color={colors.success} />
               </View>
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Poziom pływania</Text>
+                <Text style={styles.infoLabel}>{t.children.level}</Text>
                 <Text style={styles.infoValue}>{child.swimming_level}</Text>
               </View>
             </View>
 
             <View style={styles.infoRow}>
-              <View style={[styles.infoIcon, { backgroundColor: '#fef3c7' }]}>
-                <Ionicons name="school" size={20} color="#f59e0b" />
+              <View style={[styles.infoIcon, { backgroundColor: colors.warningLight }]}>
+                <Ionicons name="school" size={20} color={colors.warning} />
               </View>
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Aktywne kursy</Text>
+                <Text style={styles.infoLabel}>
+                  {language === 'pl' ? 'Aktywne kursy' : 'Active courses'}
+                </Text>
                 <Text style={styles.infoValue}>{child.courses.length}</Text>
               </View>
             </View>
@@ -265,7 +285,9 @@ export default function ChildDetailsScreen() {
                 <Ionicons name="trophy" size={20} color="#9333ea" />
               </View>
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Zdobyte odznaki</Text>
+                <Text style={styles.infoLabel}>
+                  {language === 'pl' ? 'Zdobyte odznaki' : 'Earned badges'}
+                </Text>
                 <Text style={styles.infoValue}>{child.achievements.length}</Text>
               </View>
             </View>
@@ -277,8 +299,10 @@ export default function ChildDetailsScreen() {
           <View style={styles.coursesTab}>
             {child.courses.length === 0 ? (
               <View style={styles.emptyState}>
-                <Ionicons name="school-outline" size={48} color="#d1d5db" />
-                <Text style={styles.emptyText}>Brak aktywnych kursów</Text>
+                <Ionicons name="school-outline" size={48} color={colors.textTertiary} />
+                <Text style={styles.emptyText}>
+                  {language === 'pl' ? 'Brak aktywnych kursow' : 'No active courses'}
+                </Text>
               </View>
             ) : (
               child.courses.map((course) => (
@@ -294,21 +318,21 @@ export default function ChildDetailsScreen() {
 
                   <View style={styles.courseDetails}>
                     <View style={styles.courseDetail}>
-                      <Ionicons name="person" size={14} color="#6b7280" />
+                      <Ionicons name="person" size={14} color={colors.textSecondary} />
                       <Text style={styles.courseDetailText}>{course.instructor_name}</Text>
                     </View>
                     <View style={styles.courseDetail}>
-                      <Ionicons name="calendar" size={14} color="#6b7280" />
+                      <Ionicons name="calendar" size={14} color={colors.textSecondary} />
                       <Text style={styles.courseDetailText}>{getDayName(course.day_of_week)}</Text>
                     </View>
                     <View style={styles.courseDetail}>
-                      <Ionicons name="time" size={14} color="#6b7280" />
+                      <Ionicons name="time" size={14} color={colors.textSecondary} />
                       <Text style={styles.courseDetailText}>
                         {course.time_start.substring(0, 5)} - {course.time_end.substring(0, 5)}
                       </Text>
                     </View>
                     <View style={styles.courseDetail}>
-                      <Ionicons name="location" size={14} color="#6b7280" />
+                      <Ionicons name="location" size={14} color={colors.textSecondary} />
                       <Text style={styles.courseDetailText}>{course.facility_name}</Text>
                     </View>
                   </View>
@@ -326,7 +350,7 @@ export default function ChildDetailsScreen() {
                       />
                     </View>
                     <Text style={styles.progressText}>
-                      {course.sessions_total - course.sessions_remaining} / {course.sessions_total} zajęć
+                      {course.sessions_total - course.sessions_remaining} / {course.sessions_total} {language === 'pl' ? 'zajec' : 'sessions'}
                     </Text>
                   </View>
                 </View>
@@ -340,9 +364,13 @@ export default function ChildDetailsScreen() {
           <View style={styles.achievementsTab}>
             {child.achievements.length === 0 ? (
               <View style={styles.emptyState}>
-                <Ionicons name="trophy-outline" size={48} color="#d1d5db" />
-                <Text style={styles.emptyText}>Jeszcze brak odznak</Text>
-                <Text style={styles.emptySubtext}>Odznaki pojawią się tu gdy dziecko je zdobędzie</Text>
+                <Ionicons name="trophy-outline" size={48} color={colors.textTertiary} />
+                <Text style={styles.emptyText}>
+                  {language === 'pl' ? 'Jeszcze brak odznak' : 'No badges yet'}
+                </Text>
+                <Text style={styles.emptySubtext}>
+                  {language === 'pl' ? 'Odznaki pojawia sie tu gdy dziecko je zdobedzie' : 'Badges will appear here when earned'}
+                </Text>
               </View>
             ) : (
               <View style={styles.achievementsGrid}>
@@ -355,11 +383,11 @@ export default function ChildDetailsScreen() {
                     </Text>
                     <View style={styles.achievementFooter}>
                       <View style={styles.achievementPoints}>
-                        <Ionicons name="star" size={12} color="#f59e0b" />
+                        <Ionicons name="star" size={12} color={colors.warning} />
                         <Text style={styles.achievementPointsText}>+{achievement.points}</Text>
                       </View>
                       <Text style={styles.achievementDate}>
-                        {format(new Date(achievement.earned_at), 'd MMM', { locale: pl })}
+                        {format(new Date(achievement.earned_at), 'd MMM', { locale: dateLocale })}
                       </Text>
                     </View>
                   </View>
@@ -374,8 +402,10 @@ export default function ChildDetailsScreen() {
           <View style={styles.attendanceTab}>
             {child.recent_attendance.length === 0 ? (
               <View style={styles.emptyState}>
-                <Ionicons name="checkmark-circle-outline" size={48} color="#d1d5db" />
-                <Text style={styles.emptyText}>Brak historii obecności</Text>
+                <Ionicons name="checkmark-circle-outline" size={48} color={colors.textTertiary} />
+                <Text style={styles.emptyText}>
+                  {language === 'pl' ? 'Brak historii obecnosci' : 'No attendance history'}
+                </Text>
               </View>
             ) : (
               child.recent_attendance.map((record) => {
@@ -384,16 +414,16 @@ export default function ChildDetailsScreen() {
                   <View key={record.id} style={styles.attendanceRow}>
                     <View style={styles.attendanceDate}>
                       <Text style={styles.attendanceDateDay}>
-                        {format(new Date(record.session_date), 'd', { locale: pl })}
+                        {format(new Date(record.session_date), 'd', { locale: dateLocale })}
                       </Text>
                       <Text style={styles.attendanceDateMonth}>
-                        {format(new Date(record.session_date), 'MMM', { locale: pl })}
+                        {format(new Date(record.session_date), 'MMM', { locale: dateLocale })}
                       </Text>
                     </View>
                     <View style={styles.attendanceInfo}>
                       <Text style={styles.attendanceClass}>{record.class_name}</Text>
                       <Text style={styles.attendanceDayName}>
-                        {format(new Date(record.session_date), 'EEEE', { locale: pl })}
+                        {format(new Date(record.session_date), 'EEEE', { locale: dateLocale })}
                       </Text>
                     </View>
                     <View style={[styles.attendanceStatus, { backgroundColor: statusInfo.bg }]}>
@@ -414,353 +444,355 @@ export default function ChildDetailsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#6b7280',
-  },
-  headerCard: {
-    backgroundColor: '#3b82f6',
-    paddingTop: 24,
-    paddingBottom: 32,
-    alignItems: 'center',
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-  },
-  avatarLarge: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  avatarLargeText: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: '#3b82f6',
-  },
-  childName: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  childAge: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 4,
-  },
-  levelBadgeLarge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 24,
-    marginTop: 16,
-    gap: 8,
-  },
-  levelIcon: {
-    fontSize: 20,
-  },
-  levelTextLarge: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  pointsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
-    gap: 6,
-  },
-  pointsText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  medicalWarning: {
-    flexDirection: 'row',
-    backgroundColor: '#fef2f2',
-    margin: 16,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#fecaca',
-  },
-  medicalContent: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  medicalTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#dc2626',
-  },
-  medicalText: {
-    fontSize: 14,
-    color: '#7f1d1d',
-    marginTop: 4,
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginTop: 16,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 4,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 12,
-  },
-  tabActive: {
-    backgroundColor: '#3b82f6',
-  },
-  tabText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  tabTextActive: {
-    color: '#fff',
-  },
-  tabContent: {
-    padding: 16,
-  },
-  // Info Tab
-  infoTab: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 8,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-  },
-  infoIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  infoContent: {
-    marginLeft: 14,
-  },
-  infoLabel: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  infoValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginTop: 2,
-  },
-  // Courses Tab
-  coursesTab: {
-    gap: 16,
-  },
-  courseCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-  },
-  courseHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  courseName: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#111827',
-    flex: 1,
-  },
-  sessionsBadge: {
-    backgroundColor: '#eff6ff',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  sessionsText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#3b82f6',
-  },
-  courseDetails: {
-    gap: 8,
-  },
-  courseDetail: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  courseDetailText: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  progressContainer: {
-    marginTop: 16,
-  },
-  progressBar: {
-    height: 6,
-    backgroundColor: '#e5e7eb',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#3b82f6',
-    borderRadius: 3,
-  },
-  progressText: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginTop: 6,
-    textAlign: 'right',
-  },
-  // Achievements Tab
-  achievementsTab: {},
-  achievementsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  achievementCard: {
-    width: '47%',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-  },
-  achievementIcon: {
-    fontSize: 40,
-    marginBottom: 8,
-  },
-  achievementName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-    textAlign: 'center',
-  },
-  achievementDesc: {
-    fontSize: 12,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  achievementFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
-  },
-  achievementPoints: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  achievementPointsText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#f59e0b',
-  },
-  achievementDate: {
-    fontSize: 12,
-    color: '#9ca3af',
-  },
-  // Attendance Tab
-  attendanceTab: {
-    gap: 8,
-  },
-  attendanceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-  },
-  attendanceDate: {
-    width: 48,
-    height: 48,
-    backgroundColor: '#eff6ff',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  attendanceDateDay: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#3b82f6',
-  },
-  attendanceDateMonth: {
-    fontSize: 11,
-    color: '#3b82f6',
-    textTransform: 'uppercase',
-  },
-  attendanceInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  attendanceClass: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#111827',
-  },
-  attendanceDayName: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginTop: 2,
-    textTransform: 'capitalize',
-  },
-  attendanceStatus: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  attendanceStatusText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  // Empty State
-  emptyState: {
-    alignItems: 'center',
-    padding: 32,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-  },
-  emptyText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#6b7280',
-    marginTop: 12,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#9ca3af',
-    marginTop: 4,
-    textAlign: 'center',
-  },
-});
+const createStyles = (colors: ReturnType<typeof useThemeColors>, isDark: boolean) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+    },
+    errorText: {
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
+    headerCard: {
+      backgroundColor: colors.primary,
+      paddingTop: 24,
+      paddingBottom: 32,
+      alignItems: 'center',
+      borderBottomLeftRadius: 32,
+      borderBottomRightRadius: 32,
+    },
+    avatarLarge: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: '#fff',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 16,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    avatarLargeText: {
+      fontSize: 36,
+      fontWeight: '700',
+      color: colors.primary,
+    },
+    childName: {
+      fontSize: 26,
+      fontWeight: '700',
+      color: '#fff',
+    },
+    childAge: {
+      fontSize: 16,
+      color: 'rgba(255,255,255,0.8)',
+      marginTop: 4,
+    },
+    levelBadgeLarge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 24,
+      marginTop: 16,
+      gap: 8,
+    },
+    levelIcon: {
+      fontSize: 20,
+    },
+    levelTextLarge: {
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    pointsContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 12,
+      gap: 6,
+    },
+    pointsText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#fff',
+    },
+    medicalWarning: {
+      flexDirection: 'row',
+      backgroundColor: colors.errorLight,
+      margin: 16,
+      padding: 16,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: isDark ? colors.error : '#fecaca',
+    },
+    medicalContent: {
+      flex: 1,
+      marginLeft: 12,
+    },
+    medicalTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.error,
+    },
+    medicalText: {
+      fontSize: 14,
+      color: isDark ? colors.error : '#7f1d1d',
+      marginTop: 4,
+    },
+    tabsContainer: {
+      flexDirection: 'row',
+      marginHorizontal: 16,
+      marginTop: 16,
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 4,
+    },
+    tab: {
+      flex: 1,
+      paddingVertical: 12,
+      alignItems: 'center',
+      borderRadius: 12,
+    },
+    tabActive: {
+      backgroundColor: colors.primary,
+    },
+    tabText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    tabTextActive: {
+      color: '#fff',
+    },
+    tabContent: {
+      padding: 16,
+    },
+    // Info Tab
+    infoTab: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 8,
+    },
+    infoRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 12,
+    },
+    infoIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    infoContent: {
+      marginLeft: 14,
+    },
+    infoLabel: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    infoValue: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginTop: 2,
+    },
+    // Courses Tab
+    coursesTab: {
+      gap: 16,
+    },
+    courseCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 16,
+    },
+    courseHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    courseName: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: colors.text,
+      flex: 1,
+    },
+    sessionsBadge: {
+      backgroundColor: colors.primaryLight,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    sessionsText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    courseDetails: {
+      gap: 8,
+    },
+    courseDetail: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    courseDetailText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    progressContainer: {
+      marginTop: 16,
+    },
+    progressBar: {
+      height: 6,
+      backgroundColor: colors.border,
+      borderRadius: 3,
+      overflow: 'hidden',
+    },
+    progressFill: {
+      height: '100%',
+      backgroundColor: colors.primary,
+      borderRadius: 3,
+    },
+    progressText: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 6,
+      textAlign: 'right',
+    },
+    // Achievements Tab
+    achievementsTab: {},
+    achievementsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 12,
+    },
+    achievementCard: {
+      width: '47%',
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 16,
+      alignItems: 'center',
+    },
+    achievementIcon: {
+      fontSize: 40,
+      marginBottom: 8,
+    },
+    achievementName: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+      textAlign: 'center',
+    },
+    achievementDesc: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 4,
+    },
+    achievementFooter: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      width: '100%',
+      marginTop: 12,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    achievementPoints: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    achievementPointsText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.warning,
+    },
+    achievementDate: {
+      fontSize: 12,
+      color: colors.textTertiary,
+    },
+    // Attendance Tab
+    attendanceTab: {
+      gap: 8,
+    },
+    attendanceRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 12,
+    },
+    attendanceDate: {
+      width: 48,
+      height: 48,
+      backgroundColor: colors.primaryLight,
+      borderRadius: 12,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    attendanceDateDay: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.primary,
+    },
+    attendanceDateMonth: {
+      fontSize: 11,
+      color: colors.primary,
+      textTransform: 'uppercase',
+    },
+    attendanceInfo: {
+      flex: 1,
+      marginLeft: 12,
+    },
+    attendanceClass: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.text,
+    },
+    attendanceDayName: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 2,
+      textTransform: 'capitalize',
+    },
+    attendanceStatus: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 12,
+    },
+    attendanceStatusText: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    // Empty State
+    emptyState: {
+      alignItems: 'center',
+      padding: 32,
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+    },
+    emptyText: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.textSecondary,
+      marginTop: 12,
+    },
+    emptySubtext: {
+      fontSize: 14,
+      color: colors.textTertiary,
+      marginTop: 4,
+      textAlign: 'center',
+    },
+  });

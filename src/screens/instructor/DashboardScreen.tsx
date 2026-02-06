@@ -10,18 +10,19 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
-import { pl } from 'date-fns/locale';
+import { pl, enUS } from 'date-fns/locale';
 import api from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
 import { useNotificationStore } from '../../store/notificationStore';
+import { useSettingsStore, useThemeColors } from '../../store/settingsStore';
 
 // Safe date formatting helper
-const safeFormatDate = (dateStr: string | undefined, formatStr: string): string => {
+const safeFormatDate = (dateStr: string | undefined, formatStr: string, locale: any): string => {
   if (!dateStr) return '-';
   try {
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return '-';
-    return format(date, formatStr, { locale: pl });
+    return format(date, formatStr, { locale });
   } catch {
     return '-';
   }
@@ -50,12 +51,17 @@ export default function InstructorDashboard() {
   const navigation = useNavigation<any>();
   const user = useAuthStore((state) => state.user);
   const { unreadCount, fetchUnreadCount } = useNotificationStore();
+  const { t, language, isDark } = useSettingsStore();
+  const colors = useThemeColors('instructor');
 
   const [refreshing, setRefreshing] = useState(false);
   const [todaySessions, setTodaySessions] = useState<Session[]>([]);
   const [availableSubstitutions, setAvailableSubstitutions] = useState<Substitution[]>([]);
   const [monthStats, setMonthStats] = useState({ sessions: 0, hours: 0, salary: 0 });
   const [isLoading, setIsLoading] = useState(true);
+
+  const dateLocale = language === 'pl' ? pl : enUS;
+  const styles = createStyles(colors);
 
   const fetchData = async () => {
     try {
@@ -101,19 +107,19 @@ export default function InstructorDashboard() {
   return (
     <ScrollView
       style={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.secondary} />}
     >
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Cześć, {user?.first_name}!</Text>
-          <Text style={styles.date}>{format(new Date(), 'EEEE, d MMMM yyyy', { locale: pl })}</Text>
+          <Text style={styles.greeting}>{t.parentDashboard.greeting}, {user?.first_name}!</Text>
+          <Text style={styles.date}>{format(new Date(), 'EEEE, d MMMM yyyy', { locale: dateLocale })}</Text>
         </View>
         <TouchableOpacity
           style={styles.notificationButton}
           onPress={() => navigation.navigate('Notifications')}
         >
-          <Ionicons name="notifications-outline" size={24} color="#374151" />
+          <Ionicons name="notifications-outline" size={24} color={colors.text} />
           {unreadCount > 0 && (
             <View style={styles.notificationBadge}>
               <Text style={styles.notificationBadgeText}>{unreadCount}</Text>
@@ -124,18 +130,18 @@ export default function InstructorDashboard() {
 
       {/* Month Stats */}
       <View style={styles.statsContainer}>
-        <View style={[styles.statCard, { backgroundColor: '#ecfdf5' }]}>
-          <Ionicons name="calendar" size={28} color="#10b981" />
+        <View style={[styles.statCard, { backgroundColor: colors.secondaryLight }]}>
+          <Ionicons name="calendar" size={28} color={colors.secondary} />
           <Text style={styles.statNumber}>{monthStats.sessions}</Text>
-          <Text style={styles.statLabel}>Zajęcia</Text>
+          <Text style={styles.statLabel}>{t.instructorDashboard.lessons}</Text>
         </View>
-        <View style={[styles.statCard, { backgroundColor: '#fef3c7' }]}>
-          <Ionicons name="time" size={28} color="#f59e0b" />
+        <View style={[styles.statCard, { backgroundColor: colors.warningLight }]}>
+          <Ionicons name="time" size={28} color={colors.warning} />
           <Text style={styles.statNumber}>{monthStats.hours.toFixed(1)}</Text>
-          <Text style={styles.statLabel}>Godziny</Text>
+          <Text style={styles.statLabel}>{t.instructorDashboard.hours}</Text>
         </View>
-        <View style={[styles.statCard, { backgroundColor: '#eff6ff' }]}>
-          <Ionicons name="wallet" size={28} color="#3b82f6" />
+        <View style={[styles.statCard, { backgroundColor: colors.primaryLight }]}>
+          <Ionicons name="wallet" size={28} color={colors.primary} />
           <Text style={styles.statNumber}>{monthStats.salary.toFixed(0)}</Text>
           <Text style={styles.statLabel}>PLN</Text>
         </View>
@@ -144,15 +150,15 @@ export default function InstructorDashboard() {
       {/* Today's Sessions */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Dzisiejsze zajęcia</Text>
+          <Text style={styles.sectionTitle}>{t.instructorDashboard.todaySessions}</Text>
           <TouchableOpacity onPress={() => navigation.navigate('Schedule')}>
-            <Text style={styles.sectionLink}>Harmonogram</Text>
+            <Text style={styles.sectionLink}>{t.nav.schedule}</Text>
           </TouchableOpacity>
         </View>
         {todaySessions.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="sunny-outline" size={40} color="#10b981" />
-            <Text style={styles.emptyStateText}>Brak zajęć na dziś</Text>
+            <Ionicons name="sunny-outline" size={40} color={colors.secondary} />
+            <Text style={styles.emptyStateText}>{t.instructorDashboard.noSessionsToday}</Text>
           </View>
         ) : (
           todaySessions.map((session) => (
@@ -169,17 +175,17 @@ export default function InstructorDashboard() {
                 <Text style={styles.sessionTitle}>{session.class_name}</Text>
                 <Text style={styles.sessionMeta}>{session.facility_name}</Text>
                 <View style={styles.sessionStats}>
-                  <Ionicons name="people-outline" size={14} color="#6b7280" />
-                  <Text style={styles.sessionStatsText}>{session.enrolled_count} uczestników</Text>
+                  <Ionicons name="people-outline" size={14} color={colors.textSecondary} />
+                  <Text style={styles.sessionStatsText}>{session.enrolled_count} {t.schedule.participants}</Text>
                   {session.attendance_marked > 0 && (
                     <View style={styles.attendanceMarked}>
-                      <Ionicons name="checkmark-circle" size={14} color="#10b981" />
-                      <Text style={styles.attendanceMarkedText}>Obecność sprawdzona</Text>
+                      <Ionicons name="checkmark-circle" size={14} color={colors.secondary} />
+                      <Text style={styles.attendanceMarkedText}>{t.schedule.attendanceChecked}</Text>
                     </View>
                   )}
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
             </TouchableOpacity>
           ))
         )}
@@ -189,22 +195,22 @@ export default function InstructorDashboard() {
       {availableSubstitutions.length > 0 && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Dostępne zastępstwa</Text>
+            <Text style={styles.sectionTitle}>{t.instructorDashboard.availableSubstitutions}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Substitutions')}>
-              <Text style={styles.sectionLink}>Zobacz wszystkie</Text>
+              <Text style={styles.sectionLink}>{t.instructorDashboard.viewAll}</Text>
             </TouchableOpacity>
           </View>
           {availableSubstitutions.map((sub) => (
             <View key={sub.id} style={styles.substitutionCard}>
               <View style={styles.substitutionIcon}>
-                <Ionicons name="hand-left-outline" size={24} color="#f59e0b" />
+                <Ionicons name="hand-left-outline" size={24} color={colors.warning} />
               </View>
               <View style={styles.substitutionInfo}>
                 <Text style={styles.substitutionTitle}>{sub.class_name}</Text>
                 <Text style={styles.substitutionMeta}>
-                  {safeFormatDate(sub.session_date, 'd MMM')} o {sub.time_start?.substring(0, 5) || '-'}
+                  {safeFormatDate(sub.session_date, 'd MMM', dateLocale)} o {sub.time_start?.substring(0, 5) || '-'}
                 </Text>
-                <Text style={styles.substitutionInstructor}>Za: {sub.instructor_name}</Text>
+                <Text style={styles.substitutionInstructor}>{t.instructorDashboard.forInstructor}: {sub.instructor_name}</Text>
               </View>
               <TouchableOpacity
                 style={styles.takeButton}
@@ -212,7 +218,7 @@ export default function InstructorDashboard() {
                   // Handle take substitution
                 }}
               >
-                <Text style={styles.takeButtonText}>Weź</Text>
+                <Text style={styles.takeButtonText}>{t.instructorDashboard.take}</Text>
               </TouchableOpacity>
             </View>
           ))}
@@ -224,217 +230,218 @@ export default function InstructorDashboard() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  greeting: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  date: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 4,
-  },
-  notificationButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#ef4444',
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  notificationBadgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 8,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  section: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  sectionLink: {
-    fontSize: 14,
-    color: '#10b981',
-  },
-  emptyState: {
-    alignItems: 'center',
-    padding: 32,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-  },
-  emptyStateText: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 8,
-  },
-  sessionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  sessionTime: {
-    width: 56,
-    alignItems: 'center',
-  },
-  sessionTimeText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#10b981',
-  },
-  sessionTimeEnd: {
-    fontSize: 12,
-    color: '#9ca3af',
-  },
-  sessionInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  sessionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  sessionMeta: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  sessionStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-    gap: 4,
-  },
-  sessionStatsText: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  attendanceMarked: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 8,
-    gap: 2,
-  },
-  attendanceMarkedText: {
-    fontSize: 12,
-    color: '#10b981',
-  },
-  substitutionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#f59e0b',
-  },
-  substitutionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#fef3c7',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  substitutionInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  substitutionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  substitutionMeta: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  substitutionInstructor: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginTop: 2,
-  },
-  takeButton: {
-    backgroundColor: '#10b981',
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  takeButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-});
+const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 8,
+    },
+    greeting: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    date: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
+    notificationButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.surface,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    notificationBadge: {
+      position: 'absolute',
+      top: 8,
+      right: 8,
+      backgroundColor: colors.error,
+      borderRadius: 8,
+      minWidth: 16,
+      height: 16,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    notificationBadgeText: {
+      color: '#fff',
+      fontSize: 10,
+      fontWeight: '600',
+    },
+    statsContainer: {
+      flexDirection: 'row',
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      gap: 12,
+    },
+    statCard: {
+      flex: 1,
+      borderRadius: 16,
+      padding: 16,
+      alignItems: 'center',
+    },
+    statNumber: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.text,
+      marginTop: 8,
+    },
+    statLabel: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    section: {
+      paddingHorizontal: 20,
+      paddingVertical: 8,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    sectionLink: {
+      fontSize: 14,
+      color: colors.secondary,
+    },
+    emptyState: {
+      alignItems: 'center',
+      padding: 32,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+    },
+    emptyStateText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 8,
+    },
+    sessionCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 8,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    sessionTime: {
+      width: 56,
+      alignItems: 'center',
+    },
+    sessionTimeText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.secondary,
+    },
+    sessionTimeEnd: {
+      fontSize: 12,
+      color: colors.textTertiary,
+    },
+    sessionInfo: {
+      flex: 1,
+      marginLeft: 12,
+    },
+    sessionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    sessionMeta: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    sessionStats: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 4,
+      gap: 4,
+    },
+    sessionStatsText: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    attendanceMarked: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginLeft: 8,
+      gap: 2,
+    },
+    attendanceMarkedText: {
+      fontSize: 12,
+      color: colors.secondary,
+    },
+    substitutionCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 8,
+      borderLeftWidth: 4,
+      borderLeftColor: colors.warning,
+    },
+    substitutionIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.warningLight,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    substitutionInfo: {
+      flex: 1,
+      marginLeft: 12,
+    },
+    substitutionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    substitutionMeta: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    substitutionInstructor: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      marginTop: 2,
+    },
+    takeButton: {
+      backgroundColor: colors.secondary,
+      borderRadius: 8,
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+    },
+    takeButtonText: {
+      color: '#fff',
+      fontSize: 14,
+      fontWeight: '600',
+    },
+  });

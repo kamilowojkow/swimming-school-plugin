@@ -12,21 +12,10 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { format, addDays, isBefore, isAfter } from 'date-fns';
-import { pl } from 'date-fns/locale';
+import { format } from 'date-fns';
+import { pl, enUS } from 'date-fns/locale';
 import api from '../../api/client';
-
-// Safe date formatting helper
-const safeFormatDate = (dateStr: string | undefined, formatStr: string): string => {
-  if (!dateStr) return '-';
-  try {
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return '-';
-    return format(date, formatStr, { locale: pl });
-  } catch {
-    return '-';
-  }
-};
+import { useSettingsStore, useThemeColors } from '../../store/settingsStore';
 
 interface Absence {
   id: number;
@@ -67,14 +56,11 @@ interface MakeupSlot {
   available_spots: number;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: string }> = {
-  reported: { label: 'Zgłoszone', color: '#f59e0b', bg: '#fef3c7', icon: 'time' },
-  confirmed: { label: 'Potwierdzone', color: '#3b82f6', bg: '#eff6ff', icon: 'checkmark' },
-  makeup_scheduled: { label: 'Odrabianie zaplanowane', color: '#8b5cf6', bg: '#f3e8ff', icon: 'calendar' },
-  makeup_completed: { label: 'Odrobione', color: '#16a34a', bg: '#dcfce7', icon: 'checkmark-circle' },
-};
-
 export default function AbsencesScreen() {
+  const { t, language, isDark } = useSettingsStore();
+  const colors = useThemeColors();
+  const dateLocale = language === 'pl' ? pl : enUS;
+
   const [absences, setAbsences] = useState<Absence[]>([]);
   const [upcomingSessions, setUpcomingSessions] = useState<UpcomingSession[]>([]);
   const [makeupSlots, setMakeupSlots] = useState<MakeupSlot[]>([]);
@@ -89,6 +75,25 @@ export default function AbsencesScreen() {
   const [selectedAbsence, setSelectedAbsence] = useState<Absence | null>(null);
   const [absenceReason, setAbsenceReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: string }> = {
+    reported: { label: language === 'pl' ? 'Zgloszone' : 'Reported', color: colors.warning, bg: colors.warningLight, icon: 'time' },
+    confirmed: { label: t.absences.confirmed, color: colors.primary, bg: colors.primaryLight, icon: 'checkmark' },
+    makeup_scheduled: { label: language === 'pl' ? 'Odrabianie zaplanowane' : 'Makeup scheduled', color: '#8b5cf6', bg: '#f3e8ff', icon: 'calendar' },
+    makeup_completed: { label: language === 'pl' ? 'Odrobione' : 'Completed', color: colors.success, bg: colors.successLight, icon: 'checkmark-circle' },
+  };
+
+  // Safe date formatting helper
+  const safeFormatDate = (dateStr: string | undefined, formatStr: string): string => {
+    if (!dateStr) return '-';
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return '-';
+      return format(date, formatStr, { locale: dateLocale });
+    } catch {
+      return '-';
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -135,11 +140,17 @@ export default function AbsencesScreen() {
     setIsSubmitting(true);
     try {
       await api.reportAbsence(selectedSession.id, absenceReason);
-      Alert.alert('Sukces', 'Nieobecność została zgłoszona');
+      Alert.alert(
+        language === 'pl' ? 'Sukces' : 'Success',
+        language === 'pl' ? 'Nieobecnosc zostala zgloszona' : 'Absence has been reported'
+      );
       setShowReportModal(false);
       fetchData();
     } catch (error) {
-      Alert.alert('Błąd', 'Nie udało się zgłosić nieobecności');
+      Alert.alert(
+        t.common.error,
+        language === 'pl' ? 'Nie udalo sie zglosic nieobecnosci' : 'Failed to report absence'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -156,11 +167,17 @@ export default function AbsencesScreen() {
     setIsSubmitting(true);
     try {
       await api.scheduleMakeup(selectedAbsence.id, slotId);
-      Alert.alert('Sukces', 'Odrabianie zostało zaplanowane');
+      Alert.alert(
+        language === 'pl' ? 'Sukces' : 'Success',
+        language === 'pl' ? 'Odrabianie zostalo zaplanowane' : 'Makeup has been scheduled'
+      );
       setShowMakeupModal(false);
       fetchData();
     } catch (error) {
-      Alert.alert('Błąd', 'Nie udało się zaplanować odrabiania');
+      Alert.alert(
+        t.common.error,
+        language === 'pl' ? 'Nie udalo sie zaplanowac odrabiania' : 'Failed to schedule makeup'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -172,10 +189,12 @@ export default function AbsencesScreen() {
   const scheduledMakeups = absences.filter((a) => a.status === 'makeup_scheduled');
   const completedMakeups = absences.filter((a) => a.status === 'makeup_completed');
 
+  const styles = createStyles(colors, isDark);
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -184,20 +203,24 @@ export default function AbsencesScreen() {
     <View style={styles.container}>
       {/* Summary Cards */}
       <View style={styles.summaryContainer}>
-        <View style={[styles.summaryCard, { backgroundColor: '#fef3c7' }]}>
-          <Ionicons name="calendar-outline" size={24} color="#f59e0b" />
+        <View style={[styles.summaryCard, { backgroundColor: colors.warningLight }]}>
+          <Ionicons name="calendar-outline" size={24} color={colors.warning} />
           <Text style={styles.summaryNumber}>{pendingAbsences.length}</Text>
-          <Text style={styles.summaryLabel}>Nieobecności</Text>
+          <Text style={styles.summaryLabel}>{t.absences.title}</Text>
         </View>
         <View style={[styles.summaryCard, { backgroundColor: '#f3e8ff' }]}>
           <Ionicons name="refresh" size={24} color="#8b5cf6" />
           <Text style={styles.summaryNumber}>{scheduledMakeups.length}</Text>
-          <Text style={styles.summaryLabel}>Do odrobienia</Text>
+          <Text style={styles.summaryLabel}>
+            {language === 'pl' ? 'Do odrobienia' : 'To makeup'}
+          </Text>
         </View>
-        <View style={[styles.summaryCard, { backgroundColor: '#dcfce7' }]}>
-          <Ionicons name="checkmark-circle" size={24} color="#16a34a" />
+        <View style={[styles.summaryCard, { backgroundColor: colors.successLight }]}>
+          <Ionicons name="checkmark-circle" size={24} color={colors.success} />
           <Text style={styles.summaryNumber}>{completedMakeups.length}</Text>
-          <Text style={styles.summaryLabel}>Odrobione</Text>
+          <Text style={styles.summaryLabel}>
+            {language === 'pl' ? 'Odrobione' : 'Completed'}
+          </Text>
         </View>
       </View>
 
@@ -208,7 +231,7 @@ export default function AbsencesScreen() {
           onPress={() => setActiveTab('absences')}
         >
           <Text style={[styles.tabText, activeTab === 'absences' && styles.tabTextActive]}>
-            Nieobecności
+            {t.absences.title}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -216,27 +239,33 @@ export default function AbsencesScreen() {
           onPress={() => setActiveTab('makeups')}
         >
           <Text style={[styles.tabText, activeTab === 'makeups' && styles.tabTextActive]}>
-            Odrabianie
+            {language === 'pl' ? 'Odrabianie' : 'Makeups'}
           </Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView
         style={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+        }
       >
         {activeTab === 'absences' ? (
           <>
             {/* Report Absence Section */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Zgłoś nieobecność</Text>
+              <Text style={styles.sectionTitle}>{t.absences.reportAbsence}</Text>
               <Text style={styles.sectionSubtitle}>
-                Wybierz zajęcia, na których Twoje dziecko będzie nieobecne
+                {language === 'pl'
+                  ? 'Wybierz zajecia, na ktorych Twoje dziecko bedzie nieobecne'
+                  : 'Select sessions your child will be absent from'}
               </Text>
 
               {upcomingSessions.filter((s) => s.can_report_absence).length === 0 ? (
                 <View style={styles.emptyCard}>
-                  <Text style={styles.emptyText}>Brak nadchodzących zajęć do zgłoszenia</Text>
+                  <Text style={styles.emptyText}>
+                    {language === 'pl' ? 'Brak nadchodzacych zajec do zgloszenia' : 'No upcoming sessions to report'}
+                  </Text>
                 </View>
               ) : (
                 upcomingSessions
@@ -263,7 +292,7 @@ export default function AbsencesScreen() {
                         </Text>
                       </View>
                       <View style={styles.reportButton}>
-                        <Ionicons name="add" size={20} color="#3b82f6" />
+                        <Ionicons name="add" size={20} color={colors.primary} />
                       </View>
                     </TouchableOpacity>
                   ))
@@ -272,13 +301,17 @@ export default function AbsencesScreen() {
 
             {/* Reported Absences */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Zgłoszone nieobecności</Text>
+              <Text style={styles.sectionTitle}>
+                {language === 'pl' ? 'Zgloszone nieobecnosci' : 'Reported absences'}
+              </Text>
 
               {pendingAbsences.length === 0 ? (
                 <View style={styles.emptyCard}>
-                  <Ionicons name="checkmark-circle" size={40} color="#16a34a" />
-                  <Text style={styles.emptyTitle}>Brak nieobecności</Text>
-                  <Text style={styles.emptyText}>Wszystkie zajęcia odrobione</Text>
+                  <Ionicons name="checkmark-circle" size={40} color={colors.success} />
+                  <Text style={styles.emptyTitle}>{t.absences.noAbsences}</Text>
+                  <Text style={styles.emptyText}>
+                    {language === 'pl' ? 'Wszystkie zajecia odrobione' : 'All sessions completed'}
+                  </Text>
                 </View>
               ) : (
                 pendingAbsences.map((absence) => {
@@ -289,7 +322,7 @@ export default function AbsencesScreen() {
                         <View>
                           <Text style={styles.absenceClass}>{absence.class_name}</Text>
                           <Text style={styles.absenceDate}>
-                            {safeFormatDate(absence.session_date, 'd MMMM yyyy')} o{' '}
+                            {safeFormatDate(absence.session_date, 'd MMMM yyyy')} {language === 'pl' ? 'o' : 'at'}{' '}
                             {absence.time_start?.substring(0, 5) || '-'}
                           </Text>
                           <Text style={styles.absenceChild}>{absence.child_name}</Text>
@@ -308,7 +341,7 @@ export default function AbsencesScreen() {
 
                       {absence.reason && (
                         <View style={styles.reasonContainer}>
-                          <Text style={styles.reasonLabel}>Powód:</Text>
+                          <Text style={styles.reasonLabel}>{t.absences.reason}:</Text>
                           <Text style={styles.reasonText}>{absence.reason}</Text>
                         </View>
                       )}
@@ -319,7 +352,7 @@ export default function AbsencesScreen() {
                           onPress={() => openMakeupModal(absence)}
                         >
                           <Ionicons name="calendar" size={18} color="#fff" />
-                          <Text style={styles.scheduleButtonText}>Zaplanuj odrabianie</Text>
+                          <Text style={styles.scheduleButtonText}>{t.absences.scheduleMakeup}</Text>
                         </TouchableOpacity>
                       )}
                     </View>
@@ -333,11 +366,15 @@ export default function AbsencesScreen() {
           <>
             {/* Scheduled Makeups */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Zaplanowane odrabianie</Text>
+              <Text style={styles.sectionTitle}>
+                {language === 'pl' ? 'Zaplanowane odrabianie' : 'Scheduled makeups'}
+              </Text>
 
               {scheduledMakeups.length === 0 ? (
                 <View style={styles.emptyCard}>
-                  <Text style={styles.emptyText}>Brak zaplanowanych odrabiań</Text>
+                  <Text style={styles.emptyText}>
+                    {language === 'pl' ? 'Brak zaplanowanych odrabien' : 'No scheduled makeups'}
+                  </Text>
                 </View>
               ) : (
                 scheduledMakeups.map((absence) => (
@@ -351,14 +388,14 @@ export default function AbsencesScreen() {
                       </Text>
                       {absence.makeup_session && (
                         <Text style={styles.makeupDate}>
-                          {safeFormatDate(absence.makeup_session.date, 'd MMMM')} o{' '}
+                          {safeFormatDate(absence.makeup_session.date, 'd MMMM')} {language === 'pl' ? 'o' : 'at'}{' '}
                           {absence.makeup_session.time}
                         </Text>
                       )}
                       <Text style={styles.makeupChild}>{absence.child_name}</Text>
                     </View>
                     <View style={styles.makeupArrow}>
-                      <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+                      <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
                     </View>
                   </View>
                 ))
@@ -367,17 +404,21 @@ export default function AbsencesScreen() {
 
             {/* Completed Makeups */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Historia odrabiań</Text>
+              <Text style={styles.sectionTitle}>
+                {language === 'pl' ? 'Historia odrabien' : 'Makeup history'}
+              </Text>
 
               {completedMakeups.length === 0 ? (
                 <View style={styles.emptyCard}>
-                  <Text style={styles.emptyText}>Brak historii odrabiań</Text>
+                  <Text style={styles.emptyText}>
+                    {language === 'pl' ? 'Brak historii odrabien' : 'No makeup history'}
+                  </Text>
                 </View>
               ) : (
                 completedMakeups.slice(0, 10).map((absence) => (
                   <View key={absence.id} style={styles.completedCard}>
                     <View style={styles.completedIcon}>
-                      <Ionicons name="checkmark-circle" size={20} color="#16a34a" />
+                      <Ionicons name="checkmark-circle" size={20} color={colors.success} />
                     </View>
                     <View style={styles.completedInfo}>
                       <Text style={styles.completedClass}>{absence.class_name}</Text>
@@ -401,9 +442,9 @@ export default function AbsencesScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Zgłoś nieobecność</Text>
+              <Text style={styles.modalTitle}>{t.absences.reportAbsence}</Text>
               <TouchableOpacity onPress={() => setShowReportModal(false)}>
-                <Ionicons name="close" size={24} color="#6b7280" />
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
@@ -426,10 +467,13 @@ export default function AbsencesScreen() {
               </View>
             )}
 
-            <Text style={styles.inputLabel}>Powód nieobecności (opcjonalnie)</Text>
+            <Text style={styles.inputLabel}>
+              {t.absences.reason} ({language === 'pl' ? 'opcjonalnie' : 'optional'})
+            </Text>
             <TextInput
               style={styles.textInput}
-              placeholder="Np. choroba, wyjazd..."
+              placeholder={language === 'pl' ? 'Np. choroba, wyjazd...' : 'E.g. illness, travel...'}
+              placeholderTextColor={colors.textTertiary}
               value={absenceReason}
               onChangeText={setAbsenceReason}
               multiline
@@ -446,7 +490,7 @@ export default function AbsencesScreen() {
               ) : (
                 <>
                   <Ionicons name="checkmark" size={20} color="#fff" />
-                  <Text style={styles.submitButtonText}>Zgłoś nieobecność</Text>
+                  <Text style={styles.submitButtonText}>{t.absences.reportAbsence}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -459,16 +503,20 @@ export default function AbsencesScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Wybierz termin odrabiania</Text>
+              <Text style={styles.modalTitle}>
+                {language === 'pl' ? 'Wybierz termin odrabiania' : 'Choose makeup time'}
+              </Text>
               <TouchableOpacity onPress={() => setShowMakeupModal(false)}>
-                <Ionicons name="close" size={24} color="#6b7280" />
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.slotsContainer}>
               {makeupSlots.length === 0 ? (
                 <View style={styles.emptyCard}>
-                  <Text style={styles.emptyText}>Brak dostępnych terminów</Text>
+                  <Text style={styles.emptyText}>
+                    {language === 'pl' ? 'Brak dostepnych terminow' : 'No available slots'}
+                  </Text>
                 </View>
               ) : (
                 makeupSlots.map((slot) => (
@@ -494,7 +542,9 @@ export default function AbsencesScreen() {
                     </View>
                     <View style={styles.slotSpots}>
                       <Text style={styles.slotSpotsNumber}>{slot.available_spots}</Text>
-                      <Text style={styles.slotSpotsLabel}>miejsc</Text>
+                      <Text style={styles.slotSpotsLabel}>
+                        {language === 'pl' ? 'miejsc' : 'spots'}
+                      </Text>
                     </View>
                   </TouchableOpacity>
                 ))
@@ -507,432 +557,434 @@ export default function AbsencesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  summaryContainer: {
-    flexDirection: 'row',
-    padding: 16,
-    gap: 12,
-  },
-  summaryCard: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-  },
-  summaryNumber: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 8,
-  },
-  summaryLabel: {
-    fontSize: 11,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 4,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 10,
-  },
-  tabActive: {
-    backgroundColor: '#3b82f6',
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  tabTextActive: {
-    color: '#fff',
-  },
-  content: {
-    flex: 1,
-  },
-  section: {
-    padding: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  sectionSubtitle: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginBottom: 16,
-  },
-  emptyCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginTop: 12,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 4,
-  },
-  sessionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-  },
-  sessionDate: {
-    width: 48,
-    height: 48,
-    backgroundColor: '#eff6ff',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sessionDay: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#3b82f6',
-  },
-  sessionMonth: {
-    fontSize: 11,
-    color: '#3b82f6',
-    textTransform: 'uppercase',
-  },
-  sessionInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  sessionClass: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  sessionMeta: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  reportButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#eff6ff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  absenceCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-  },
-  absenceHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  absenceClass: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  absenceDate: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 4,
-  },
-  absenceChild: {
-    fontSize: 13,
-    color: '#9ca3af',
-    marginTop: 2,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-    gap: 4,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  reasonContainer: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
-  },
-  reasonLabel: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  reasonText: {
-    fontSize: 14,
-    color: '#374151',
-    marginTop: 2,
-  },
-  scheduleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#8b5cf6',
-    borderRadius: 12,
-    paddingVertical: 12,
-    marginTop: 16,
-    gap: 8,
-  },
-  scheduleButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  makeupCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-  },
-  makeupIcon: {
-    width: 48,
-    height: 48,
-    backgroundColor: '#f3e8ff',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  makeupInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  makeupClass: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  makeupDate: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  makeupChild: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginTop: 2,
-  },
-  makeupArrow: {},
-  completedCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-  },
-  completedIcon: {
-    marginRight: 12,
-  },
-  completedInfo: {
-    flex: 1,
-  },
-  completedClass: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-  },
-  completedMeta: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginTop: 2,
-  },
-  // Modal styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  modalSession: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 20,
-  },
-  modalSessionDate: {
-    width: 56,
-    height: 56,
-    backgroundColor: '#eff6ff',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-  modalSessionDay: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#3b82f6',
-  },
-  modalSessionMonth: {
-    fontSize: 12,
-    color: '#3b82f6',
-    textTransform: 'uppercase',
-  },
-  modalSessionClass: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  modalSessionMeta: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 4,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  textInput: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 15,
-    color: '#111827',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    minHeight: 100,
-    textAlignVertical: 'top',
-    marginBottom: 20,
-  },
-  submitButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#3b82f6',
-    borderRadius: 14,
-    paddingVertical: 16,
-    gap: 8,
-  },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  slotsContainer: {
-    maxHeight: 400,
-  },
-  slotCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-  },
-  slotDate: {
-    width: 52,
-    height: 52,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  slotDay: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#374151',
-  },
-  slotMonth: {
-    fontSize: 11,
-    color: '#6b7280',
-    textTransform: 'uppercase',
-  },
-  slotInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  slotClass: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  slotTime: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  slotFacility: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginTop: 2,
-  },
-  slotSpots: {
-    alignItems: 'center',
-    backgroundColor: '#dcfce7',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  slotSpotsNumber: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#16a34a',
-  },
-  slotSpotsLabel: {
-    fontSize: 10,
-    color: '#16a34a',
-  },
-});
+const createStyles = (colors: ReturnType<typeof useThemeColors>, isDark: boolean) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+    },
+    summaryContainer: {
+      flexDirection: 'row',
+      padding: 16,
+      gap: 12,
+    },
+    summaryCard: {
+      flex: 1,
+      borderRadius: 16,
+      padding: 16,
+      alignItems: 'center',
+    },
+    summaryNumber: {
+      fontSize: 28,
+      fontWeight: '700',
+      color: colors.text,
+      marginTop: 8,
+    },
+    summaryLabel: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    tabsContainer: {
+      flexDirection: 'row',
+      marginHorizontal: 16,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 4,
+    },
+    tab: {
+      flex: 1,
+      paddingVertical: 12,
+      alignItems: 'center',
+      borderRadius: 10,
+    },
+    tabActive: {
+      backgroundColor: colors.primary,
+    },
+    tabText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    tabTextActive: {
+      color: '#fff',
+    },
+    content: {
+      flex: 1,
+    },
+    section: {
+      padding: 16,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    sectionSubtitle: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginBottom: 16,
+    },
+    emptyCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 24,
+      alignItems: 'center',
+    },
+    emptyTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginTop: 12,
+    },
+    emptyText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
+    sessionCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: 14,
+      padding: 14,
+      marginBottom: 10,
+    },
+    sessionDate: {
+      width: 48,
+      height: 48,
+      backgroundColor: colors.primaryLight,
+      borderRadius: 12,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    sessionDay: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.primary,
+    },
+    sessionMonth: {
+      fontSize: 11,
+      color: colors.primary,
+      textTransform: 'uppercase',
+    },
+    sessionInfo: {
+      flex: 1,
+      marginLeft: 12,
+    },
+    sessionClass: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    sessionMeta: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    reportButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.primaryLight,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    absenceCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 12,
+    },
+    absenceHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+    },
+    absenceClass: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    absenceDate: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
+    absenceChild: {
+      fontSize: 13,
+      color: colors.textTertiary,
+      marginTop: 2,
+    },
+    statusBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 20,
+      gap: 4,
+    },
+    statusText: {
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    reasonContainer: {
+      marginTop: 12,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    reasonLabel: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    reasonText: {
+      fontSize: 14,
+      color: colors.text,
+      marginTop: 2,
+    },
+    scheduleButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#8b5cf6',
+      borderRadius: 12,
+      paddingVertical: 12,
+      marginTop: 16,
+      gap: 8,
+    },
+    scheduleButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#fff',
+    },
+    makeupCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: 14,
+      padding: 14,
+      marginBottom: 10,
+    },
+    makeupIcon: {
+      width: 48,
+      height: 48,
+      backgroundColor: '#f3e8ff',
+      borderRadius: 12,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    makeupInfo: {
+      flex: 1,
+      marginLeft: 12,
+    },
+    makeupClass: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    makeupDate: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    makeupChild: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      marginTop: 2,
+    },
+    makeupArrow: {},
+    completedCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 8,
+    },
+    completedIcon: {
+      marginRight: 12,
+    },
+    completedInfo: {
+      flex: 1,
+    },
+    completedClass: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.text,
+    },
+    completedMeta: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      marginTop: 2,
+    },
+    // Modal styles
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'flex-end',
+    },
+    modalContent: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      padding: 20,
+      maxHeight: '80%',
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    modalSession: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: 14,
+      padding: 14,
+      marginBottom: 20,
+    },
+    modalSessionDate: {
+      width: 56,
+      height: 56,
+      backgroundColor: colors.primaryLight,
+      borderRadius: 12,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 14,
+    },
+    modalSessionDay: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: colors.primary,
+    },
+    modalSessionMonth: {
+      fontSize: 12,
+      color: colors.primary,
+      textTransform: 'uppercase',
+    },
+    modalSessionClass: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    modalSessionMeta: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
+    inputLabel: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    textInput: {
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: 12,
+      padding: 14,
+      fontSize: 15,
+      color: colors.text,
+      borderWidth: 1,
+      borderColor: colors.border,
+      minHeight: 100,
+      textAlignVertical: 'top',
+      marginBottom: 20,
+    },
+    submitButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.primary,
+      borderRadius: 14,
+      paddingVertical: 16,
+      gap: 8,
+    },
+    submitButtonDisabled: {
+      opacity: 0.6,
+    },
+    submitButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#fff',
+    },
+    slotsContainer: {
+      maxHeight: 400,
+    },
+    slotCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: 14,
+      padding: 14,
+      marginBottom: 10,
+    },
+    slotDate: {
+      width: 52,
+      height: 52,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    slotDay: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    slotMonth: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+    },
+    slotInfo: {
+      flex: 1,
+      marginLeft: 12,
+    },
+    slotClass: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    slotTime: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    slotFacility: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      marginTop: 2,
+    },
+    slotSpots: {
+      alignItems: 'center',
+      backgroundColor: colors.successLight,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 10,
+    },
+    slotSpotsNumber: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.success,
+    },
+    slotSpotsLabel: {
+      fontSize: 10,
+      color: colors.success,
+    },
+  });

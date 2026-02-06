@@ -10,10 +10,11 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
-import { pl } from 'date-fns/locale';
+import { pl, enUS } from 'date-fns/locale';
 import api from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
 import { useNotificationStore } from '../../store/notificationStore';
+import { useSettingsStore, useThemeColors } from '../../store/settingsStore';
 
 interface Child {
   id: number;
@@ -44,12 +45,16 @@ export default function ParentDashboard() {
   const navigation = useNavigation<any>();
   const user = useAuthStore((state) => state.user);
   const { unreadCount, fetchUnreadCount } = useNotificationStore();
+  const { t, language, isDark } = useSettingsStore();
+  const colors = useThemeColors();
 
   const [refreshing, setRefreshing] = useState(false);
   const [children, setChildren] = useState<Child[]>([]);
   const [upcomingSessions, setUpcomingSessions] = useState<UpcomingSession[]>([]);
   const [pendingPayments, setPendingPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const dateLocale = language === 'pl' ? pl : enUS;
 
   const fetchData = async () => {
     try {
@@ -82,29 +87,37 @@ export default function ParentDashboard() {
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return format(date, 'EEEE, d MMMM', { locale: pl });
+    return format(date, 'EEEE, d MMMM', { locale: dateLocale });
   };
 
   const formatTime = (timeStr: string) => {
     return timeStr.substring(0, 5);
   };
 
+  const styles = createStyles(colors, isDark);
+
   return (
     <ScrollView
       style={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={colors.primary}
+        />
+      }
     >
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Cześć, {user?.first_name}!</Text>
-          <Text style={styles.date}>{format(new Date(), 'EEEE, d MMMM yyyy', { locale: pl })}</Text>
+          <Text style={styles.greeting}>{t.dashboard.welcome}, {user?.first_name}!</Text>
+          <Text style={styles.date}>{format(new Date(), 'EEEE, d MMMM yyyy', { locale: dateLocale })}</Text>
         </View>
         <TouchableOpacity
           style={styles.notificationButton}
           onPress={() => navigation.navigate('Notifications')}
         >
-          <Ionicons name="notifications-outline" size={24} color="#374151" />
+          <Ionicons name="notifications-outline" size={24} color={colors.text} />
           {unreadCount > 0 && (
             <View style={styles.notificationBadge}>
               <Text style={styles.notificationBadgeText}>{unreadCount}</Text>
@@ -115,29 +128,29 @@ export default function ParentDashboard() {
 
       {/* Quick Stats */}
       <View style={styles.statsContainer}>
-        <View style={[styles.statCard, { backgroundColor: '#eff6ff' }]}>
-          <Ionicons name="people" size={28} color="#3b82f6" />
+        <View style={[styles.statCard, { backgroundColor: colors.primaryLight }]}>
+          <Ionicons name="people" size={28} color={colors.primary} />
           <Text style={styles.statNumber}>{children.length}</Text>
-          <Text style={styles.statLabel}>Dzieci</Text>
+          <Text style={styles.statLabel}>{t.children.title}</Text>
         </View>
-        <View style={[styles.statCard, { backgroundColor: '#f0fdf4' }]}>
-          <Ionicons name="calendar" size={28} color="#10b981" />
+        <View style={[styles.statCard, { backgroundColor: colors.successLight }]}>
+          <Ionicons name="calendar" size={28} color={colors.success} />
           <Text style={styles.statNumber}>{upcomingSessions.length}</Text>
-          <Text style={styles.statLabel}>Zajęcia</Text>
+          <Text style={styles.statLabel}>{t.schedule.title}</Text>
         </View>
-        <View style={[styles.statCard, { backgroundColor: '#fef3c7' }]}>
-          <Ionicons name="card" size={28} color="#f59e0b" />
+        <View style={[styles.statCard, { backgroundColor: colors.warningLight }]}>
+          <Ionicons name="card" size={28} color={colors.warning} />
           <Text style={styles.statNumber}>{pendingPayments.length}</Text>
-          <Text style={styles.statLabel}>Płatności</Text>
+          <Text style={styles.statLabel}>{t.payments.title}</Text>
         </View>
       </View>
 
       {/* Children Section */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Twoje dzieci</Text>
+          <Text style={styles.sectionTitle}>{t.dashboard.yourChildren}</Text>
           <TouchableOpacity onPress={() => navigation.navigate('Children')}>
-            <Text style={styles.sectionLink}>Zobacz wszystkie</Text>
+            <Text style={styles.sectionLink}>{t.common.seeAll}</Text>
           </TouchableOpacity>
         </View>
         {children.map((child) => (
@@ -157,7 +170,7 @@ export default function ParentDashboard() {
                 {child.active_courses} {child.active_courses === 1 ? 'kurs' : 'kursy'} • {child.total_points} pkt
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
           </TouchableOpacity>
         ))}
       </View>
@@ -165,15 +178,15 @@ export default function ParentDashboard() {
       {/* Upcoming Sessions */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Najbliższe zajęcia</Text>
+          <Text style={styles.sectionTitle}>{t.dashboard.upcomingLessons}</Text>
           <TouchableOpacity onPress={() => navigation.navigate('Schedule')}>
-            <Text style={styles.sectionLink}>Zobacz harmonogram</Text>
+            <Text style={styles.sectionLink}>{t.common.seeAll}</Text>
           </TouchableOpacity>
         </View>
         {upcomingSessions.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="calendar-outline" size={40} color="#9ca3af" />
-            <Text style={styles.emptyStateText}>Brak nadchodzących zajęć</Text>
+            <Ionicons name="calendar-outline" size={40} color={colors.textTertiary} />
+            <Text style={styles.emptyStateText}>{t.schedule.noLessons}</Text>
           </View>
         ) : (
           upcomingSessions.map((session) => (
@@ -197,9 +210,9 @@ export default function ParentDashboard() {
       {pendingPayments.length > 0 && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Oczekujące płatności</Text>
+            <Text style={styles.sectionTitle}>{t.payments.pending}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Payments')}>
-              <Text style={styles.sectionLink}>Zobacz wszystkie</Text>
+              <Text style={styles.sectionLink}>{t.common.seeAll}</Text>
             </TouchableOpacity>
           </View>
           {pendingPayments.map((payment) => (
@@ -207,7 +220,7 @@ export default function ParentDashboard() {
               <View style={styles.paymentInfo}>
                 <Text style={styles.paymentTitle}>{payment.title}</Text>
                 <Text style={styles.paymentDue}>
-                  Termin: {format(new Date(payment.due_date), 'd MMM yyyy', { locale: pl })}
+                  {t.payments.dueDate}: {format(new Date(payment.due_date), 'd MMM yyyy', { locale: dateLocale })}
                 </Text>
               </View>
               <Text style={styles.paymentAmount}>
@@ -223,221 +236,222 @@ export default function ParentDashboard() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  greeting: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  date: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 4,
-  },
-  notificationButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#ef4444',
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  notificationBadgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 8,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  section: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  sectionLink: {
-    fontSize: 14,
-    color: '#3b82f6',
-  },
-  childCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  childAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#3b82f6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  childAvatarText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  childInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  childName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  childMeta: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  emptyState: {
-    alignItems: 'center',
-    padding: 32,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-  },
-  emptyStateText: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 8,
-  },
-  sessionCard: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  sessionTime: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: '#eff6ff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sessionTimeText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#3b82f6',
-  },
-  sessionInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  sessionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  sessionMeta: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  sessionDate: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginTop: 4,
-  },
-  paymentCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#f59e0b',
-  },
-  paymentInfo: {
-    flex: 1,
-  },
-  paymentTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#111827',
-  },
-  paymentDue: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  paymentAmount: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#f59e0b',
-  },
-});
+const createStyles = (colors: ReturnType<typeof useThemeColors>, isDark: boolean) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 8,
+    },
+    greeting: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    date: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
+    notificationButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.surface,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: isDark ? 0.3 : 0.1,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    notificationBadge: {
+      position: 'absolute',
+      top: 8,
+      right: 8,
+      backgroundColor: colors.error,
+      borderRadius: 8,
+      minWidth: 16,
+      height: 16,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    notificationBadgeText: {
+      color: '#fff',
+      fontSize: 10,
+      fontWeight: '600',
+    },
+    statsContainer: {
+      flexDirection: 'row',
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      gap: 12,
+    },
+    statCard: {
+      flex: 1,
+      borderRadius: 16,
+      padding: 16,
+      alignItems: 'center',
+    },
+    statNumber: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.text,
+      marginTop: 8,
+    },
+    statLabel: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    section: {
+      paddingHorizontal: 20,
+      paddingVertical: 8,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    sectionLink: {
+      fontSize: 14,
+      color: colors.primary,
+    },
+    childCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 8,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: isDark ? 0.3 : 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    childAvatar: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    childAvatarText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    childInfo: {
+      flex: 1,
+      marginLeft: 12,
+    },
+    childName: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    childMeta: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    emptyState: {
+      alignItems: 'center',
+      padding: 32,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+    },
+    emptyStateText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 8,
+    },
+    sessionCard: {
+      flexDirection: 'row',
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 8,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: isDark ? 0.3 : 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    sessionTime: {
+      width: 56,
+      height: 56,
+      borderRadius: 12,
+      backgroundColor: colors.primaryLight,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    sessionTimeText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.primary,
+    },
+    sessionInfo: {
+      flex: 1,
+      marginLeft: 12,
+    },
+    sessionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    sessionMeta: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    sessionDate: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      marginTop: 4,
+    },
+    paymentCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 8,
+      borderLeftWidth: 4,
+      borderLeftColor: colors.warning,
+    },
+    paymentInfo: {
+      flex: 1,
+    },
+    paymentTitle: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.text,
+    },
+    paymentDue: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    paymentAmount: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.warning,
+    },
+  });

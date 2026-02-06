@@ -10,8 +10,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { format, addDays, startOfWeek, isSameDay, isToday } from 'date-fns';
-import { pl } from 'date-fns/locale';
+import { pl, enUS } from 'date-fns/locale';
 import api from '../../api/client';
+import { useSettingsStore, useThemeColors } from '../../store/settingsStore';
 
 interface Session {
   id: number;
@@ -36,6 +37,10 @@ interface DayInfo {
 const CHILD_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
 
 export default function ScheduleScreen() {
+  const { t, language, isDark } = useSettingsStore();
+  const colors = useThemeColors();
+  const dateLocale = language === 'pl' ? pl : enUS;
+
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -105,16 +110,17 @@ export default function ScheduleScreen() {
   const weekDays = getWeekDays();
   const selectedDateSessions = getSessionsForDate(selectedDate);
 
-  // Group sessions by child for the list view
   const upcomingSessions = sessions
     .filter((s) => new Date(s.session_date) >= new Date())
     .sort((a, b) => new Date(a.session_date).getTime() - new Date(b.session_date).getTime())
     .slice(0, 20);
 
+  const styles = createStyles(colors, isDark);
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -123,7 +129,7 @@ export default function ScheduleScreen() {
     <View style={styles.container}>
       {/* Header with View Toggle */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Harmonogram</Text>
+        <Text style={styles.headerTitle}>{t.schedule.title}</Text>
         <View style={styles.viewToggle}>
           <TouchableOpacity
             style={[styles.toggleButton, viewMode === 'week' && styles.toggleButtonActive]}
@@ -132,7 +138,7 @@ export default function ScheduleScreen() {
             <Ionicons
               name="calendar"
               size={18}
-              color={viewMode === 'week' ? '#fff' : '#6b7280'}
+              color={viewMode === 'week' ? '#fff' : colors.textSecondary}
             />
           </TouchableOpacity>
           <TouchableOpacity
@@ -142,7 +148,7 @@ export default function ScheduleScreen() {
             <Ionicons
               name="list"
               size={18}
-              color={viewMode === 'list' ? '#fff' : '#6b7280'}
+              color={viewMode === 'list' ? '#fff' : colors.textSecondary}
             />
           </TouchableOpacity>
         </View>
@@ -150,23 +156,25 @@ export default function ScheduleScreen() {
 
       {viewMode === 'week' ? (
         <ScrollView
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+          }
         >
           {/* Week Navigation */}
           <View style={styles.weekNavigation}>
             <TouchableOpacity onPress={goToPreviousWeek} style={styles.navButton}>
-              <Ionicons name="chevron-back" size={24} color="#374151" />
+              <Ionicons name="chevron-back" size={24} color={colors.text} />
             </TouchableOpacity>
 
             <TouchableOpacity onPress={goToToday} style={styles.weekLabel}>
               <Text style={styles.weekLabelText}>
-                {format(currentWeekStart, 'd MMM', { locale: pl })} -{' '}
-                {format(addDays(currentWeekStart, 6), 'd MMM yyyy', { locale: pl })}
+                {format(currentWeekStart, 'd MMM', { locale: dateLocale })} -{' '}
+                {format(addDays(currentWeekStart, 6), 'd MMM yyyy', { locale: dateLocale })}
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={goToNextWeek} style={styles.navButton}>
-              <Ionicons name="chevron-forward" size={24} color="#374151" />
+              <Ionicons name="chevron-forward" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
 
@@ -193,7 +201,7 @@ export default function ScheduleScreen() {
                       isSelected && styles.dayNameSelected,
                     ]}
                   >
-                    {format(day.date, 'EEE', { locale: pl })}
+                    {format(day.date, 'EEE', { locale: dateLocale })}
                   </Text>
                   <Text
                     style={[
@@ -219,13 +227,13 @@ export default function ScheduleScreen() {
           {/* Selected Day Sessions */}
           <View style={styles.sessionsContainer}>
             <Text style={styles.dateHeader}>
-              {format(selectedDate, 'EEEE, d MMMM', { locale: pl })}
+              {format(selectedDate, 'EEEE, d MMMM', { locale: dateLocale })}
             </Text>
 
             {selectedDateSessions.length === 0 ? (
               <View style={styles.emptyState}>
-                <Ionicons name="calendar-outline" size={48} color="#d1d5db" />
-                <Text style={styles.emptyText}>Brak zajęć w tym dniu</Text>
+                <Ionicons name="calendar-outline" size={48} color={colors.textTertiary} />
+                <Text style={styles.emptyText}>{t.schedule.noLessons}</Text>
               </View>
             ) : (
               selectedDateSessions.map((session) => (
@@ -250,16 +258,16 @@ export default function ScheduleScreen() {
                     <Text style={styles.sessionTitle}>{session.class_name}</Text>
                     <View style={styles.sessionMeta}>
                       <View style={styles.metaItem}>
-                        <Ionicons name="person" size={12} color="#6b7280" />
+                        <Ionicons name="person" size={12} color={colors.textSecondary} />
                         <Text style={styles.metaText}>{session.child_first_name}</Text>
                       </View>
                       <View style={styles.metaItem}>
-                        <Ionicons name="location" size={12} color="#6b7280" />
+                        <Ionicons name="location" size={12} color={colors.textSecondary} />
                         <Text style={styles.metaText}>{session.facility_name}</Text>
                       </View>
                     </View>
                     <Text style={styles.instructorText}>
-                      Instruktor: {session.instructor_name}
+                      {t.schedule.instructor}: {session.instructor_name}
                     </Text>
                   </View>
 
@@ -287,14 +295,16 @@ export default function ScheduleScreen() {
         // List View
         <ScrollView
           style={styles.listView}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+          }
         >
-          <Text style={styles.listHeader}>Nadchodzące zajęcia</Text>
+          <Text style={styles.listHeader}>{t.dashboard.upcomingLessons}</Text>
 
           {upcomingSessions.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="calendar-outline" size={48} color="#d1d5db" />
-              <Text style={styles.emptyText}>Brak nadchodzących zajęć</Text>
+              <Ionicons name="calendar-outline" size={48} color={colors.textTertiary} />
+              <Text style={styles.emptyText}>{t.schedule.noLessons}</Text>
             </View>
           ) : (
             upcomingSessions.map((session, index) => {
@@ -309,8 +319,8 @@ export default function ScheduleScreen() {
                     <View style={styles.listDateHeader}>
                       <Text style={styles.listDateText}>
                         {isToday(sessionDate)
-                          ? 'Dzisiaj'
-                          : format(sessionDate, 'EEEE, d MMMM', { locale: pl })}
+                          ? t.common.today
+                          : format(sessionDate, 'EEEE, d MMMM', { locale: dateLocale })}
                       </Text>
                     </View>
                   )}
@@ -377,293 +387,295 @@ export default function ScheduleScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  viewToggle: {
-    flexDirection: 'row',
-    backgroundColor: '#f3f4f6',
-    borderRadius: 10,
-    padding: 4,
-  },
-  toggleButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  toggleButtonActive: {
-    backgroundColor: '#3b82f6',
-  },
-  weekNavigation: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-  },
-  navButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  weekLabel: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  weekLabelText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  daySelector: {
-    flexDirection: 'row',
-    paddingHorizontal: 8,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-    gap: 4,
-  },
-  dayButton: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  dayButtonSelected: {
-    backgroundColor: '#3b82f6',
-  },
-  dayButtonToday: {
-    backgroundColor: '#eff6ff',
-  },
-  dayName: {
-    fontSize: 11,
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  dayNameSelected: {
-    color: 'rgba(255,255,255,0.8)',
-  },
-  dayNumber: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  dayNumberSelected: {
-    color: '#fff',
-  },
-  eventDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#3b82f6',
-    marginTop: 6,
-  },
-  eventDotSelected: {
-    backgroundColor: '#fff',
-  },
-  sessionsContainer: {
-    padding: 16,
-  },
-  dateHeader: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 16,
-    textTransform: 'capitalize',
-  },
-  emptyState: {
-    alignItems: 'center',
-    padding: 32,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-  },
-  emptyText: {
-    fontSize: 15,
-    color: '#6b7280',
-    marginTop: 12,
-  },
-  sessionCard: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  sessionTime: {
-    width: 56,
-    alignItems: 'center',
-  },
-  timeText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  timeDivider: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginVertical: 2,
-  },
-  sessionDetails: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  sessionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 6,
-  },
-  sessionMeta: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 4,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metaText: {
-    fontSize: 13,
-    color: '#6b7280',
-  },
-  instructorText: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginTop: 4,
-  },
-  attendanceBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'center',
-  },
-  attendancePresent: {
-    backgroundColor: '#16a34a',
-  },
-  attendanceAbsent: {
-    backgroundColor: '#dc2626',
-  },
-  // List View Styles
-  listView: {
-    flex: 1,
-  },
-  listHeader: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    padding: 16,
-  },
-  listDateHeader: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#f3f4f6',
-  },
-  listDateText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6b7280',
-    textTransform: 'capitalize',
-  },
-  listSessionCard: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderLeftWidth: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  listSessionTime: {
-    width: 50,
-  },
-  listTimeText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  listSessionDetails: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  listSessionTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 6,
-  },
-  listSessionMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  childBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  childBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  listMetaText: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  // Legend
-  legend: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  legendText: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-});
+const createStyles = (colors: ReturnType<typeof useThemeColors>, isDark: boolean) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    headerTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    viewToggle: {
+      flexDirection: 'row',
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: 10,
+      padding: 4,
+    },
+    toggleButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 8,
+    },
+    toggleButtonActive: {
+      backgroundColor: colors.primary,
+    },
+    weekNavigation: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      backgroundColor: colors.surface,
+    },
+    navButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.surfaceSecondary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    weekLabel: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+    },
+    weekLabelText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    daySelector: {
+      flexDirection: 'row',
+      paddingHorizontal: 8,
+      paddingVertical: 12,
+      backgroundColor: colors.surface,
+      gap: 4,
+    },
+    dayButton: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: 12,
+      borderRadius: 12,
+    },
+    dayButtonSelected: {
+      backgroundColor: colors.primary,
+    },
+    dayButtonToday: {
+      backgroundColor: colors.primaryLight,
+    },
+    dayName: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      marginBottom: 4,
+    },
+    dayNameSelected: {
+      color: 'rgba(255,255,255,0.8)',
+    },
+    dayNumber: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    dayNumberSelected: {
+      color: '#fff',
+    },
+    eventDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.primary,
+      marginTop: 6,
+    },
+    eventDotSelected: {
+      backgroundColor: '#fff',
+    },
+    sessionsContainer: {
+      padding: 16,
+    },
+    dateHeader: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 16,
+      textTransform: 'capitalize',
+    },
+    emptyState: {
+      alignItems: 'center',
+      padding: 32,
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+    },
+    emptyText: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      marginTop: 12,
+    },
+    sessionCard: {
+      flexDirection: 'row',
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 12,
+      borderLeftWidth: 4,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: isDark ? 0.3 : 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    sessionTime: {
+      width: 56,
+      alignItems: 'center',
+    },
+    timeText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    timeDivider: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      marginVertical: 2,
+    },
+    sessionDetails: {
+      flex: 1,
+      marginLeft: 12,
+    },
+    sessionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 6,
+    },
+    sessionMeta: {
+      flexDirection: 'row',
+      gap: 12,
+      marginBottom: 4,
+    },
+    metaItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    metaText: {
+      fontSize: 13,
+      color: colors.textSecondary,
+    },
+    instructorText: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      marginTop: 4,
+    },
+    attendanceBadge: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      justifyContent: 'center',
+      alignItems: 'center',
+      alignSelf: 'center',
+    },
+    attendancePresent: {
+      backgroundColor: '#16a34a',
+    },
+    attendanceAbsent: {
+      backgroundColor: '#dc2626',
+    },
+    // List View Styles
+    listView: {
+      flex: 1,
+    },
+    listHeader: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+      padding: 16,
+    },
+    listDateHeader: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      backgroundColor: colors.surfaceSecondary,
+    },
+    listDateText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      textTransform: 'capitalize',
+    },
+    listSessionCard: {
+      flexDirection: 'row',
+      backgroundColor: colors.surface,
+      padding: 16,
+      borderLeftWidth: 4,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    listSessionTime: {
+      width: 50,
+    },
+    listTimeText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    listSessionDetails: {
+      flex: 1,
+      marginLeft: 12,
+    },
+    listSessionTitle: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 6,
+    },
+    listSessionMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    childBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 8,
+    },
+    childBadgeText: {
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    listMetaText: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    // Legend
+    legend: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      gap: 16,
+      paddingVertical: 12,
+      backgroundColor: colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    legendItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    legendDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+    },
+    legendText: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+  });

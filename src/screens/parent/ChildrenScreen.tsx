@@ -11,6 +11,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../api/client';
+import { useSettingsStore, useThemeColors } from '../../store/settingsStore';
 
 interface Child {
   id: number;
@@ -30,7 +31,7 @@ interface Child {
 }
 
 const LEVEL_COLORS: Record<string, { bg: string; text: string }> = {
-  'Żółwik': { bg: '#fef9c3', text: '#ca8a04' },
+  'Zolwik': { bg: '#fef9c3', text: '#ca8a04' },
   'Delfinek': { bg: '#dbeafe', text: '#2563eb' },
   'Rekin': { bg: '#dcfce7', text: '#16a34a' },
   'Mistrz': { bg: '#f3e8ff', text: '#9333ea' },
@@ -38,6 +39,9 @@ const LEVEL_COLORS: Record<string, { bg: string; text: string }> = {
 
 export default function ChildrenScreen() {
   const navigation = useNavigation<any>();
+  const { t, language, isDark } = useSettingsStore();
+  const colors = useThemeColors();
+
   const [children, setChildren] = useState<Child[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -75,13 +79,15 @@ export default function ChildrenScreen() {
   };
 
   const getLevelStyle = (level: string) => {
-    return LEVEL_COLORS[level] || { bg: '#f3f4f6', text: '#6b7280' };
+    return LEVEL_COLORS[level] || { bg: colors.surfaceSecondary, text: colors.textSecondary };
   };
+
+  const styles = createStyles(colors, isDark);
 
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -89,12 +95,16 @@ export default function ChildrenScreen() {
   return (
     <ScrollView
       style={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+      }
     >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Twoje dzieci</Text>
-        <Text style={styles.headerSubtitle}>{children.length} zapisanych</Text>
+        <Text style={styles.headerTitle}>{t.children.title}</Text>
+        <Text style={styles.headerSubtitle}>
+          {children.length} {language === 'pl' ? 'zapisanych' : 'enrolled'}
+        </Text>
       </View>
 
       {/* Children List */}
@@ -126,7 +136,9 @@ export default function ChildrenScreen() {
                   <Text style={styles.childName}>
                     {child.first_name} {child.last_name}
                   </Text>
-                  <Text style={styles.childAge}>{getAge(child.birth_date)} lat</Text>
+                  <Text style={styles.childAge}>
+                    {getAge(child.birth_date)} {language === 'pl' ? 'lat' : 'years'}
+                  </Text>
                 </View>
                 <View style={[styles.levelBadge, { backgroundColor: levelStyle.bg }]}>
                   <Text style={[styles.levelText, { color: levelStyle.text }]}>
@@ -138,34 +150,40 @@ export default function ChildrenScreen() {
               {/* Stats Row */}
               <View style={styles.statsRow}>
                 <View style={styles.statItem}>
-                  <View style={[styles.statIcon, { backgroundColor: '#eff6ff' }]}>
-                    <Ionicons name="school" size={16} color="#3b82f6" />
+                  <View style={[styles.statIcon, { backgroundColor: colors.primaryLight }]}>
+                    <Ionicons name="school" size={16} color={colors.primary} />
                   </View>
                   <View>
                     <Text style={styles.statValue}>{child.active_courses}</Text>
                     <Text style={styles.statLabel}>
-                      {child.active_courses === 1 ? 'Kurs' : 'Kursy'}
+                      {child.active_courses === 1
+                        ? (language === 'pl' ? 'Kurs' : 'Course')
+                        : (language === 'pl' ? 'Kursy' : 'Courses')}
                     </Text>
                   </View>
                 </View>
 
                 <View style={styles.statItem}>
-                  <View style={[styles.statIcon, { backgroundColor: '#fef3c7' }]}>
-                    <Ionicons name="star" size={16} color="#f59e0b" />
+                  <View style={[styles.statIcon, { backgroundColor: colors.warningLight }]}>
+                    <Ionicons name="star" size={16} color={colors.warning} />
                   </View>
                   <View>
                     <Text style={styles.statValue}>{child.total_points}</Text>
-                    <Text style={styles.statLabel}>Punkty</Text>
+                    <Text style={styles.statLabel}>
+                      {language === 'pl' ? 'Punkty' : 'Points'}
+                    </Text>
                   </View>
                 </View>
 
                 <View style={styles.statItem}>
-                  <View style={[styles.statIcon, { backgroundColor: '#dcfce7' }]}>
-                    <Ionicons name="trophy" size={16} color="#16a34a" />
+                  <View style={[styles.statIcon, { backgroundColor: colors.successLight }]}>
+                    <Ionicons name="trophy" size={16} color={colors.success} />
                   </View>
                   <View>
                     <Text style={styles.statValue}>{child.achievements_count}</Text>
-                    <Text style={styles.statLabel}>Odznaki</Text>
+                    <Text style={styles.statLabel}>
+                      {language === 'pl' ? 'Odznaki' : 'Badges'}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -173,16 +191,16 @@ export default function ChildrenScreen() {
               {/* Next Session */}
               {child.next_session && (
                 <View style={styles.nextSession}>
-                  <Ionicons name="calendar-outline" size={16} color="#6b7280" />
+                  <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
                   <Text style={styles.nextSessionText}>
-                    Następne zajęcia: {child.next_session.date} o {child.next_session.time}
+                    {language === 'pl' ? 'Nastepne zajecia' : 'Next lesson'}: {child.next_session.date} {language === 'pl' ? 'o' : 'at'} {child.next_session.time}
                   </Text>
                 </View>
               )}
 
               {/* Arrow */}
               <View style={styles.arrowContainer}>
-                <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
               </View>
             </TouchableOpacity>
           );
@@ -192,10 +210,12 @@ export default function ChildrenScreen() {
       {/* Empty State */}
       {children.length === 0 && (
         <View style={styles.emptyState}>
-          <Ionicons name="people-outline" size={64} color="#d1d5db" />
-          <Text style={styles.emptyTitle}>Brak zapisanych dzieci</Text>
+          <Ionicons name="people-outline" size={64} color={colors.textTertiary} />
+          <Text style={styles.emptyTitle}>{t.children.noChildren}</Text>
           <Text style={styles.emptySubtitle}>
-            Skontaktuj się z biurem, aby zapisać dziecko na zajęcia
+            {language === 'pl'
+              ? 'Skontaktuj sie z biurem, aby zapisac dziecko na zajecia'
+              : 'Contact the office to enroll your child in classes'}
           </Text>
         </View>
       )}
@@ -205,162 +225,164 @@ export default function ChildrenScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    padding: 20,
-    paddingBottom: 8,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 4,
-  },
-  childrenList: {
-    padding: 16,
-    gap: 16,
-  },
-  childCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  childHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  avatarContainer: {
-    position: 'relative',
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#3b82f6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  medicalBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#ef4444',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  childMainInfo: {
-    flex: 1,
-    marginLeft: 14,
-  },
-  childName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  childAge: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  levelBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  levelText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  statIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  statLabel: {
-    fontSize: 11,
-    color: '#6b7280',
-  },
-  nextSession: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
-  },
-  nextSessionText: {
-    fontSize: 13,
-    color: '#6b7280',
-  },
-  arrowContainer: {
-    position: 'absolute',
-    right: 16,
-    top: '50%',
-    marginTop: -10,
-  },
-  emptyState: {
-    alignItems: 'center',
-    padding: 48,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#374151',
-    marginTop: 16,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginTop: 8,
-  },
-});
+const createStyles = (colors: ReturnType<typeof useThemeColors>, isDark: boolean) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+    },
+    header: {
+      padding: 20,
+      paddingBottom: 8,
+    },
+    headerTitle: {
+      fontSize: 28,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    headerSubtitle: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
+    childrenList: {
+      padding: 16,
+      gap: 16,
+    },
+    childCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      padding: 20,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDark ? 0.3 : 0.06,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    childHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    avatarContainer: {
+      position: 'relative',
+    },
+    avatar: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    avatarText: {
+      color: '#fff',
+      fontSize: 20,
+      fontWeight: '700',
+    },
+    medicalBadge: {
+      position: 'absolute',
+      bottom: -2,
+      right: -2,
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: colors.error,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: colors.surface,
+    },
+    childMainInfo: {
+      flex: 1,
+      marginLeft: 14,
+    },
+    childName: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    childAge: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    levelBadge: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+    },
+    levelText: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    statsRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingTop: 16,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    statItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    statIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 8,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    statValue: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    statLabel: {
+      fontSize: 11,
+      color: colors.textSecondary,
+    },
+    nextSession: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 16,
+      paddingTop: 16,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    nextSessionText: {
+      fontSize: 13,
+      color: colors.textSecondary,
+    },
+    arrowContainer: {
+      position: 'absolute',
+      right: 16,
+      top: '50%',
+      marginTop: -10,
+    },
+    emptyState: {
+      alignItems: 'center',
+      padding: 48,
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginTop: 16,
+    },
+    emptySubtitle: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 8,
+    },
+  });
