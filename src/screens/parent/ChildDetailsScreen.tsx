@@ -128,7 +128,8 @@ export default function ChildDetailsScreen() {
     return LEVEL_COLORS[level] || { bg: colors.surfaceSecondary, text: colors.textSecondary, icon: '🏊' };
   };
 
-  const getDayName = (day: string) => {
+  const getDayName = (day: string | undefined) => {
+    if (!day) return '';
     const days: Record<string, { pl: string; en: string }> = {
       monday: { pl: 'Poniedzialek', en: 'Monday' },
       tuesday: { pl: 'Wtorek', en: 'Tuesday' },
