@@ -88,7 +88,13 @@ export default function ChildDetailsScreen() {
   const fetchChildDetails = async () => {
     try {
       const data = await api.getChildDetails(childId);
-      setChild(data);
+      // Ensure arrays are defined
+      setChild({
+        ...data,
+        courses: data.courses || [],
+        achievements: data.achievements || [],
+        recent_attendance: data.recent_attendance || [],
+      });
     } catch (error) {
       console.error('Error fetching child details:', error);
       Alert.alert(t.common.error, language === 'pl' ? 'Nie udalo sie pobrac danych dziecka' : 'Failed to load child data');
