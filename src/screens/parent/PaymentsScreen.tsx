@@ -68,10 +68,15 @@ export default function PaymentsScreen() {
         api.getPayments(),
         api.getPaymentHistory(),
       ]);
-      setPayments(paymentsData);
-      setHistory(historyData);
+      // Handle both array and object with payments key
+      const paymentsArray = Array.isArray(paymentsData) ? paymentsData : (paymentsData?.payments || []);
+      const historyArray = Array.isArray(historyData) ? historyData : (historyData?.history || []);
+      setPayments(paymentsArray);
+      setHistory(historyArray);
     } catch (error) {
       console.error('Error fetching payments:', error);
+      setPayments([]);
+      setHistory([]);
     } finally {
       setIsLoading(false);
     }
