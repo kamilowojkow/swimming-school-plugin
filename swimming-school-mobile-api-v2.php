@@ -227,6 +227,44 @@ function ssm_api_get_user_id($request) {
 
 // ============ AUTH ENDPOINTS ============
 
+// Helper function to determine user roles for the mobile app
+function ssm_api_get_user_roles($user_id, $wp_roles) {
+    $roles = array();
+
+    // Check if user is an instructor
+    $is_instructor = in_array('administrator', $wp_roles) ||
+                     in_array('ssm_instructor', $wp_roles) ||
+                     in_array('instructor', $wp_roles);
+
+    // Check if user is a parent (has ssm_parent role or has children associated)
+    $is_parent = in_array('ssm_parent', $wp_roles) ||
+                 in_array('parent', $wp_roles) ||
+                 in_array('subscriber', $wp_roles) ||
+                 in_array('customer', $wp_roles);
+
+    // Also check if user has instructor AND parent meta flags
+    $has_instructor_flag = get_user_meta($user_id, 'ssm_is_instructor', true);
+    $has_parent_flag = get_user_meta($user_id, 'ssm_is_parent', true);
+
+    if ($has_instructor_flag) $is_instructor = true;
+    if ($has_parent_flag) $is_parent = true;
+
+    // For demo purposes: administrators can be both instructor and parent
+    if (in_array('administrator', $wp_roles)) {
+        $is_parent = true; // Allow admins to test both views
+    }
+
+    if ($is_instructor) $roles[] = 'instructor';
+    if ($is_parent) $roles[] = 'parent';
+
+    // Default to parent if no roles detected
+    if (empty($roles)) {
+        $roles[] = 'parent';
+    }
+
+    return $roles;
+}
+
 function ssm_api_login($request) {
     $params = $request->get_json_params();
     $username = sanitize_text_field($params['username'] ?? $params['email'] ?? '');
@@ -242,7 +280,8 @@ function ssm_api_login($request) {
     }
 
     $token = ssm_api_generate_token($user->ID);
-    $role = (in_array('administrator', $user->roles) || in_array('ssm_instructor', $user->roles)) ? 'instructor' : 'parent';
+    $roles = ssm_api_get_user_roles($user->ID, $user->roles);
+    $primary_type = in_array('instructor', $roles) ? 'instructor' : 'parent';
 
     return array(
         'token' => $token,
@@ -257,7 +296,8 @@ function ssm_api_login($request) {
             'display_name' => $user->display_name,
             'first_name' => get_user_meta($user->ID, 'first_name', true),
             'last_name' => get_user_meta($user->ID, 'last_name', true),
-            'role' => $role
+            'type' => $primary_type,
+            'roles' => $roles
         )
     );
 }
@@ -277,7 +317,8 @@ function ssm_api_get_me($request) {
         return new WP_REST_Response(array('message' => 'Użytkownik nie znaleziony'), 404);
     }
 
-    $role = (in_array('administrator', $user->roles) || in_array('ssm_instructor', $user->roles)) ? 'instructor' : 'parent';
+    $roles = ssm_api_get_user_roles($user_id, (array)$user->roles);
+    $primary_type = in_array('instructor', $roles) ? 'instructor' : 'parent';
 
     return array(
         'id' => $user->ID,
@@ -287,7 +328,8 @@ function ssm_api_get_me($request) {
         'first_name' => get_user_meta($user_id, 'first_name', true),
         'last_name' => get_user_meta($user_id, 'last_name', true),
         'phone' => get_user_meta($user_id, 'phone', true),
-        'role' => $role
+        'type' => $primary_type,
+        'roles' => $roles
     );
 }
 

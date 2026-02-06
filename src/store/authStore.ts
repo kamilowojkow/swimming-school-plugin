@@ -5,7 +5,8 @@ export type UserType = 'parent' | 'instructor';
 
 export interface User {
   id: number;
-  type: UserType;
+  type: UserType; // Primary role from server
+  roles: UserType[]; // All available roles for this user
   email: string;
   first_name: string;
   last_name: string;
@@ -22,6 +23,7 @@ export interface User {
 
 interface AuthState {
   user: User | null;
+  activeRole: UserType | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   error: string | null;
@@ -31,11 +33,28 @@ interface AuthState {
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   updateUser: (data: Partial<User>) => void;
+  switchRole: (role: UserType) => void;
   clearError: () => void;
 }
 
+// Helper to normalize user roles
+const normalizeUserRoles = (user: any): User => {
+  // Ensure roles array exists
+  let roles: UserType[] = [];
+  if (Array.isArray(user.roles) && user.roles.length > 0) {
+    roles = user.roles;
+  } else if (user.type) {
+    roles = [user.type];
+  }
+  return {
+    ...user,
+    roles,
+  };
+};
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
+  activeRole: null,
   isLoading: true,
   isAuthenticated: false,
   error: null,
@@ -43,9 +62,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (email: string, password: string) => {
     set({ isLoading: true, error: null });
     try {
-      const { user } = await api.login(email, password);
+      const { user: rawUser } = await api.login(email, password);
+      const user = normalizeUserRoles(rawUser);
+      // Set activeRole to user's primary type or first available role
+      const activeRole = user.type || user.roles[0] || 'parent';
       set({
         user,
+        activeRole,
         isAuthenticated: true,
         isLoading: false,
       });
@@ -63,6 +86,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } finally {
       set({
         user: null,
+        activeRole: null,
         isAuthenticated: false,
         isLoading: false,
       });
@@ -74,13 +98,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const hasToken = await api.hasValidToken();
       if (!hasToken) {
-        set({ isLoading: false, isAuthenticated: false });
+        set({ isLoading: false, isAuthenticated: false, activeRole: null });
         return;
       }
 
-      const user = await api.getCurrentUser();
+      const rawUser = await api.getCurrentUser();
+      const user = normalizeUserRoles(rawUser);
+      const activeRole = user.type || user.roles[0] || 'parent';
       set({
         user,
+        activeRole,
         isAuthenticated: true,
         isLoading: false,
       });
@@ -88,6 +115,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await api.clearTokens();
       set({
         user: null,
+        activeRole: null,
         isAuthenticated: false,
         isLoading: false,
       });
@@ -98,6 +126,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const currentUser = get().user;
     if (currentUser) {
       set({ user: { ...currentUser, ...data } });
+    }
+  },
+
+  switchRole: (role: UserType) => {
+    const currentUser = get().user;
+    if (currentUser && currentUser.roles.includes(role)) {
+      set({ activeRole: role });
     }
   },
 

@@ -231,8 +231,9 @@ function InstructorTabNavigator() {
 // MORE SCREENS (common menu)
 // ============================================
 
-import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import RoleSwitcher from '../components/RoleSwitcher';
 
 function MoreParentScreen() {
   const navigation = useNavigation<any>();
@@ -240,7 +241,9 @@ function MoreParentScreen() {
   const unreadCount = useNotificationStore((state) => state.unreadCount);
 
   return (
-    <View style={styles.moreContainer}>
+    <ScrollView style={styles.moreContainer}>
+      <RoleSwitcher />
+
       <TouchableOpacity
         style={styles.menuItem}
         onPress={() => navigation.navigate('Notifications')}
@@ -277,7 +280,7 @@ function MoreParentScreen() {
         <Ionicons name="log-out-outline" size={24} color="#ef4444" />
         <Text style={[styles.menuText, styles.logoutText]}>Wyloguj</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -287,7 +290,9 @@ function MoreInstructorScreen() {
   const unreadCount = useNotificationStore((state) => state.unreadCount);
 
   return (
-    <View style={styles.moreContainer}>
+    <ScrollView style={styles.moreContainer}>
+      <RoleSwitcher />
+
       <TouchableOpacity
         style={styles.menuItem}
         onPress={() => navigation.navigate('Notifications')}
@@ -324,7 +329,7 @@ function MoreInstructorScreen() {
         <Ionicons name="log-out-outline" size={24} color="#ef4444" />
         <Text style={[styles.menuText, styles.logoutText]}>Wyloguj</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -374,7 +379,7 @@ const styles = StyleSheet.create({
 // ============================================
 
 export default function AppNavigator() {
-  const { isAuthenticated, isLoading, user } = useAuthStore();
+  const { isAuthenticated, isLoading, activeRole } = useAuthStore();
 
   if (isLoading) {
     return null; // Or a loading screen
@@ -385,13 +390,13 @@ export default function AppNavigator() {
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         {!isAuthenticated ? (
           <RootStack.Screen name="Auth" component={AuthNavigator} />
-        ) : user?.type === 'instructor' ? (
+        ) : activeRole === 'instructor' ? (
           <>
             <RootStack.Screen name="InstructorTabs" component={InstructorTabNavigator} />
             <RootStack.Screen
               name="Attendance"
               component={AttendanceScreen}
-              options={{ headerShown: true, title: 'Obecność' }}
+              options={{ headerShown: true, title: 'Obecność', headerStyle: { backgroundColor: '#10b981' }, headerTintColor: '#fff' }}
             />
           </>
         ) : (
@@ -400,24 +405,39 @@ export default function AppNavigator() {
             <RootStack.Screen
               name="ChildDetails"
               component={ChildDetailsScreen}
-              options={{ headerShown: true, title: 'Dziecko' }}
+              options={{ headerShown: true, title: 'Dziecko', headerStyle: { backgroundColor: '#3b82f6' }, headerTintColor: '#fff' }}
             />
           </>
         )}
         <RootStack.Screen
           name="Notifications"
           component={NotificationsScreen}
-          options={{ headerShown: true, title: 'Powiadomienia' }}
+          options={{
+            headerShown: true,
+            title: 'Powiadomienia',
+            headerStyle: { backgroundColor: activeRole === 'instructor' ? '#10b981' : '#3b82f6' },
+            headerTintColor: '#fff',
+          }}
         />
         <RootStack.Screen
           name="Profile"
           component={ProfileScreen}
-          options={{ headerShown: true, title: 'Profil' }}
+          options={{
+            headerShown: true,
+            title: 'Profil',
+            headerStyle: { backgroundColor: activeRole === 'instructor' ? '#10b981' : '#3b82f6' },
+            headerTintColor: '#fff',
+          }}
         />
         <RootStack.Screen
           name="Settings"
           component={SettingsScreen}
-          options={{ headerShown: true, title: 'Ustawienia' }}
+          options={{
+            headerShown: true,
+            title: 'Ustawienia',
+            headerStyle: { backgroundColor: activeRole === 'instructor' ? '#10b981' : '#3b82f6' },
+            headerTintColor: '#fff',
+          }}
         />
       </RootStack.Navigator>
     </NavigationContainer>
