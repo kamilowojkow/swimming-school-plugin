@@ -33,14 +33,6 @@
         "USE_FINGERPRINT"
       ]
     },
-    "plugins": [
-      [
-        "expo-local-authentication",
-        {
-          "faceIDPermission": "Używamy Face ID do szybkiego logowania do aplikacji"
-        }
-      ]
-    ],
     "extra": {
       "eas": {
         "projectId": "dd07ecca-fce9-409f-ba38-992a5cbbc907"
