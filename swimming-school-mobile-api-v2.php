@@ -103,6 +103,18 @@ add_action('rest_api_init', function () {
         'permission_callback' => 'ssm_api_check_auth',
     ));
 
+    register_rest_route($namespace, '/notifications/(?P<id>\d+)/read', array(
+        'methods' => 'POST',
+        'callback' => 'ssm_api_mark_notification_read',
+        'permission_callback' => 'ssm_api_check_auth',
+    ));
+
+    register_rest_route($namespace, '/notifications/read-all', array(
+        'methods' => 'POST',
+        'callback' => 'ssm_api_mark_all_notifications_read',
+        'permission_callback' => 'ssm_api_check_auth',
+    ));
+
     register_rest_route($namespace, '/notifications/register', array(
         'methods' => 'POST',
         'callback' => 'ssm_api_register_push_token',
@@ -465,6 +477,22 @@ function ssm_api_get_notifications($request) {
 function ssm_api_get_unread_count($request) {
     return array(
         'unread_count' => 1
+    );
+}
+
+function ssm_api_mark_notification_read($request) {
+    $notification_id = $request->get_param('id');
+    // W prawdziwej implementacji: oznacz powiadomienie jako przeczytane w bazie
+    return array(
+        'success' => true,
+        'notification_id' => $notification_id
+    );
+}
+
+function ssm_api_mark_all_notifications_read($request) {
+    // W prawdziwej implementacji: oznacz wszystkie powiadomienia jako przeczytane
+    return array(
+        'success' => true
     );
 }
 
