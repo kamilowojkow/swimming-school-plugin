@@ -1024,6 +1024,9 @@ function ssm_api_get_notifications($request) {
     // Determine recipient type and ID
     $recipient_info = ssm_api_get_recipient_info($user_id);
 
+    // DEBUG: Log to see what's happening
+    error_log('SSM Notifications Debug - user_id: ' . $user_id . ', recipient_info: ' . json_encode($recipient_info));
+
     // Build query based on user type
     if ($recipient_info['type'] === 'instructor') {
         // For instructors: check instructor notifications + user notifications
@@ -1090,7 +1093,7 @@ function ssm_api_get_notifications($request) {
 
         $result[] = array(
             'id' => intval($notif->id),
-            'title' => $notif->title,
+            'title' => '[' . $recipient_info['type'] . '] ' . $notif->title,  // DEBUG: prefix with detected type
             'message' => $notif->message,
             'created_at' => $notif->created_at,
             'is_read' => (bool) $notif->is_read,
