@@ -43,6 +43,8 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     try {
       const role = getActiveRole();
       const data = await api.getNotifications(limit, offset, false, role);
+      // Log full API response including debug info
+      console.log('Notifications API response:', JSON.stringify(data, null, 2));
       // Handle both array and object with notifications key
       const notificationsArray = Array.isArray(data) ? data : (data?.notifications || []);
       if (offset === 0) {
