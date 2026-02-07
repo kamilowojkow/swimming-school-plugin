@@ -64,9 +64,14 @@ export default function ParentDashboard() {
         api.getPayments('pending'),
       ]);
 
-      setChildren(childrenData);
-      setUpcomingSessions(scheduleData.slice(0, 3));
-      setPendingPayments(paymentsData.filter((p: Payment) => p.status !== 'paid').slice(0, 3));
+      // Handle both array and object with children property
+      const childrenArray = Array.isArray(childrenData) ? childrenData : (childrenData?.children || []);
+      const scheduleArray = Array.isArray(scheduleData) ? scheduleData : (scheduleData?.sessions || scheduleData?.schedule || []);
+      const paymentsArray = Array.isArray(paymentsData) ? paymentsData : (paymentsData?.payments || []);
+
+      setChildren(childrenArray);
+      setUpcomingSessions(scheduleArray.slice(0, 3));
+      setPendingPayments(paymentsArray.filter((p: Payment) => p.status !== 'paid').slice(0, 3));
       await fetchUnreadCount();
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
