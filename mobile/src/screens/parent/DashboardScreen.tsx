@@ -14,7 +14,7 @@ import { pl, enUS } from 'date-fns/locale';
 import api from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
 import { useNotificationStore } from '../../store/notificationStore';
-import { useSettingsStore, useThemeColors } from '../../store/settingsStore';
+import { useSettingsStore, useThemeColors, brandColors } from '../../store/settingsStore';
 
 interface Child {
   id: number;
@@ -348,7 +348,7 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>, isDark: boolean
       width: 48,
       height: 48,
       borderRadius: 24,
-      backgroundColor: colors.primary,
+      backgroundColor: brandColors.blue,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -401,11 +401,13 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>, isDark: boolean
       backgroundColor: colors.primaryLight,
       justifyContent: 'center',
       alignItems: 'center',
+      borderLeftWidth: 3,
+      borderLeftColor: brandColors.orange,
     },
     sessionTimeText: {
       fontSize: 16,
       fontWeight: '700',
-      color: colors.primary,
+      color: brandColors.blue,
     },
     sessionInfo: {
       flex: 1,

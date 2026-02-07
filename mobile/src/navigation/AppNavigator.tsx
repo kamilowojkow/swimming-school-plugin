@@ -7,7 +7,7 @@ import { View, TouchableOpacity, Text, StyleSheet, ScrollView } from 'react-nati
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../store/authStore';
 import { useNotificationStore } from '../store/notificationStore';
-import { useSettingsStore, useThemeColors } from '../store/settingsStore';
+import { useSettingsStore, useThemeColors, brandColors } from '../store/settingsStore';
 import RoleSwitcher from '../components/RoleSwitcher';
 
 // Auth Screens
@@ -124,13 +124,13 @@ function ParentTabNavigator() {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: brandColors.blue,
         tabBarInactiveTintColor: colors.tabBarInactive,
         tabBarStyle: {
           backgroundColor: colors.tabBarBackground,
           borderTopColor: colors.tabBarBorder,
         },
-        headerStyle: { backgroundColor: colors.primary },
+        headerStyle: { backgroundColor: brandColors.blueDeep },
         headerTintColor: '#fff',
       })}
     >
@@ -443,7 +443,7 @@ export default function AppNavigator() {
               options={{
                 headerShown: true,
                 title: t.children.title,
-                headerStyle: { backgroundColor: colors.primary },
+                headerStyle: { backgroundColor: brandColors.blueDeep },
                 headerTintColor: '#fff',
               }}
             />
@@ -453,7 +453,7 @@ export default function AppNavigator() {
               options={{
                 headerShown: true,
                 title: t.absences?.title || 'Nieobecności',
-                headerStyle: { backgroundColor: colors.primary },
+                headerStyle: { backgroundColor: brandColors.blueDeep },
                 headerTintColor: '#fff',
               }}
             />

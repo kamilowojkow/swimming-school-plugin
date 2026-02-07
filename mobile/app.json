@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Szkółka Pływania",
+    "name": "Pasjaplywania.pl",
     "slug": "swimming-school-app",
     "version": "1.0.0",
     "sdkVersion": "52.0.0",
@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#3b82f6"
+      "backgroundColor": "#1E40AF"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -27,7 +27,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#3b82f6"
+        "backgroundColor": "#1E40AF"
       },
       "package": "com.kamilowojkow.swimmingschool",
       "permissions": [

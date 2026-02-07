@@ -5,6 +5,20 @@ import { translations, Language, TranslationKeys } from '../i18n/translations';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
+// Brand colors - Pasjaplywania.pl
+export const brandColors = {
+  blue: '#2563EB',        // Main brand blue
+  blueDark: '#1D4ED8',    // Gradient darker blue
+  blueDeep: '#1E40AF',    // Deep blue for headers
+  blueLighter: '#3B82F6', // Lighter variant
+  navy: '#1B3A6B',        // Dark navy from logo
+  cyan: '#5BC8F0',        // Water splash cyan
+  cyanLight: '#67D5EF',   // Light cyan drops
+  orange: '#F97316',      // Orange accent from logo
+  orangeLight: '#FFF7ED', // Light orange background
+  white: '#FFFFFF',
+};
+
 // Theme colors
 export const lightTheme = {
   mode: 'light' as const,
@@ -19,13 +33,19 @@ export const lightTheme = {
     textSecondary: '#6b7280',
     textTertiary: '#9ca3af',
 
-    // Primary (Parent blue)
-    primary: '#3b82f6',
-    primaryLight: '#eff6ff',
+    // Primary (Brand blue)
+    primary: brandColors.blue,
+    primaryDark: brandColors.blueDark,
+    primaryLight: '#DBEAFE',
 
     // Secondary (Instructor green)
     secondary: '#10b981',
     secondaryLight: '#ecfdf5',
+
+    // Brand accent (orange)
+    brandOrange: brandColors.orange,
+    brandOrangeLight: brandColors.orangeLight,
+    brandCyan: brandColors.cyan,
 
     // Accent colors
     warning: '#f59e0b',
@@ -62,13 +82,19 @@ export const darkTheme = {
     textSecondary: '#d1d5db',
     textTertiary: '#9ca3af',
 
-    // Primary (Parent blue)
+    // Primary (Brand blue - lighter for dark mode)
     primary: '#60a5fa',
+    primaryDark: '#3B82F6',
     primaryLight: '#1e3a5f',
 
     // Secondary (Instructor green)
     secondary: '#34d399',
     secondaryLight: '#064e3b',
+
+    // Brand accent (orange)
+    brandOrange: '#FB923C',
+    brandOrangeLight: '#431407',
+    brandCyan: '#67E8F9',
 
     // Accent colors
     warning: '#fbbf24',
