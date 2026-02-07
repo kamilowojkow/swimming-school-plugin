@@ -675,140 +675,153 @@ function ssm_api_get_children($request) {
 }
 
 function ssm_api_get_child_details($request) {
+    global $wpdb;
     $child_id = intval($request->get_param('id'));
+    $user_id = ssm_api_get_user_id($request);
 
-    // Różne dane dla różnych dzieci
-    $children_data = array(
-        1 => array(
-            'id' => 1,
-            'first_name' => 'Jan',
-            'last_name' => 'Kowalski',
-            'birth_date' => '2018-05-15',
-            'swimming_level' => 'Delfinek',
-            'total_points' => 150,
-            'medical_notes' => '',
-            'courses' => array(
-                array(
-                    'id' => 1,
-                    'name' => 'Kurs pływania - poziom średni',
-                    'instructor_name' => 'Anna Nowak',
-                    'day_of_week' => 'monday',
-                    'time_start' => '16:00:00',
-                    'time_end' => '16:45:00',
-                    'facility_name' => 'Basen Główny',
-                    'sessions_remaining' => 14,
-                    'sessions_total' => 40
-                )
-            ),
-            'achievements' => array(
-                array(
-                    'id' => 1,
-                    'name' => 'Pierwsza długość',
-                    'description' => 'Przepłynięcie pierwszej długości basenu',
-                    'icon' => '🏊',
-                    'earned_at' => '2025-10-15',
-                    'points' => 50
-                ),
-                array(
-                    'id' => 2,
-                    'name' => 'Nurek',
-                    'description' => 'Nurkowanie na głębokość 2m',
-                    'icon' => '🤿',
-                    'earned_at' => '2025-11-20',
-                    'points' => 75
-                ),
-                array(
-                    'id' => 3,
-                    'name' => 'Regularny',
-                    'description' => '10 zajęć pod rząd bez nieobecności',
-                    'icon' => '⭐',
-                    'earned_at' => '2025-12-01',
-                    'points' => 25
-                )
-            ),
-            'recent_attendance' => array(
-                array(
-                    'id' => 1,
-                    'session_date' => date('Y-m-d', strtotime('-7 days')),
-                    'status' => 'present',
-                    'class_name' => 'Kurs pływania - poziom średni'
-                ),
-                array(
-                    'id' => 2,
-                    'session_date' => date('Y-m-d', strtotime('-14 days')),
-                    'status' => 'present',
-                    'class_name' => 'Kurs pływania - poziom średni'
-                ),
-                array(
-                    'id' => 3,
-                    'session_date' => date('Y-m-d', strtotime('-21 days')),
-                    'status' => 'absent',
-                    'class_name' => 'Kurs pływania - poziom średni'
-                ),
-                array(
-                    'id' => 4,
-                    'session_date' => date('Y-m-d', strtotime('-28 days')),
-                    'status' => 'present',
-                    'class_name' => 'Kurs pływania - poziom średni'
-                )
-            )
-        ),
-        2 => array(
-            'id' => 2,
-            'first_name' => 'Anna',
-            'last_name' => 'Kowalska',
-            'birth_date' => '2020-03-22',
-            'swimming_level' => 'Żółwik',
-            'total_points' => 45,
-            'medical_notes' => '',
-            'courses' => array(
-                array(
-                    'id' => 2,
-                    'name' => 'Kurs pływania - początkujący',
-                    'instructor_name' => 'Piotr Wiśniewski',
-                    'day_of_week' => 'wednesday',
-                    'time_start' => '17:00:00',
-                    'time_end' => '17:45:00',
-                    'facility_name' => 'Basen Mały',
-                    'sessions_remaining' => 28,
-                    'sessions_total' => 40
-                )
-            ),
-            'achievements' => array(
-                array(
-                    'id' => 4,
-                    'name' => 'Pierwszy skok',
-                    'description' => 'Pierwszy skok do wody z brzegu basenu',
-                    'icon' => '🌊',
-                    'earned_at' => '2026-01-10',
-                    'points' => 45
-                )
-            ),
-            'recent_attendance' => array(
-                array(
-                    'id' => 5,
-                    'session_date' => date('Y-m-d', strtotime('-5 days')),
-                    'status' => 'present',
-                    'class_name' => 'Kurs pływania - początkujący'
-                ),
-                array(
-                    'id' => 6,
-                    'session_date' => date('Y-m-d', strtotime('-12 days')),
-                    'status' => 'late',
-                    'class_name' => 'Kurs pływania - początkujący'
-                ),
-                array(
-                    'id' => 7,
-                    'session_date' => date('Y-m-d', strtotime('-19 days')),
-                    'status' => 'present',
-                    'class_name' => 'Kurs pływania - początkujący'
-                )
-            )
-        )
+    // Verify this child belongs to the logged-in parent
+    $client = ssm_api_get_or_create_client($user_id);
+    if (!$client) {
+        return new WP_Error('unauthorized', 'Brak uprawnień', array('status' => 403));
+    }
+
+    // Check if child belongs to this client
+    $belongs = $wpdb->get_var($wpdb->prepare(
+        "SELECT 1 FROM {$wpdb->prefix}ssm_client_children WHERE client_id = %d AND child_id = %d",
+        $client->id,
+        $child_id
+    ));
+
+    if (!$belongs) {
+        return new WP_Error('not_found', 'Dziecko nie znalezione', array('status' => 404));
+    }
+
+    // Get child basic info
+    $child = $wpdb->get_row($wpdb->prepare(
+        "SELECT
+            id, first_name, last_name, date_of_birth,
+            swimming_level, medical_notes, photo
+        FROM {$wpdb->prefix}ssm_children
+        WHERE id = %d",
+        $child_id
+    ));
+
+    if (!$child) {
+        return new WP_Error('not_found', 'Dziecko nie znalezione', array('status' => 404));
+    }
+
+    // Get total points
+    $total_points = $wpdb->get_var($wpdb->prepare(
+        "SELECT COALESCE(points, 0) FROM {$wpdb->prefix}ssm_child_points WHERE child_id = %d",
+        $child_id
+    )) ?: 0;
+
+    // Get courses (enrollments)
+    $courses = $wpdb->get_results($wpdb->prepare(
+        "SELECT
+            c.id,
+            c.name,
+            CONCAT(i.first_name, ' ', i.last_name) as instructor_name,
+            c.day_of_week,
+            TIME_FORMAT(c.time_start, '%%H:%%i') as time_start,
+            TIME_FORMAT(c.time_end, '%%H:%%i') as time_end,
+            f.name as facility_name,
+            (SELECT COUNT(*) FROM {$wpdb->prefix}ssm_sessions s
+             WHERE s.class_id = c.id AND s.session_date >= CURDATE() AND s.status = 'scheduled') as sessions_remaining,
+            (SELECT COUNT(*) FROM {$wpdb->prefix}ssm_sessions s
+             WHERE s.class_id = c.id) as sessions_total
+        FROM {$wpdb->prefix}ssm_enrollments e
+        JOIN {$wpdb->prefix}ssm_classes c ON e.class_id = c.id
+        LEFT JOIN {$wpdb->prefix}ssm_instructors i ON c.instructor_id = i.id
+        LEFT JOIN {$wpdb->prefix}ssm_facilities f ON c.facility_id = f.id
+        WHERE e.child_id = %d AND e.status = 'active'",
+        $child_id
+    ));
+
+    $courses_result = array();
+    foreach ($courses as $course) {
+        $courses_result[] = array(
+            'id' => intval($course->id),
+            'name' => $course->name,
+            'instructor_name' => $course->instructor_name ?: 'Instruktor',
+            'day_of_week' => $course->day_of_week,
+            'time_start' => $course->time_start,
+            'time_end' => $course->time_end,
+            'facility_name' => $course->facility_name ?: 'Basen',
+            'sessions_remaining' => intval($course->sessions_remaining),
+            'sessions_total' => intval($course->sessions_total)
+        );
+    }
+
+    // Get achievements
+    $achievements = $wpdb->get_results($wpdb->prepare(
+        "SELECT
+            a.id, a.name, a.description, a.icon, a.points,
+            ca.earned_at
+        FROM {$wpdb->prefix}ssm_child_achievements ca
+        JOIN {$wpdb->prefix}ssm_achievements a ON ca.achievement_id = a.id
+        WHERE ca.child_id = %d
+        ORDER BY ca.earned_at DESC",
+        $child_id
+    ));
+
+    $achievements_result = array();
+    foreach ($achievements as $ach) {
+        $achievements_result[] = array(
+            'id' => intval($ach->id),
+            'name' => $ach->name,
+            'description' => $ach->description,
+            'icon' => $ach->icon ?: '🏆',
+            'earned_at' => $ach->earned_at,
+            'points' => intval($ach->points)
+        );
+    }
+
+    // Get recent attendance (last 10 sessions)
+    $attendance = $wpdb->get_results($wpdb->prepare(
+        "SELECT
+            s.id,
+            s.session_date,
+            CASE WHEN att.status IS NOT NULL THEN att.status
+                 WHEN ab.id IS NOT NULL THEN 'absent'
+                 ELSE 'present' END as status,
+            c.name as class_name
+        FROM {$wpdb->prefix}ssm_sessions s
+        JOIN {$wpdb->prefix}ssm_classes c ON s.class_id = c.id
+        JOIN {$wpdb->prefix}ssm_enrollments e ON e.class_id = c.id AND e.child_id = %d AND e.status = 'active'
+        LEFT JOIN {$wpdb->prefix}ssm_attendance att ON att.session_id = s.id AND att.child_id = %d
+        LEFT JOIN {$wpdb->prefix}ssm_absences ab ON ab.session_id = s.id AND ab.child_id = %d
+        WHERE s.session_date <= CURDATE()
+        ORDER BY s.session_date DESC
+        LIMIT 10",
+        $child_id,
+        $child_id,
+        $child_id
+    ));
+
+    $attendance_result = array();
+    foreach ($attendance as $att) {
+        $attendance_result[] = array(
+            'id' => intval($att->id),
+            'session_date' => $att->session_date,
+            'status' => $att->status,
+            'class_name' => $att->class_name
+        );
+    }
+
+    return array(
+        'id' => intval($child->id),
+        'first_name' => $child->first_name,
+        'last_name' => $child->last_name,
+        'birth_date' => $child->date_of_birth,
+        'swimming_level' => $child->swimming_level ?: 'Początkujący',
+        'total_points' => intval($total_points),
+        'medical_notes' => $child->medical_notes ?: '',
+        'photo' => $child->photo,
+        'courses' => $courses_result,
+        'achievements' => $achievements_result,
+        'recent_attendance' => $attendance_result
     );
-
-    // Zwróć dane dla wybranego dziecka lub domyślne dla id=1
-    return isset($children_data[$child_id]) ? $children_data[$child_id] : $children_data[1];
 }
 
 function ssm_api_get_schedule($request) {
