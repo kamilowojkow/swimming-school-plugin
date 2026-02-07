@@ -560,19 +560,31 @@ function ssm_api_get_children($request) {
     // Get or create client record (auto-creates for ssm_parent users)
     $client = ssm_api_get_or_create_client($user_id);
 
-    error_log("SSM API get_children: user_id=$user_id, client_id=" . ($client ? $client->id : 'NULL'));
+    // DEBUG: Log prefix and client info
+    $debug_info = array(
+        'db_prefix' => $wpdb->prefix,
+        'user_id' => $user_id,
+        'client_id' => $client ? $client->id : null
+    );
+
+    error_log("SSM API get_children DEBUG: " . json_encode($debug_info));
 
     if (!$client) {
         return array(
-            '_debug' => array(
-                'error' => 'No client record found and user is not a parent',
-                'user_id' => $user_id
-            ),
+            '_debug' => array_merge($debug_info, array('error' => 'No client record')),
             'children' => array()
         );
     }
 
+    // First check: how many records in client_children for this client?
+    $cc_count = $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM {$wpdb->prefix}ssm_client_children WHERE client_id = %d",
+        $client->id
+    ));
+    $debug_info['client_children_count'] = $cc_count;
+
     // Get children for this client through client_children relationship
+    // Removed ch.active = 1 condition to check if that's the issue
     $children = $wpdb->get_results($wpdb->prepare(
         "SELECT
             ch.id,
@@ -590,13 +602,16 @@ function ssm_api_get_children($request) {
              WHERE ca.child_id = ch.id) as achievements_count
         FROM {$wpdb->prefix}ssm_children ch
         JOIN {$wpdb->prefix}ssm_client_children cc ON cc.child_id = ch.id
-        WHERE cc.client_id = %d AND ch.active = 1
+        WHERE cc.client_id = %d
         ORDER BY ch.first_name",
         $client->id
     ));
 
-    // DEBUG: Check how many children found
-    error_log("SSM API get_children: client_id={$client->id}, found " . count($children) . " children");
+    $debug_info['children_found'] = count($children);
+    $debug_info['last_query'] = $wpdb->last_query;
+    $debug_info['last_error'] = $wpdb->last_error;
+
+    error_log("SSM API get_children RESULT: " . json_encode($debug_info));
 
     $result = array();
     foreach ($children as $child) {
@@ -636,14 +651,10 @@ function ssm_api_get_children($request) {
         );
     }
 
-    // Return with debug info
+    // Return with full debug info
+    $debug_info['children_result_count'] = count($result);
     return array(
-        '_debug' => array(
-            'user_id' => $user_id,
-            'user_email' => $user_email,
-            'client_id' => $client->id,
-            'children_count' => count($result)
-        ),
+        '_debug' => $debug_info,
         'children' => $result
     );
 }
