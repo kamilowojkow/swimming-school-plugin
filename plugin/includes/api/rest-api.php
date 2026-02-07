@@ -1524,12 +1524,28 @@ class SSM_REST_API {
     // ============================================
 
     public function get_notifications($request) {
+        global $wpdb;
         $user_data = $this->get_authenticated_user($request);
+
+        $recipient_type = $user_data['type'] === 'parent' ? 'parent' : 'instructor';
+        $recipient_id = $user_data['id'];
+
+        // Debug: count all notifications for this user (with multiple recipient types)
+        $debug_count = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}ssm_notifications
+             WHERE ((recipient_type = %s AND recipient_id = %d)
+                    OR (recipient_type = 'client' AND recipient_id = %d)
+                    OR (recipient_type = 'user' AND recipient_id = %d))",
+            $recipient_type,
+            $recipient_id,
+            $recipient_id,
+            $recipient_id
+        ));
 
         $notification_system = ssm_notification_system();
         $notifications = $notification_system->get_notifications(
-            $user_data['type'] === 'parent' ? 'parent' : 'instructor',
-            $user_data['id'],
+            $recipient_type,
+            $recipient_id,
             array(
                 'limit' => $request->get_param('limit'),
                 'offset' => $request->get_param('offset'),
@@ -1537,7 +1553,17 @@ class SSM_REST_API {
             )
         );
 
-        return rest_ensure_response($notifications);
+        return rest_ensure_response(array(
+            'notifications' => $notifications,
+            'debug' => array(
+                'user_type' => $user_data['type'],
+                'user_id' => $user_data['id'],
+                'recipient_type' => $recipient_type,
+                'recipient_id' => $recipient_id,
+                'total_in_db' => intval($debug_count),
+                'returned_count' => count($notifications)
+            )
+        ));
     }
 
     public function get_unread_count($request) {
