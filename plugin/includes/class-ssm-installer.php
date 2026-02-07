@@ -17,7 +17,7 @@ class SSM_Installer {
     /**
      * Wersja schematu bazy danych
      */
-    const DB_VERSION = '2.65';
+    const DB_VERSION = '2.66';
 
     /**
      * Prefix tabel
@@ -72,6 +72,7 @@ class SSM_Installer {
         // Płatności
         self::create_payments_table();
         self::create_payment_installments_table();
+        self::create_payment_transactions_table();
         self::create_invoices_table();
 
         // Program poleceniowy
@@ -134,6 +135,9 @@ class SSM_Installer {
             first_name varchar(100) NOT NULL,
             last_name varchar(100) NOT NULL,
             date_of_birth date DEFAULT NULL,
+            gender varchar(10) DEFAULT NULL,
+            photo varchar(255) DEFAULT NULL,
+            swimming_level varchar(50) DEFAULT NULL,
             medical_notes text DEFAULT NULL,
             skills_description text DEFAULT NULL,
             attendance_rate decimal(5,2) DEFAULT 0.00,
@@ -299,6 +303,7 @@ class SSM_Installer {
             id mediumint(9) NOT NULL AUTO_INCREMENT,
             session_id mediumint(9) NOT NULL,
             child_id mediumint(9) NOT NULL,
+            enrollment_id mediumint(9) DEFAULT NULL,
             status varchar(20) DEFAULT 'present',
             notes text DEFAULT NULL,
             marked_at datetime DEFAULT NULL,
@@ -306,6 +311,7 @@ class SSM_Installer {
             PRIMARY KEY (id),
             KEY session_id (session_id),
             KEY child_id (child_id),
+            KEY enrollment_id (enrollment_id),
             UNIQUE KEY unique_attendance (session_id, child_id)
         ) " . self::$charset_collate . ";";
         dbDelta($sql);
@@ -446,6 +452,27 @@ class SSM_Installer {
             KEY payment_id (payment_id),
             KEY status (status),
             KEY due_date (due_date)
+        ) " . self::$charset_collate . ";";
+        dbDelta($sql);
+    }
+
+    /**
+     * Tabela: Transakcje płatności (historia wpłat)
+     */
+    private static function create_payment_transactions_table() {
+        $table = self::$prefix . 'payment_transactions';
+        $sql = "CREATE TABLE IF NOT EXISTS $table (
+            id mediumint(9) NOT NULL AUTO_INCREMENT,
+            payment_id mediumint(9) NOT NULL,
+            amount decimal(10,2) NOT NULL,
+            payment_method varchar(50) DEFAULT NULL,
+            transaction_reference varchar(100) DEFAULT NULL,
+            notes text DEFAULT NULL,
+            created_at datetime NOT NULL,
+            created_by bigint(20) DEFAULT NULL,
+            PRIMARY KEY (id),
+            KEY payment_id (payment_id),
+            KEY created_at (created_at)
         ) " . self::$charset_collate . ";";
         dbDelta($sql);
     }
@@ -777,14 +804,32 @@ class SSM_Installer {
             }
         }
 
-        // Dzieci - skills_description, attendance_rate
+        // Dzieci - dodatkowe pola
         $table = self::$prefix . 'children';
         if (self::table_exists($table)) {
+            if (!self::column_exists($table, 'gender')) {
+                $wpdb->query("ALTER TABLE $table ADD COLUMN gender varchar(10) DEFAULT NULL AFTER date_of_birth");
+            }
+            if (!self::column_exists($table, 'photo')) {
+                $wpdb->query("ALTER TABLE $table ADD COLUMN photo varchar(255) DEFAULT NULL AFTER gender");
+            }
+            if (!self::column_exists($table, 'swimming_level')) {
+                $wpdb->query("ALTER TABLE $table ADD COLUMN swimming_level varchar(50) DEFAULT NULL AFTER photo");
+            }
             if (!self::column_exists($table, 'skills_description')) {
                 $wpdb->query("ALTER TABLE $table ADD COLUMN skills_description text DEFAULT NULL AFTER medical_notes");
             }
             if (!self::column_exists($table, 'attendance_rate')) {
                 $wpdb->query("ALTER TABLE $table ADD COLUMN attendance_rate decimal(5,2) DEFAULT 0.00 AFTER skills_description");
+            }
+        }
+
+        // Frekwencja - enrollment_id
+        $table = self::$prefix . 'attendance';
+        if (self::table_exists($table)) {
+            if (!self::column_exists($table, 'enrollment_id')) {
+                $wpdb->query("ALTER TABLE $table ADD COLUMN enrollment_id mediumint(9) DEFAULT NULL AFTER child_id");
+                $wpdb->query("ALTER TABLE $table ADD KEY enrollment_id (enrollment_id)");
             }
         }
 
@@ -867,6 +912,7 @@ class SSM_Installer {
             $prefix . 'instructor_unavailability',
             $prefix . 'payments',
             $prefix . 'payment_installments',
+            $prefix . 'payment_transactions',
             $prefix . 'invoices',
             $prefix . 'referrals',
             $prefix . 'wallet',
