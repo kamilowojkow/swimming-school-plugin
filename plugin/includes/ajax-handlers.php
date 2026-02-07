@@ -524,6 +524,8 @@ function ssm_ajax_save_class() {
         'total_price' => floatval($_POST['total_price']),
         'level' => isset($_POST['level']) ? sanitize_text_field($_POST['level']) : '',
         'max_participants' => isset($_POST['max_participants']) ? intval($_POST['max_participants']) : 10,
+        'max_absences' => isset($_POST['max_absences']) ? intval($_POST['max_absences']) : 2,
+        'allow_makeups' => isset($_POST['allow_makeups']) ? intval($_POST['allow_makeups']) : 1,
         'description' => isset($_POST['description']) ? sanitize_textarea_field($_POST['description']) : '',
         'url' => isset($_POST['url']) ? esc_url_raw($_POST['url']) : '',
         'status' => sanitize_text_field($_POST['status'])

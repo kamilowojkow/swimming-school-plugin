@@ -411,31 +411,38 @@ jQuery(document).ready(function($) {
         $('#class-price-session').val(btn.data('price-session'));
         $('#class-level').val(btn.data('level'));
         $('#class-max-participants').val(btn.data('max'));
+        $('#class-max-absences').val(btn.data('max-absences') || 2);
+        $('#class-allow-makeups').prop('checked', btn.data('allow-makeups') == 1);
         $('#class-url').val(btn.data('url'));
         $('#class-description').val(btn.data('description'));
         $('#class-status').val(btn.data('status'));
-        
+
         // Przelicz cenę
         var total = parseFloat(btn.data('session-count')) * parseFloat(btn.data('price-session'));
         $('#class-total-price').text(total.toFixed(2));
-        
+
         $('#ssm-class-form-container').slideDown();
         $('html, body').animate({ scrollTop: $('#ssm-class-form-container').offset().top - 50 }, 500);
     });
     
     $('#ssm-class-form').on('submit', function(e) {
         e.preventDefault();
-        
+
         var formData = $(this).serialize();
         formData += '&action=ssm_save_class';
         formData += '&nonce=' + ssmAdmin.nonce;
-        
+
         // Oblicz total_price
         var sessionCount = $('#class-session-count').val();
         var pricePerSession = $('#class-price-session').val();
         var totalPrice = parseFloat(sessionCount) * parseFloat(pricePerSession);
         formData += '&total_price=' + totalPrice.toFixed(2);
-        
+
+        // Obsługa checkboxa allow_makeups (wysyłamy 0 jeśli nie zaznaczony)
+        if (!$('#class-allow-makeups').is(':checked')) {
+            formData += '&allow_makeups=0';
+        }
+
         var isNew = !$('#class-id').val();
         
         $.post(ssmAdmin.ajax_url, formData, function(response) {

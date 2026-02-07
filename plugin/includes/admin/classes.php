@@ -238,7 +238,7 @@ $days_pl = array(1 => 'Poniedziałek', 2 => 'Wtorek', 3 => 'Środa', 4 => 'Czwar
                             📅 Harmonogram
                         </a>
                         
-                        <button class="button button-small ssm-edit-class" 
+                        <button class="button button-small ssm-edit-class"
                                 data-id="<?php echo $class->id; ?>"
                                 data-name="<?php echo esc_attr($class->name); ?>"
                                 data-facility-id="<?php echo $class->facility_id; ?>"
@@ -251,6 +251,8 @@ $days_pl = array(1 => 'Poniedziałek', 2 => 'Wtorek', 3 => 'Środa', 4 => 'Czwar
                                 data-price-session="<?php echo $class->price_per_session; ?>"
                                 data-level="<?php echo esc_attr($class->level); ?>"
                                 data-max="<?php echo $class->max_participants; ?>"
+                                data-max-absences="<?php echo $class->max_absences; ?>"
+                                data-allow-makeups="<?php echo $class->allow_makeups; ?>"
                                 data-url="<?php echo esc_attr($class->url); ?>"
                                 data-description="<?php echo esc_attr($class->description); ?>"
                                 data-status="<?php echo $class->status; ?>">
