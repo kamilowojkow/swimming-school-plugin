@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useNotificationStore } from '../../store/notificationStore';
 import { useAuthStore } from '../../store/authStore';
 
@@ -23,10 +24,14 @@ export default function NotificationsScreen() {
   const { activeRole } = useAuthStore();
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    console.log('NotificationsScreen: Fetching notifications for role:', activeRole);
-    fetchNotifications();
-  }, [activeRole]);
+  // Use useFocusEffect to fetch notifications every time screen comes into focus
+  // This ensures notifications are refreshed when user switches roles and navigates here
+  useFocusEffect(
+    useCallback(() => {
+      console.log('NotificationsScreen: Screen focused, fetching for role:', activeRole);
+      fetchNotifications();
+    }, [activeRole])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
