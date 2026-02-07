@@ -1,0 +1,473 @@
+<?php
+/**
+ * Parent Panel v2 - Fila Style
+ * Shortcode: [swimming_parent_panel]
+ */
+if (!defined('ABSPATH')) exit;
+
+// Ukryj pasek admina WordPress
+add_filter('show_admin_bar', '__return_false');
+
+// Load translations
+require_once dirname(dirname(__FILE__)) . '/translations.php';
+$trans = SSM_Translations::get_instance();
+
+if (!is_user_logged_in()) {
+    echo '<div class="ssm-login-required">';
+    echo '<p>' . ssm_t('login_required') . '</p>';
+    echo '<a href="' . wp_login_url(get_permalink()) . '" class="ssm-login-btn">' . ssm_t('login') . '</a>';
+    echo '</div>';
+    return;
+}
+
+global $wpdb;
+$current_user = wp_get_current_user();
+
+// Find client by email
+$client = $wpdb->get_row($wpdb->prepare(
+    "SELECT * FROM {$wpdb->prefix}ssm_clients WHERE email = %s",
+    $current_user->user_email
+));
+
+if (!$client): ?>
+    <div class="ssm-no-access">
+        <h3><?php echo ssm_t('no_access'); ?></h3>
+        <p><?php echo ssm_t('no_data'); ?></p>
+    </div>
+<?php return; endif;
+
+// Get children
+$children = $wpdb->get_results($wpdb->prepare(
+    "SELECT ch.*, TIMESTAMPDIFF(YEAR, ch.date_of_birth, CURDATE()) as age
+     FROM {$wpdb->prefix}ssm_children ch
+     JOIN {$wpdb->prefix}ssm_client_children cc ON ch.id = cc.child_id
+     WHERE cc.client_id = %d AND ch.active = 1
+     ORDER BY ch.first_name",
+    $client->id
+));
+
+// Routing
+$active_page = isset($_GET['panel_page']) ? sanitize_text_field($_GET['panel_page']) : 'dashboard';
+$current_lang = ssm_lang();
+$languages = ssm_languages();
+
+// Menu structure with sections
+$menu_sections = array(
+    'main' => array(
+        'label' => ssm_t('menu_main'),
+        'items' => array(
+            'dashboard' => array('icon' => 'ri-dashboard-line', 'label' => ssm_t('dashboard')),
+            'schedule' => array('icon' => 'ri-calendar-todo-line', 'label' => ssm_t('schedule')),
+            'history' => array('icon' => 'ri-history-line', 'label' => ssm_t('history')),
+        )
+    ),
+    'management' => array(
+        'label' => ssm_t('menu_management'),
+        'items' => array(
+            'children' => array('icon' => 'ri-group-line', 'label' => ssm_t('children')),
+            'courses' => array('icon' => 'ri-swimming-line', 'label' => ssm_t('courses')),
+            'makeup' => array('icon' => 'ri-refresh-line', 'label' => ssm_t('makeup'), 'badge' => true),
+            'payments' => array('icon' => 'ri-wallet-3-line', 'label' => ssm_t('payments')),
+        )
+    ),
+    'account' => array(
+        'label' => ssm_t('menu_account'),
+        'items' => array(
+            'my-data' => array('icon' => 'ri-user-settings-line', 'label' => ssm_t('my_data')),
+            'referrals' => array('icon' => 'ri-gift-line', 'label' => ssm_t('referrals')),
+            'documents' => array('icon' => 'ri-file-list-3-line', 'label' => ssm_t('documents')),
+            'gallery' => array('icon' => 'ri-image-line', 'label' => ssm_t('gallery')),
+        )
+    ),
+);
+
+// Count makeups for badge
+$makeup_count = 0;
+if (isset($client->id)) {
+    $makeup_count = $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM {$wpdb->prefix}ssm_absences a
+         JOIN {$wpdb->prefix}ssm_enrollments e ON a.enrollment_id = e.id
+         WHERE e.client_id = %d AND a.can_makeup = 1
+         AND a.makeup_session_id IS NULL AND a.status = 'reported'",
+        $client->id
+    ));
+}
+
+// Count pending payments
+$pending_payments = $wpdb->get_var($wpdb->prepare(
+    "SELECT COUNT(*) FROM {$wpdb->prefix}ssm_payments
+     WHERE client_id = %d AND status = 'pending'",
+    $client->id
+)) ?: 0;
+
+// Get logo settings
+$logo_desktop = get_option('ssm_logo_desktop', '');
+$logo_mobile = get_option('ssm_logo_mobile', '');
+$school_name = get_option('ssm_school_name', ssm_t('swimming_school'));
+?>
+
+<!-- Remix Icon CDN -->
+<link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+
+<!-- Ukryj pasek admina WordPress -->
+<style>
+#wpadminbar, html.wp-toolbar { display: none !important; margin-top: 0 !important; padding-top: 0 !important; }
+html { margin-top: 0 !important; }
+</style>
+
+<div class="ssm-parent-dashboard ssm-fila">
+
+    <!-- Sidebar -->
+    <aside class="ssm-sidebar">
+        <!-- Logo -->
+        <div class="ssm-sidebar-logo">
+            <?php if ($logo_desktop || $logo_mobile): ?>
+                <?php if ($logo_desktop): ?>
+                    <img src="<?php echo esc_url($logo_desktop); ?>" alt="<?php echo esc_attr($school_name); ?>" class="ssm-logo-desktop">
+                <?php endif; ?>
+                <?php if ($logo_mobile): ?>
+                    <img src="<?php echo esc_url($logo_mobile); ?>" alt="<?php echo esc_attr($school_name); ?>" class="ssm-logo-mobile">
+                <?php elseif ($logo_desktop): ?>
+                    <img src="<?php echo esc_url($logo_desktop); ?>" alt="<?php echo esc_attr($school_name); ?>" class="ssm-logo-mobile">
+                <?php endif; ?>
+            <?php else: ?>
+                <div class="ssm-logo-icon">
+                    <i class="ri-water-flash-line"></i>
+                </div>
+                <span class="ssm-logo-text"><?php echo esc_html($school_name); ?></span>
+            <?php endif; ?>
+            <button class="ssm-sidebar-toggle" id="ssmSidebarToggle">
+                <i class="ri-menu-line"></i>
+            </button>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="ssm-sidebar-nav">
+            <?php foreach ($menu_sections as $section_key => $section): ?>
+                <div class="ssm-nav-section">
+                    <span class="ssm-nav-section-title"><?php echo $section['label']; ?></span>
+
+                    <?php foreach ($section['items'] as $page => $item):
+                        $badge_count = 0;
+                        if (isset($item['badge'])) {
+                            if ($page === 'makeup') $badge_count = $makeup_count;
+                            if ($page === 'payments') $badge_count = $pending_payments;
+                        }
+                    ?>
+                        <a href="<?php echo add_query_arg('panel_page', $page, get_permalink()); ?>"
+                           class="ssm-nav-item <?php echo $active_page === $page ? 'active' : ''; ?>">
+                            <i class="<?php echo $item['icon']; ?>"></i>
+                            <span class="ssm-nav-label"><?php echo $item['label']; ?></span>
+                            <?php if ($badge_count > 0): ?>
+                                <span class="ssm-nav-badge"><?php echo $badge_count; ?></span>
+                            <?php endif; ?>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            <?php endforeach; ?>
+        </nav>
+
+        <!-- Sidebar Footer -->
+        <div class="ssm-sidebar-footer">
+            <a href="<?php echo wp_logout_url(home_url()); ?>" class="ssm-logout-btn">
+                <i class="ri-logout-box-r-line"></i>
+                <span><?php echo ssm_t('logout'); ?></span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Area -->
+    <div class="ssm-main-area">
+
+        <!-- Top Bar -->
+        <header class="ssm-topbar">
+            <div class="ssm-topbar-left">
+                <!-- Mobile menu toggle -->
+                <button class="ssm-sidebar-toggle" id="sidebarToggle">
+                    <i class="ri-menu-line"></i>
+                </button>
+            </div>
+
+            <div class="ssm-topbar-right">
+                <!-- Language Selector -->
+                <div class="ssm-topbar-dropdown">
+                    <button class="ssm-topbar-btn" id="langDropdownBtn">
+                        <i class="ri-translate-2"></i>
+                        <span class="ssm-lang-current"><?php echo strtoupper($current_lang); ?></span>
+                    </button>
+                    <div class="ssm-dropdown-menu" id="langDropdown">
+                        <?php foreach ($languages as $code => $lang): ?>
+                            <a href="<?php echo add_query_arg('lang', $code, $_SERVER['REQUEST_URI']); ?>"
+                               class="ssm-dropdown-item <?php echo $current_lang === $code ? 'active' : ''; ?>">
+                                <span class="ssm-lang-flag"><?php echo $lang['flag']; ?></span>
+                                <span><?php echo $lang['name']; ?></span>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <!-- Dark Mode Toggle -->
+                <button class="ssm-topbar-btn" id="darkModeToggle" title="<?php echo ssm_t('dark_mode'); ?>">
+                    <i class="ri-moon-line"></i>
+                </button>
+
+                <!-- Notifications -->
+                <?php
+                $notification_system = ssm_notification_system();
+                $unread_count = $notification_system->get_unread_count('parent', $client->id);
+                $notifications = $notification_system->get_notifications('parent', $client->id, array('limit' => 5));
+                ?>
+                <div class="ssm-topbar-dropdown ssm-notifications-dropdown">
+                    <button class="ssm-topbar-btn" id="notificationsBtn" title="<?php echo ssm_t('notifications'); ?>">
+                        <i class="ri-notification-3-line"></i>
+                        <?php if ($unread_count > 0): ?>
+                            <span class="ssm-topbar-badge ssm-notification-count"><?php echo $unread_count; ?></span>
+                        <?php endif; ?>
+                    </button>
+                    <div class="ssm-dropdown-menu ssm-dropdown-right ssm-notifications-menu" id="notificationsDropdown">
+                        <div class="ssm-notifications-header">
+                            <span class="ssm-notifications-title"><?php echo ssm_t('notifications'); ?></span>
+                            <?php if ($unread_count > 0): ?>
+                                <button type="button" class="ssm-mark-all-read" data-type="parent" data-id="<?php echo $client->id; ?>">
+                                    <?php echo ssm_t('mark_all_read'); ?>
+                                </button>
+                            <?php endif; ?>
+                        </div>
+                        <div class="ssm-notifications-list" data-type="parent" data-id="<?php echo $client->id; ?>">
+                            <?php if (empty($notifications)): ?>
+                                <div class="ssm-notifications-empty">
+                                    <i class="ri-notification-off-line"></i>
+                                    <p><?php echo ssm_t('no_notifications'); ?></p>
+                                </div>
+                            <?php else: ?>
+                                <?php foreach ($notifications as $notif): ?>
+                                    <div class="ssm-notification-item <?php echo $notif->is_read ? '' : 'unread'; ?>"
+                                         data-id="<?php echo $notif->id; ?>"
+                                         data-url="<?php echo esc_attr($notif->action_url); ?>">
+                                        <div class="ssm-notification-icon" style="background: <?php echo $notif->color; ?>20; color: <?php echo $notif->color; ?>;">
+                                            <i class="<?php echo $notif->icon; ?>"></i>
+                                        </div>
+                                        <div class="ssm-notification-content">
+                                            <div class="ssm-notification-title"><?php echo esc_html($notif->title); ?></div>
+                                            <div class="ssm-notification-message"><?php echo esc_html($notif->message); ?></div>
+                                            <div class="ssm-notification-time"><?php echo $notif->time_ago; ?></div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Profile -->
+                <div class="ssm-topbar-dropdown">
+                    <button class="ssm-topbar-profile" id="profileDropdownBtn">
+                        <div class="ssm-profile-avatar">
+                            <?php echo strtoupper(substr($client->first_name, 0, 1)); ?>
+                        </div>
+                        <div class="ssm-profile-info">
+                            <span class="ssm-profile-name"><?php echo esc_html($client->first_name); ?></span>
+                            <span class="ssm-profile-role">Rodzic</span>
+                        </div>
+                        <i class="ri-arrow-down-s-line"></i>
+                    </button>
+                    <div class="ssm-dropdown-menu ssm-dropdown-right" id="profileDropdown">
+                        <div class="ssm-dropdown-header">
+                            <strong><?php echo esc_html($client->first_name . ' ' . $client->last_name); ?></strong>
+                            <small><?php echo esc_html($client->email); ?></small>
+                        </div>
+                        <a href="<?php echo add_query_arg('panel_page', 'my-data', get_permalink()); ?>" class="ssm-dropdown-item">
+                            <i class="ri-user-line"></i>
+                            <?php echo ssm_t('profile'); ?>
+                        </a>
+                        <a href="<?php echo add_query_arg('panel_page', 'settings', get_permalink()); ?>" class="ssm-dropdown-item">
+                            <i class="ri-settings-3-line"></i>
+                            <?php echo ssm_t('settings'); ?>
+                        </a>
+                        <div class="ssm-dropdown-divider"></div>
+                        <a href="<?php echo wp_logout_url(home_url()); ?>" class="ssm-dropdown-item ssm-text-danger">
+                            <i class="ri-logout-box-r-line"></i>
+                            <?php echo ssm_t('logout'); ?>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <main class="ssm-main-content">
+            <?php
+            $page_file = dirname(__FILE__) . '/panel-pages/' . $active_page . '.php';
+
+            if (file_exists($page_file)) {
+                include $page_file;
+            } else {
+                echo '<div class="ssm-section">';
+                echo '<h2>' . ssm_t('no_data') . '</h2>';
+                echo '</div>';
+            }
+            ?>
+        </main>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Dropdown toggles (exclude notifications - has separate handler)
+    document.querySelectorAll('.ssm-topbar-dropdown:not(.ssm-notifications-dropdown) > button').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = this.nextElementSibling;
+            document.querySelectorAll('.ssm-dropdown-menu.show').forEach(function(d) {
+                if (d !== dropdown) d.classList.remove('show');
+            });
+            dropdown.classList.toggle('show');
+        });
+    });
+
+    // Close dropdowns on outside click
+    document.addEventListener('click', function() {
+        document.querySelectorAll('.ssm-dropdown-menu.show').forEach(function(d) {
+            d.classList.remove('show');
+        });
+    });
+
+    // Mobile sidebar toggle
+    const sidebarToggle = document.getElementById('ssmSidebarToggle');
+    const sidebar = document.querySelector('.ssm-sidebar');
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('ssm-sidebar-collapsed');
+        });
+    }
+
+    // Dark mode toggle
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    if (darkModeToggle) {
+        darkModeToggle.addEventListener('click', function() {
+            document.body.classList.toggle('ssm-dark-mode');
+            const icon = this.querySelector('i');
+            if (document.body.classList.contains('ssm-dark-mode')) {
+                icon.className = 'ri-sun-line';
+                localStorage.setItem('ssm_dark_mode', '1');
+            } else {
+                icon.className = 'ri-moon-line';
+                localStorage.setItem('ssm_dark_mode', '0');
+            }
+        });
+
+        // Check saved preference
+        if (localStorage.getItem('ssm_dark_mode') === '1') {
+            document.body.classList.add('ssm-dark-mode');
+            darkModeToggle.querySelector('i').className = 'ri-sun-line';
+        }
+    }
+
+    // Notifications handling
+    const notificationsBtn = document.getElementById('notificationsBtn');
+    const notificationsDropdown = document.getElementById('notificationsDropdown');
+    const notificationsList = document.querySelector('.ssm-notifications-list');
+    const markAllReadBtn = document.querySelector('.ssm-mark-all-read');
+
+    if (notificationsBtn && notificationsDropdown) {
+        notificationsBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            document.querySelectorAll('.ssm-dropdown-menu.show').forEach(function(d) {
+                if (d !== notificationsDropdown) d.classList.remove('show');
+            });
+            notificationsDropdown.classList.toggle('show');
+        });
+
+        // Prevent dropdown from closing when clicking inside
+        notificationsDropdown.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    }
+
+    // Handle notification click - mark as read and navigate
+    if (notificationsList) {
+        notificationsList.addEventListener('click', function(e) {
+            const item = e.target.closest('.ssm-notification-item');
+            if (!item) return;
+
+            const notifId = item.dataset.id;
+            const actionUrl = item.dataset.url;
+            const recipientType = notificationsList.dataset.type;
+            const recipientId = notificationsList.dataset.id;
+
+            // Mark as read if unread
+            if (item.classList.contains('unread')) {
+                fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({
+                        action: 'ssm_mark_notification_read',
+                        nonce: '<?php echo wp_create_nonce('ssm_notifications_nonce'); ?>',
+                        notification_id: notifId,
+                        recipient_type: recipientType,
+                        recipient_id: recipientId
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        item.classList.remove('unread');
+                        updateNotificationCount(data.data.unread_count);
+                    }
+                });
+            }
+
+            // Navigate to action URL if exists
+            if (actionUrl) {
+                window.location.href = actionUrl;
+            }
+        });
+    }
+
+    // Mark all as read
+    if (markAllReadBtn) {
+        markAllReadBtn.addEventListener('click', function() {
+            const recipientType = this.dataset.type;
+            const recipientId = this.dataset.id;
+
+            fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: new URLSearchParams({
+                    action: 'ssm_mark_all_notifications_read',
+                    nonce: '<?php echo wp_create_nonce('ssm_notifications_nonce'); ?>',
+                    recipient_type: recipientType,
+                    recipient_id: recipientId
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.querySelectorAll('.ssm-notification-item.unread').forEach(item => {
+                        item.classList.remove('unread');
+                    });
+                    updateNotificationCount(0);
+                    this.style.display = 'none';
+                }
+            });
+        });
+    }
+
+    function updateNotificationCount(count) {
+        const badge = document.querySelector('.ssm-notification-count');
+        if (count > 0) {
+            if (badge) {
+                badge.textContent = count;
+            } else {
+                const btn = document.getElementById('notificationsBtn');
+                const newBadge = document.createElement('span');
+                newBadge.className = 'ssm-topbar-badge ssm-notification-count';
+                newBadge.textContent = count;
+                btn.appendChild(newBadge);
+            }
+        } else {
+            if (badge) badge.remove();
+        }
+    }
+});
+</script>

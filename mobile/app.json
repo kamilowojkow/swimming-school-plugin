@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "Szkółka Pływania",
+    "slug": "swimming-school-app",
+    "version": "1.0.0",
+    "sdkVersion": "52.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#3b82f6"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kamilowojkow.swimmingschool",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Używamy Face ID do szybkiego logowania do aplikacji",
+        "NSCameraUsageDescription": "Potrzebujemy dostępu do kamery, aby robić zdjęcia profilowe"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#3b82f6"
+      },
+      "package": "com.kamilowojkow.swimmingschool",
+      "permissions": [
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ]
+    },
+    "extra": {
+      "eas": {
+        "projectId": "dd07ecca-fce9-409f-ba38-992a5cbbc907"
+      }
+    },
+    "owner": "kamilowojkow"
+  }
+}
