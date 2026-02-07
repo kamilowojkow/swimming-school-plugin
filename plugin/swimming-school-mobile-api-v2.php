@@ -101,7 +101,7 @@ add_action('rest_api_init', function () {
     ));
 
     register_rest_route($namespace, '/parent/absences', array(
-        'methods' => array('GET', 'POST'),
+        'methods' => array('GET', 'POST', 'DELETE'),
         'callback' => 'ssm_api_absences',
         'permission_callback' => 'ssm_api_check_auth',
     ));
@@ -1121,6 +1121,82 @@ function ssm_api_absences($request) {
                 'max_makeups' => $max_makeups,
                 'within_limit' => $within_limit
             )
+        );
+    }
+
+    // DELETE - cancel/withdraw absence report
+    if ($request->get_method() === 'DELETE') {
+        $params = $request->get_json_params();
+        $absence_id = intval($params['absence_id'] ?? 0);
+
+        if (!$absence_id) {
+            return new WP_REST_Response(array('message' => 'Brak ID nieobecności'), 400);
+        }
+
+        $user_id = ssm_api_get_user_id($request);
+        $client = ssm_api_get_or_create_client($user_id);
+
+        if (!$client) {
+            return new WP_REST_Response(array('message' => 'Nie znaleziono klienta'), 404);
+        }
+
+        // Get child IDs for this client
+        $child_ids = $wpdb->get_col($wpdb->prepare(
+            "SELECT child_id FROM {$wpdb->prefix}ssm_client_children WHERE client_id = %d",
+            $client->id
+        ));
+
+        if (empty($child_ids)) {
+            return new WP_REST_Response(array('message' => 'Brak przypisanych dzieci'), 400);
+        }
+
+        // Get the absence with session info
+        $placeholders = implode(',', array_fill(0, count($child_ids), '%d'));
+        $query_params = array_merge([$absence_id], $child_ids);
+
+        $absence = $wpdb->get_row($wpdb->prepare(
+            "SELECT a.*, s.session_date, s.time_start
+             FROM {$wpdb->prefix}ssm_absences a
+             JOIN {$wpdb->prefix}ssm_sessions s ON a.session_id = s.id
+             WHERE a.id = %d AND a.child_id IN ($placeholders)",
+            ...$query_params
+        ));
+
+        if (!$absence) {
+            return new WP_REST_Response(array('message' => 'Nieobecność nie znaleziona lub brak uprawnień'), 404);
+        }
+
+        // Check if absence can be cancelled
+        if ($absence->status === 'makeup_scheduled' || $absence->status === 'makeup_completed') {
+            return new WP_REST_Response(array(
+                'message' => 'Nie można cofnąć nieobecności - odrabianie zostało już zaplanowane'
+            ), 400);
+        }
+
+        // Check if session is in the future
+        $session_datetime = $absence->session_date . ' ' . $absence->time_start;
+        $session_timestamp = strtotime($session_datetime);
+        $now_timestamp = current_time('timestamp');
+
+        if ($session_timestamp <= $now_timestamp) {
+            return new WP_REST_Response(array(
+                'message' => 'Nie można cofnąć nieobecności - zajęcia już się odbyły'
+            ), 400);
+        }
+
+        // Delete the absence
+        $result = $wpdb->delete($table_absences, array('id' => $absence_id));
+
+        if ($result === false) {
+            return new WP_REST_Response(array(
+                'message' => 'Błąd podczas usuwania nieobecności',
+                'debug' => $wpdb->last_error
+            ), 500);
+        }
+
+        return array(
+            'success' => true,
+            'message' => 'Zgłoszenie nieobecności zostało cofnięte'
         );
     }
 

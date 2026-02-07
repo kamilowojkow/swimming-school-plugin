@@ -235,6 +235,13 @@ class ApiClient {
     return response.data;
   }
 
+  async cancelAbsence(absenceId: number) {
+    const response = await this.client.delete('/parent/absences', {
+      data: { absence_id: absenceId },
+    });
+    return response.data;
+  }
+
   async getMakeupOptions() {
     const response = await this.client.get('/parent/makeups');
     return response.data;

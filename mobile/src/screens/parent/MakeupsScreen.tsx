@@ -147,6 +147,49 @@ export default function MakeupsScreen() {
     }
   };
 
+  const cancelAbsence = (absence: Absence) => {
+    Alert.alert(
+      language === 'pl' ? 'Cofnij zgłoszenie' : 'Cancel absence',
+      language === 'pl'
+        ? `Czy na pewno chcesz cofnąć zgłoszenie nieobecności dla ${absence.child_name} na zajęcia ${absence.class_name}?`
+        : `Are you sure you want to cancel the absence report for ${absence.child_name} for ${absence.class_name}?`,
+      [
+        {
+          text: language === 'pl' ? 'Nie' : 'No',
+          style: 'cancel',
+        },
+        {
+          text: language === 'pl' ? 'Tak, cofnij' : 'Yes, cancel',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.cancelAbsence(absence.id);
+              Alert.alert(
+                language === 'pl' ? 'Sukces' : 'Success',
+                language === 'pl' ? 'Zgłoszenie nieobecności zostało cofnięte' : 'Absence report has been cancelled'
+              );
+              fetchData();
+            } catch (error: any) {
+              Alert.alert(
+                t.common.error,
+                error?.response?.data?.message ||
+                  (language === 'pl' ? 'Nie udało się cofnąć zgłoszenia' : 'Failed to cancel absence')
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Check if absence can be cancelled (future session)
+  const canCancelAbsence = (absence: Absence): boolean => {
+    if (!absence.session_date) return false;
+    const sessionDate = new Date(absence.session_date);
+    const now = new Date();
+    return sessionDate > now;
+  };
+
   // Absences waiting for makeup scheduling (only those that CAN be made up)
   const pendingMakeups = absences.filter(
     (a) => (a.status === 'reported' || a.status === 'confirmed') && a.can_makeup
@@ -218,15 +261,25 @@ export default function MakeupsScreen() {
                   </Text>
                   <Text style={styles.pendingChild}>{absence.child_name}</Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.scheduleButton}
-                  onPress={() => openMakeupModal(absence)}
-                >
-                  <Ionicons name="add" size={20} color="#fff" />
-                  <Text style={styles.scheduleButtonText}>
-                    {language === 'pl' ? 'Zaplanuj' : 'Schedule'}
-                  </Text>
-                </TouchableOpacity>
+                <View style={styles.pendingActions}>
+                  <TouchableOpacity
+                    style={styles.scheduleButton}
+                    onPress={() => openMakeupModal(absence)}
+                  >
+                    <Ionicons name="add" size={20} color="#fff" />
+                    <Text style={styles.scheduleButtonText}>
+                      {language === 'pl' ? 'Zaplanuj' : 'Schedule'}
+                    </Text>
+                  </TouchableOpacity>
+                  {canCancelAbsence(absence) && (
+                    <TouchableOpacity
+                      style={styles.cancelButton}
+                      onPress={() => cancelAbsence(absence)}
+                    >
+                      <Ionicons name="close" size={18} color={colors.error} />
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             ))}
           </View>
@@ -256,6 +309,14 @@ export default function MakeupsScreen() {
                   </Text>
                   <Text style={styles.expiredChild}>{absence.child_name}</Text>
                 </View>
+                {canCancelAbsence(absence) && (
+                  <TouchableOpacity
+                    style={styles.cancelButtonSmall}
+                    onPress={() => cancelAbsence(absence)}
+                  >
+                    <Ionicons name="arrow-undo" size={16} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                )}
               </View>
             ))}
           </View>
@@ -480,6 +541,7 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>, isDark: boolean
       marginTop: 2,
     },
     scheduleButton: {
+      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
@@ -492,6 +554,28 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>, isDark: boolean
       fontSize: 14,
       fontWeight: '600',
       color: '#fff',
+    },
+    pendingActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    cancelButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.errorLight || '#fee2e2',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    cancelButtonSmall: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.surfaceSecondary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginLeft: 'auto',
     },
     expiredCard: {
       flexDirection: 'row',
