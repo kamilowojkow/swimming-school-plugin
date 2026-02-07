@@ -998,11 +998,24 @@ function ssm_api_absences($request) {
     if ($request->get_method() === 'POST') {
         $params = $request->get_json_params();
         $session_id = intval($params['session_id'] ?? 0);
-        $child_id = intval($params['child_id'] ?? 1); // Default to 1 for testing
+        $child_id = intval($params['child_id'] ?? 0);
         $reason = sanitize_text_field($params['reason'] ?? '');
 
-        if (!$session_id) {
-            return new WP_REST_Response(array('message' => 'Brak ID sesji'), 400);
+        if (!$session_id || !$child_id) {
+            return new WP_REST_Response(array('message' => 'Brak ID sesji lub dziecka'), 400);
+        }
+
+        // Get session details with class info
+        $session = $wpdb->get_row($wpdb->prepare(
+            "SELECT s.*, c.id as class_id, c.max_absences, c.allow_makeups
+             FROM {$wpdb->prefix}ssm_sessions s
+             JOIN {$wpdb->prefix}ssm_classes c ON s.class_id = c.id
+             WHERE s.id = %d",
+            $session_id
+        ));
+
+        if (!$session) {
+            return new WP_REST_Response(array('message' => 'Sesja nie znaleziona'), 404);
         }
 
         // Check if absence already reported
@@ -1015,19 +1028,52 @@ function ssm_api_absences($request) {
             return new WP_REST_Response(array('message' => 'Nieobecność już została zgłoszona'), 400);
         }
 
-        // Insert absence with minimal required fields
+        // Check 24h rule
+        $session_datetime = $session->session_date . ' ' . $session->time_start;
+        $session_timestamp = strtotime($session_datetime);
+        $now_timestamp = current_time('timestamp');
+        $hours_until_session = ($session_timestamp - $now_timestamp) / 3600;
+
+        $reported_on_time = $hours_until_session >= 24;
+
+        // Check if class allows makeups
+        $class_allows_makeups = (bool) $session->allow_makeups;
+
+        // Check makeup limit - count makeups already used for this child in this class
+        $used_makeups = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}ssm_absences a
+             JOIN {$wpdb->prefix}ssm_sessions s ON a.session_id = s.id
+             WHERE a.child_id = %d AND s.class_id = %d AND a.can_makeup = 1",
+            $child_id,
+            $session->class_id
+        ));
+
+        $max_makeups = intval($session->max_absences);
+        $within_limit = $used_makeups < $max_makeups;
+
+        // Determine if this absence can be made up
+        $can_makeup = $class_allows_makeups && $reported_on_time && $within_limit ? 1 : 0;
+
+        // Get enrollment_id for this child and class
+        $enrollment_id = $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM {$wpdb->prefix}ssm_enrollments
+             WHERE child_id = %d AND class_id = %d AND status = 'active'",
+            $child_id,
+            $session->class_id
+        ));
+
+        // Insert absence
         $result = $wpdb->insert($table_absences, array(
-            'enrollment_id' => 1, // Default for testing
+            'enrollment_id' => $enrollment_id ?: 0,
             'session_id' => $session_id,
             'child_id' => $child_id,
             'reported_at' => current_time('mysql'),
             'reason' => $reason,
             'status' => 'reported',
-            'can_makeup' => 1
+            'can_makeup' => $can_makeup
         ));
 
         if ($result === false) {
-            // Log error for debugging
             error_log('SSM API: Failed to insert absence. Error: ' . $wpdb->last_error);
             return new WP_REST_Response(array(
                 'message' => 'Błąd zapisu do bazy danych',
@@ -1035,10 +1081,31 @@ function ssm_api_absences($request) {
             ), 500);
         }
 
+        // Build response message
+        $message = 'Nieobecność została zgłoszona.';
+        if (!$can_makeup) {
+            if (!$class_allows_makeups) {
+                $message .= ' Ten kurs nie pozwala na odrabianie zajęć.';
+            } elseif (!$reported_on_time) {
+                $message .= ' Zgłoszenie po terminie (min. 24h przed zajęciami) - brak możliwości odrobienia.';
+            } elseif (!$within_limit) {
+                $message .= ' Wykorzystano limit odrabiań (' . $max_makeups . ') dla tego kursu.';
+            }
+        }
+
         return array(
             'success' => true,
-            'message' => 'Nieobecność została zgłoszona',
-            'absence_id' => $wpdb->insert_id
+            'message' => $message,
+            'absence_id' => $wpdb->insert_id,
+            'can_makeup' => (bool) $can_makeup,
+            '_debug' => array(
+                'hours_until_session' => round($hours_until_session, 1),
+                'reported_on_time' => $reported_on_time,
+                'class_allows_makeups' => $class_allows_makeups,
+                'used_makeups' => intval($used_makeups),
+                'max_makeups' => $max_makeups,
+                'within_limit' => $within_limit
+            )
         );
     }
 
@@ -1063,6 +1130,7 @@ function ssm_api_absences($request) {
             a.status,
             a.reason,
             a.reported_at,
+            a.can_makeup,
             a.makeup_session_id
         FROM {$wpdb->prefix}ssm_absences a
         JOIN {$wpdb->prefix}ssm_children ch ON a.child_id = ch.id
@@ -1106,6 +1174,7 @@ function ssm_api_absences($request) {
             'status' => $absence->status,
             'reason' => $absence->reason,
             'reported_at' => $absence->reported_at,
+            'can_makeup' => (bool) $absence->can_makeup,
             'makeup_session' => $makeup_session
         );
     }
@@ -1124,14 +1193,17 @@ function ssm_api_get_upcoming_sessions($request) {
         return array();
     }
 
-    // Get upcoming sessions for this parent's children
+    // Get upcoming sessions for this parent's children with class makeup settings
     $sessions = $wpdb->get_results($wpdb->prepare(
         "SELECT DISTINCT
             s.id,
             s.session_date,
             s.time_start,
             s.time_end,
+            c.id as class_id,
             c.name as class_name,
+            c.max_absences,
+            c.allow_makeups,
             f.name as facility_name,
             ch.id as child_id,
             CONCAT(ch.first_name, ' ', ch.last_name) as child_name
@@ -1150,12 +1222,38 @@ function ssm_api_get_upcoming_sessions($request) {
 
     $result = array();
     foreach ($sessions as $session) {
-        // Check if absence can be reported (not already reported)
+        // Check if absence already reported
         $existing_absence = $wpdb->get_var($wpdb->prepare(
             "SELECT id FROM {$wpdb->prefix}ssm_absences
              WHERE session_id = %d AND child_id = %d",
             $session->id, $session->child_id
         ));
+
+        // Check 24h rule
+        $session_datetime = $session->session_date . ' ' . $session->time_start;
+        $session_timestamp = strtotime($session_datetime);
+        $now_timestamp = current_time('timestamp');
+        $hours_until_session = ($session_timestamp - $now_timestamp) / 3600;
+        $can_report_on_time = $hours_until_session >= 24;
+
+        // Check makeup limit for this child in this class
+        $used_makeups = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}ssm_absences a
+             JOIN {$wpdb->prefix}ssm_sessions s ON a.session_id = s.id
+             WHERE a.child_id = %d AND s.class_id = %d AND a.can_makeup = 1",
+            $session->child_id,
+            $session->class_id
+        ));
+
+        $max_makeups = intval($session->max_absences);
+        $remaining_makeups = max(0, $max_makeups - intval($used_makeups));
+        $class_allows_makeups = (bool) $session->allow_makeups;
+
+        // Can report absence if not already reported
+        $can_report = empty($existing_absence);
+
+        // Will get makeup credit if: class allows, reported on time, within limit
+        $will_get_makeup = $can_report && $class_allows_makeups && $can_report_on_time && $remaining_makeups > 0;
 
         $result[] = array(
             'id' => intval($session->id),
@@ -1166,7 +1264,15 @@ function ssm_api_get_upcoming_sessions($request) {
             'facility_name' => $session->facility_name ?: 'Basen',
             'child_id' => intval($session->child_id),
             'child_name' => $session->child_name,
-            'can_report_absence' => empty($existing_absence)
+            'can_report_absence' => $can_report,
+            'makeup_info' => array(
+                'class_allows_makeups' => $class_allows_makeups,
+                'can_report_on_time' => $can_report_on_time,
+                'hours_until_session' => round($hours_until_session, 1),
+                'remaining_makeups' => $remaining_makeups,
+                'max_makeups' => $max_makeups,
+                'will_get_makeup' => $will_get_makeup
+            )
         );
     }
 
