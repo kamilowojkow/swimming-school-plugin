@@ -75,18 +75,36 @@ export default function MakeupsScreen() {
 
   const fetchData = async () => {
     try {
+      console.log('=== MAKEUPS SCREEN: Fetching data ===');
+
       const [absencesData, slotsData] = await Promise.all([
         api.getAbsences(),
         api.getMakeupSlots(),
       ]);
 
+      console.log('=== RAW absencesData ===');
+      console.log(JSON.stringify(absencesData, null, 2));
+
+      console.log('=== RAW slotsData ===');
+      console.log(JSON.stringify(slotsData, null, 2));
+
       const absencesArray = Array.isArray(absencesData) ? absencesData : (absencesData?.absences || []);
       const slotsArray = Array.isArray(slotsData) ? slotsData : (slotsData?.slots || []);
+
+      console.log('=== Parsed absencesArray ===');
+      console.log('Count:', absencesArray.length);
+      console.log(JSON.stringify(absencesArray, null, 2));
+
+      console.log('=== Debug info from API ===');
+      if (absencesData?._debug) {
+        console.log(JSON.stringify(absencesData._debug, null, 2));
+      }
 
       setAbsences(absencesArray);
       setMakeupSlots(slotsArray);
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('=== ERROR fetching makeups data ===');
+      console.error(error);
     } finally {
       setIsLoading(false);
     }

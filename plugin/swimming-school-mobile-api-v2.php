@@ -1110,12 +1110,19 @@ function ssm_api_absences($request) {
     }
 
     // GET - return absences from database with real data
+    error_log('=== SSM API ABSENCES GET ===');
+
     $user_id = ssm_api_get_user_id($request);
+    error_log('SSM Absences: user_id = ' . $user_id);
+
     $result_client = ssm_api_get_or_create_client($user_id, true);
     $client = $result_client['client'];
     $debug_info = $result_client['debug'];
 
+    error_log('SSM Absences: client = ' . ($client ? 'ID:' . $client->id : 'NULL'));
+
     if (!$client) {
+        error_log('SSM Absences: No client found, returning empty');
         return array(
             '_debug' => array_merge($debug_info, array('error' => 'No client found')),
             'absences' => array()
@@ -1128,15 +1135,22 @@ function ssm_api_absences($request) {
         $client->id
     ));
 
+    error_log('SSM Absences: child_ids = ' . json_encode($child_ids));
+
     $debug_info['client_id'] = $client->id;
     $debug_info['child_ids'] = $child_ids;
 
     if (empty($child_ids)) {
+        error_log('SSM Absences: No children linked, returning empty');
         return array(
             '_debug' => array_merge($debug_info, array('error' => 'No children linked to client')),
             'absences' => array()
         );
     }
+
+    // Check what's in the absences table for these children
+    $total_absences_count = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}ssm_absences");
+    error_log('SSM Absences: Total absences in table = ' . $total_absences_count);
 
     // Build IN clause for child_ids
     $placeholders = implode(',', array_fill(0, count($child_ids), '%d'));
@@ -1166,11 +1180,17 @@ function ssm_api_absences($request) {
         ...$child_ids
     );
 
+    error_log('SSM Absences: Query = ' . $query);
+
     $absences = $wpdb->get_results($query);
+
+    error_log('SSM Absences: Query returned ' . count($absences) . ' rows');
+    error_log('SSM Absences: Last error = ' . $wpdb->last_error);
 
     $debug_info['query'] = $query;
     $debug_info['last_error'] = $wpdb->last_error;
     $debug_info['absences_count'] = count($absences);
+    $debug_info['total_absences_in_table'] = $total_absences_count;
 
     $result = array();
     foreach ($absences as $absence) {
