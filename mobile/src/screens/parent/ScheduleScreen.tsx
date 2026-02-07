@@ -12,10 +12,22 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { format, isToday, isTomorrow, isSameDay } from 'date-fns';
+import { format, isToday, isTomorrow } from 'date-fns';
 import { pl, enUS } from 'date-fns/locale';
 import api from '../../api/client';
 import { useSettingsStore, useThemeColors } from '../../store/settingsStore';
+
+// Safe date formatting helper
+const safeFormatDate = (dateStr: string | undefined, formatStr: string, locale: any): string => {
+  if (!dateStr) return '-';
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '-';
+    return format(date, formatStr, { locale });
+  } catch {
+    return '-';
+  }
+};
 
 interface Session {
   id: number;
@@ -96,8 +108,11 @@ export default function ScheduleScreen() {
     return session.is_absent === true || session.attendance_status === 'absent';
   };
 
-  const openAbsenceModal = (session: Session) => {
-    setSelectedSession(session);
+  // Sessions available for absence reporting
+  const reportableSessions = sessions.filter((s) => canReportAbsence(s));
+
+  const openAbsenceModal = () => {
+    setSelectedSession(null);
     setAbsenceReason('');
     setShowAbsenceModal(true);
   };
@@ -112,6 +127,8 @@ export default function ScheduleScreen() {
         language === 'pl' ? 'Nieobecność została zgłoszona' : 'Absence has been reported'
       );
       setShowAbsenceModal(false);
+      setSelectedSession(null);
+      setAbsenceReason('');
       fetchSchedule();
     } catch (error) {
       Alert.alert(
@@ -121,13 +138,6 @@ export default function ScheduleScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const getDateLabel = (dateStr: string): string => {
-    const date = new Date(dateStr);
-    if (isToday(date)) return language === 'pl' ? 'Dzisiaj' : 'Today';
-    if (isTomorrow(date)) return language === 'pl' ? 'Jutro' : 'Tomorrow';
-    return format(date, 'EEEE, d MMMM', { locale: dateLocale });
   };
 
   const getDateBadgeType = (dateStr: string): 'today' | 'tomorrow' | null => {
@@ -168,6 +178,14 @@ export default function ScheduleScreen() {
         </Text>
       </View>
 
+      {/* Report Absence Button */}
+      {reportableSessions.length > 0 && (
+        <TouchableOpacity style={styles.reportButton} onPress={openAbsenceModal}>
+          <Ionicons name="add-circle" size={20} color="#fff" />
+          <Text style={styles.reportButtonText}>{t.absences.reportAbsence}</Text>
+        </TouchableOpacity>
+      )}
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -190,7 +208,7 @@ export default function ScheduleScreen() {
             {/* Timeline vertical line */}
             <View style={styles.timelineLine} />
 
-            {groupedSessions.map((group, groupIndex) => {
+            {groupedSessions.map((group) => {
               const badgeType = getDateBadgeType(group.date);
               const isTodayGroup = badgeType === 'today';
 
@@ -230,7 +248,6 @@ export default function ScheduleScreen() {
                   {/* Sessions for this date */}
                   {group.sessions.map((session) => {
                     const absent = isSessionAbsent(session);
-                    const canReport = canReportAbsence(session);
                     const childColor = getChildColor(session.child_id);
 
                     return (
@@ -284,19 +301,6 @@ export default function ScheduleScreen() {
                               </View>
                             </View>
                           </View>
-
-                          {/* Action footer */}
-                          {!absent && canReport && (
-                            <TouchableOpacity
-                              style={styles.absenceButton}
-                              onPress={() => openAbsenceModal(session)}
-                            >
-                              <Ionicons name="close-circle-outline" size={18} color="#fff" />
-                              <Text style={styles.absenceButtonText}>
-                                {t.absences.reportAbsence}
-                              </Text>
-                            </TouchableOpacity>
-                          )}
                         </View>
                       </View>
                     );
@@ -323,7 +327,12 @@ export default function ScheduleScreen() {
       )}
 
       {/* Report Absence Modal */}
-      <Modal visible={showAbsenceModal} transparent animationType="slide">
+      <Modal
+        visible={showAbsenceModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAbsenceModal(false)}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -333,72 +342,78 @@ export default function ScheduleScreen() {
               </TouchableOpacity>
             </View>
 
-            {selectedSession && (
-              <View style={styles.modalSession}>
-                <View style={styles.modalSessionDate}>
-                  <Text style={styles.modalSessionDay}>
-                    {(() => { try { return format(new Date(selectedSession.session_date), 'd'); } catch { return '-'; } })()}
-                  </Text>
-                  <Text style={styles.modalSessionMonth}>
-                    {(() => { try { return format(new Date(selectedSession.session_date), 'MMM', { locale: dateLocale }); } catch { return '-'; } })()}
-                  </Text>
-                </View>
-                <View style={styles.modalSessionInfo}>
-                  <Text style={styles.modalSessionClass}>{selectedSession.class_name}</Text>
-                  <Text style={styles.modalSessionMeta}>
-                    {selectedSession.child_first_name} {selectedSession.child_last_name}
-                  </Text>
-                  <Text style={styles.modalSessionMeta}>
-                    {selectedSession.time_start?.substring(0, 5) || '-'} - {selectedSession.time_end?.substring(0, 5) || '-'}
-                  </Text>
-                </View>
-              </View>
-            )}
+            {/* Session picker */}
+            <Text style={styles.modalLabel}>
+              {language === 'pl' ? 'Wybierz zajęcia:' : 'Select session:'}
+            </Text>
+            <ScrollView style={styles.sessionPicker}>
+              {reportableSessions.map((session) => {
+                const isSelected = selectedSession?.id === session.id;
+                return (
+                  <TouchableOpacity
+                    key={session.id}
+                    style={[
+                      styles.sessionOption,
+                      isSelected && styles.sessionOptionSelected,
+                    ]}
+                    onPress={() => setSelectedSession(session)}
+                  >
+                    <View style={styles.sessionOptionDate}>
+                      <Text style={styles.sessionOptionDay}>
+                        {safeFormatDate(session.session_date, 'd', dateLocale)}
+                      </Text>
+                      <Text style={styles.sessionOptionMonth}>
+                        {safeFormatDate(session.session_date, 'MMM', dateLocale)}
+                      </Text>
+                    </View>
+                    <View style={styles.sessionOptionInfo}>
+                      <Text style={styles.sessionOptionTitle}>{session.class_name}</Text>
+                      <Text style={styles.sessionOptionMeta}>
+                        {session.child_first_name} {session.child_last_name} • {session.time_start?.substring(0, 5) || '-'}
+                      </Text>
+                      <Text style={styles.sessionOptionMeta}>
+                        {safeFormatDate(session.session_date, 'EEEE', dateLocale)} • {session.facility_name}
+                      </Text>
+                    </View>
+                    {isSelected && (
+                      <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
 
-            <Text style={styles.inputLabel}>
-              {t.absences.reason} ({language === 'pl' ? 'opcjonalnie' : 'optional'})
+            {/* Reason input */}
+            <Text style={styles.modalLabel}>
+              {t.absences.reason} ({language === 'pl' ? 'opcjonalnie' : 'optional'}):
             </Text>
             <TextInput
-              style={styles.textInput}
+              style={styles.reasonInput}
               placeholder={language === 'pl' ? 'Np. choroba, wyjazd...' : 'E.g. illness, travel...'}
               placeholderTextColor={colors.textTertiary}
               value={absenceReason}
               onChangeText={setAbsenceReason}
               multiline
-              numberOfLines={3}
             />
 
-            <View style={styles.modalWarning}>
-              <Ionicons name="information-circle-outline" size={18} color={colors.warning} />
-              <Text style={styles.modalWarningText}>
-                {language === 'pl'
-                  ? 'Zgłoszona nieobecność będzie mogła być odrobiona na innych zajęciach.'
-                  : 'Reported absence can be made up in other sessions.'}
-              </Text>
-            </View>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalCancelButton}
-                onPress={() => setShowAbsenceModal(false)}
-              >
-                <Text style={styles.modalCancelText}>{t.common.cancel}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalSubmitButton, isSubmitting && styles.modalSubmitDisabled]}
-                onPress={submitAbsence}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <>
-                    <Ionicons name="checkmark" size={18} color="#fff" />
-                    <Text style={styles.modalSubmitText}>{t.absences.reportAbsence}</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
+            {/* Submit button */}
+            <TouchableOpacity
+              style={[
+                styles.submitButton,
+                (!selectedSession || isSubmitting) && styles.submitButtonDisabled,
+              ]}
+              onPress={submitAbsence}
+              disabled={!selectedSession || isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark" size={20} color="#fff" />
+                  <Text style={styles.submitButtonText}>{t.absences.reportAbsence}</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -438,11 +453,29 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>, isDark: boolean
       color: colors.textSecondary,
       marginTop: 2,
     },
+    // Report absence button (top)
+    reportButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#ef4444',
+      marginHorizontal: 16,
+      marginTop: 12,
+      marginBottom: 4,
+      paddingVertical: 14,
+      borderRadius: 12,
+      gap: 8,
+    },
+    reportButtonText: {
+      color: '#fff',
+      fontSize: 15,
+      fontWeight: '600',
+    },
     scrollView: {
       flex: 1,
     },
     scrollContent: {
-      paddingTop: 16,
+      paddingTop: 12,
       paddingHorizontal: 16,
     },
     // Empty state
@@ -630,20 +663,6 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>, isDark: boolean
       fontSize: 13,
       color: colors.textSecondary,
     },
-    // Absence button
-    absenceButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: '#ef4444',
-      paddingVertical: 10,
-      gap: 6,
-    },
-    absenceButtonText: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: '#fff',
-    },
     // Legend
     legend: {
       flexDirection: 'row',
@@ -679,6 +698,7 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>, isDark: boolean
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
       padding: 20,
+      maxHeight: '80%',
     },
     modalHeader: {
       flexDirection: 'row',
@@ -691,113 +711,86 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>, isDark: boolean
       fontWeight: '700',
       color: colors.text,
     },
-    modalSession: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: isDark ? colors.surfaceSecondary : colors.background,
-      borderRadius: 14,
-      padding: 14,
-      marginBottom: 20,
-    },
-    modalSessionDate: {
-      width: 52,
-      height: 52,
-      backgroundColor: colors.primaryLight,
-      borderRadius: 12,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: 14,
-    },
-    modalSessionDay: {
-      fontSize: 20,
-      fontWeight: '700',
-      color: colors.primary,
-    },
-    modalSessionMonth: {
-      fontSize: 11,
-      color: colors.primary,
-      textTransform: 'uppercase',
-    },
-    modalSessionInfo: {
-      flex: 1,
-    },
-    modalSessionClass: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.text,
-    },
-    modalSessionMeta: {
-      fontSize: 13,
-      color: colors.textSecondary,
-      marginTop: 2,
-    },
-    inputLabel: {
+    modalLabel: {
       fontSize: 14,
-      fontWeight: '500',
+      fontWeight: '600',
       color: colors.text,
       marginBottom: 8,
     },
-    textInput: {
+    // Session picker
+    sessionPicker: {
+      maxHeight: 220,
+      marginBottom: 16,
+    },
+    sessionOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 8,
+    },
+    sessionOptionSelected: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primaryLight,
+    },
+    sessionOptionDate: {
+      width: 44,
+      alignItems: 'center',
+      marginRight: 12,
+    },
+    sessionOptionDay: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    sessionOptionMonth: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+    },
+    sessionOptionInfo: {
+      flex: 1,
+    },
+    sessionOptionTitle: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    sessionOptionMeta: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 2,
+      textTransform: 'capitalize',
+    },
+    // Reason input
+    reasonInput: {
       backgroundColor: isDark ? colors.surfaceSecondary : colors.background,
       borderRadius: 12,
       padding: 14,
       fontSize: 15,
       color: colors.text,
-      borderWidth: 1,
-      borderColor: colors.border,
       minHeight: 80,
       textAlignVertical: 'top',
-      marginBottom: 16,
-    },
-    modalWarning: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      backgroundColor: colors.warningLight,
-      borderRadius: 12,
-      padding: 12,
       marginBottom: 20,
-      gap: 8,
     },
-    modalWarningText: {
-      fontSize: 13,
-      color: isDark ? colors.warning : '#92400e',
-      flex: 1,
-      lineHeight: 18,
-    },
-    modalActions: {
-      flexDirection: 'row',
-      gap: 12,
-    },
-    modalCancelButton: {
-      flex: 1,
-      paddingVertical: 14,
-      alignItems: 'center',
-      borderRadius: 14,
-      backgroundColor: isDark ? colors.surfaceSecondary : colors.background,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    modalCancelText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.textSecondary,
-    },
-    modalSubmitButton: {
-      flex: 2,
+    // Submit button
+    submitButton: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 14,
-      borderRadius: 14,
       backgroundColor: '#ef4444',
-      gap: 6,
+      paddingVertical: 16,
+      borderRadius: 12,
+      gap: 8,
     },
-    modalSubmitDisabled: {
-      opacity: 0.6,
+    submitButtonDisabled: {
+      backgroundColor: colors.textTertiary,
     },
-    modalSubmitText: {
-      fontSize: 15,
-      fontWeight: '600',
+    submitButtonText: {
       color: '#fff',
+      fontSize: 16,
+      fontWeight: '600',
     },
   });
