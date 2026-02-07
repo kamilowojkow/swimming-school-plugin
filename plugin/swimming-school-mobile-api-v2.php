@@ -1042,59 +1042,85 @@ function ssm_api_absences($request) {
         );
     }
 
-    // GET - return absences from database or sample data
-    $absences = $wpdb->get_results(
-        "SELECT * FROM $table_absences ORDER BY reported_at DESC LIMIT 20"
-    );
+    // GET - return absences from database with real data
+    $user_id = ssm_api_get_user_id($request);
+    $client = ssm_api_get_or_create_client($user_id);
 
-    if (!empty($absences)) {
-        $result = array();
-        foreach ($absences as $absence) {
-            $result[] = array(
-                'id' => $absence->id,
-                'child_id' => $absence->child_id,
-                'child_name' => 'Dziecko #' . $absence->child_id,
-                'session_id' => $absence->session_id,
-                'session_date' => date('Y-m-d'),
-                'time_start' => '16:00',
-                'class_name' => 'Kurs pływania',
-                'status' => $absence->status,
-                'reason' => $absence->reason,
-                'reported_at' => $absence->reported_at
-            );
-        }
-        return $result;
+    if (!$client) {
+        return array();
     }
 
-    // Return sample data if no records in DB
-    return array(
-        array(
-            'id' => 1,
-            'child_id' => 1,
-            'child_name' => 'Jan Kowalski',
-            'session_id' => 101,
-            'session_date' => date('Y-m-d', strtotime('-3 days')),
-            'time_start' => '16:00',
-            'class_name' => 'Kurs pływania - poziom średni',
-            'status' => 'confirmed',
-            'reason' => 'Choroba',
-            'reported_at' => date('Y-m-d H:i:s', strtotime('-4 days'))
-        )
-    );
+    // Get absences for children of this parent
+    $absences = $wpdb->get_results($wpdb->prepare(
+        "SELECT
+            a.id,
+            a.child_id,
+            CONCAT(ch.first_name, ' ', ch.last_name) as child_name,
+            a.session_id,
+            s.session_date,
+            TIME_FORMAT(s.time_start, '%%H:%%i') as time_start,
+            c.name as class_name,
+            a.status,
+            a.reason,
+            a.reported_at,
+            a.makeup_session_id
+        FROM {$wpdb->prefix}ssm_absences a
+        JOIN {$wpdb->prefix}ssm_children ch ON a.child_id = ch.id
+        JOIN {$wpdb->prefix}ssm_client_children cc ON ch.id = cc.child_id AND cc.client_id = %d
+        LEFT JOIN {$wpdb->prefix}ssm_sessions s ON a.session_id = s.id
+        LEFT JOIN {$wpdb->prefix}ssm_classes c ON s.class_id = c.id
+        ORDER BY a.reported_at DESC
+        LIMIT 50",
+        $client->id
+    ));
+
+    $result = array();
+    foreach ($absences as $absence) {
+        $makeup_session = null;
+        if ($absence->makeup_session_id) {
+            $makeup = $wpdb->get_row($wpdb->prepare(
+                "SELECT s.session_date as date, TIME_FORMAT(s.time_start, '%%H:%%i') as time, c.name as class_name
+                 FROM {$wpdb->prefix}ssm_sessions s
+                 JOIN {$wpdb->prefix}ssm_classes c ON s.class_id = c.id
+                 WHERE s.id = %d",
+                $absence->makeup_session_id
+            ));
+            if ($makeup) {
+                $makeup_session = array(
+                    'id' => $absence->makeup_session_id,
+                    'date' => $makeup->date,
+                    'time' => $makeup->time,
+                    'class_name' => $makeup->class_name
+                );
+            }
+        }
+
+        $result[] = array(
+            'id' => intval($absence->id),
+            'child_id' => intval($absence->child_id),
+            'child_name' => $absence->child_name,
+            'session_id' => intval($absence->session_id),
+            'session_date' => $absence->session_date,
+            'time_start' => $absence->time_start,
+            'class_name' => $absence->class_name ?: 'Zajęcia',
+            'status' => $absence->status,
+            'reason' => $absence->reason,
+            'reported_at' => $absence->reported_at,
+            'makeup_session' => $makeup_session
+        );
+    }
+
+    return $result;
 }
 
 function ssm_api_get_upcoming_sessions($request) {
     global $wpdb;
     $user_id = ssm_api_get_user_id($request);
 
-    // Get client_id for current user
-    $client = $wpdb->get_row($wpdb->prepare(
-        "SELECT id FROM {$wpdb->prefix}ssm_clients WHERE user_id = %d",
-        $user_id
-    ));
+    // Get client for current user
+    $client = ssm_api_get_or_create_client($user_id);
 
     if (!$client) {
-        // No client record - return empty array
         return array();
     }
 
