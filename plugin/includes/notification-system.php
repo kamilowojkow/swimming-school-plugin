@@ -194,10 +194,19 @@ class SSM_Notification_System {
         );
         $args = wp_parse_args($args, $defaults);
 
-        $where = array(
-            $wpdb->prepare("recipient_type = %s", $recipient_type),
-            $wpdb->prepare("recipient_id = %d", $recipient_id)
+        // Build WHERE clause with support for multiple recipient types
+        // Notifications can be stored with 'parent', 'client', or 'user' types
+        $recipient_where = $wpdb->prepare(
+            "((recipient_type = %s AND recipient_id = %d)
+              OR (recipient_type = 'client' AND recipient_id = %d)
+              OR (recipient_type = 'user' AND recipient_id = %d))",
+            $recipient_type,
+            $recipient_id,
+            $recipient_id,
+            $recipient_id
         );
+
+        $where = array($recipient_where);
 
         if ($args['unread_only']) {
             $where[] = "is_read = 0";
@@ -244,11 +253,17 @@ class SSM_Notification_System {
     public function get_unread_count($recipient_type, $recipient_id) {
         global $wpdb;
 
+        // Support multiple recipient types (parent, client, user)
         return (int) $wpdb->get_var($wpdb->prepare(
             "SELECT COUNT(*) FROM {$wpdb->prefix}ssm_notifications
-             WHERE recipient_type = %s AND recipient_id = %d AND is_read = 0
+             WHERE ((recipient_type = %s AND recipient_id = %d)
+                    OR (recipient_type = 'client' AND recipient_id = %d)
+                    OR (recipient_type = 'user' AND recipient_id = %d))
+             AND is_read = 0
              AND (expires_at IS NULL OR expires_at > NOW())",
             $recipient_type,
+            $recipient_id,
+            $recipient_id,
             $recipient_id
         ));
     }
@@ -259,16 +274,28 @@ class SSM_Notification_System {
     public function mark_as_read($notification_id, $recipient_type = null, $recipient_id = null) {
         global $wpdb;
 
-        $where = array('id' => $notification_id);
         if ($recipient_type && $recipient_id) {
-            $where['recipient_type'] = $recipient_type;
-            $where['recipient_id'] = $recipient_id;
+            // Support multiple recipient types (parent, client, user)
+            return $wpdb->query($wpdb->prepare(
+                "UPDATE {$wpdb->prefix}ssm_notifications
+                 SET is_read = 1, read_at = %s
+                 WHERE id = %d
+                 AND ((recipient_type = %s AND recipient_id = %d)
+                      OR (recipient_type = 'client' AND recipient_id = %d)
+                      OR (recipient_type = 'user' AND recipient_id = %d))",
+                current_time('mysql'),
+                $notification_id,
+                $recipient_type,
+                $recipient_id,
+                $recipient_id,
+                $recipient_id
+            ));
         }
 
         return $wpdb->update(
             $wpdb->prefix . 'ssm_notifications',
             array('is_read' => 1, 'read_at' => current_time('mysql')),
-            $where
+            array('id' => $notification_id)
         );
     }
 
@@ -278,11 +305,20 @@ class SSM_Notification_System {
     public function mark_all_as_read($recipient_type, $recipient_id) {
         global $wpdb;
 
-        return $wpdb->update(
-            $wpdb->prefix . 'ssm_notifications',
-            array('is_read' => 1, 'read_at' => current_time('mysql')),
-            array('recipient_type' => $recipient_type, 'recipient_id' => $recipient_id, 'is_read' => 0)
-        );
+        // Support multiple recipient types (parent, client, user)
+        return $wpdb->query($wpdb->prepare(
+            "UPDATE {$wpdb->prefix}ssm_notifications
+             SET is_read = 1, read_at = %s
+             WHERE is_read = 0
+             AND ((recipient_type = %s AND recipient_id = %d)
+                  OR (recipient_type = 'client' AND recipient_id = %d)
+                  OR (recipient_type = 'user' AND recipient_id = %d))",
+            current_time('mysql'),
+            $recipient_type,
+            $recipient_id,
+            $recipient_id,
+            $recipient_id
+        ));
     }
 
     /**
@@ -291,13 +327,23 @@ class SSM_Notification_System {
     public function delete_notification($notification_id, $recipient_type = null, $recipient_id = null) {
         global $wpdb;
 
-        $where = array('id' => $notification_id);
         if ($recipient_type && $recipient_id) {
-            $where['recipient_type'] = $recipient_type;
-            $where['recipient_id'] = $recipient_id;
+            // Support multiple recipient types (parent, client, user)
+            return $wpdb->query($wpdb->prepare(
+                "DELETE FROM {$wpdb->prefix}ssm_notifications
+                 WHERE id = %d
+                 AND ((recipient_type = %s AND recipient_id = %d)
+                      OR (recipient_type = 'client' AND recipient_id = %d)
+                      OR (recipient_type = 'user' AND recipient_id = %d))",
+                $notification_id,
+                $recipient_type,
+                $recipient_id,
+                $recipient_id,
+                $recipient_id
+            ));
         }
 
-        return $wpdb->delete($wpdb->prefix . 'ssm_notifications', $where);
+        return $wpdb->delete($wpdb->prefix . 'ssm_notifications', array('id' => $notification_id));
     }
 
     // ========================================
