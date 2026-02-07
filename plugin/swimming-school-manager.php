@@ -923,8 +923,54 @@ class Swimming_School_Manager_V2 {
             KEY due_date (due_date)
         ) $charset_collate;";
         dbDelta($sql_installments);
+
+        // Tabela: Tokeny autoryzacji API
+        $table_auth_tokens = $wpdb->prefix . 'ssm_auth_tokens';
+        $sql_auth_tokens = "CREATE TABLE IF NOT EXISTS $table_auth_tokens (
+            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_type varchar(20) NOT NULL,
+            user_id bigint(20) UNSIGNED NOT NULL,
+            token varchar(64) NOT NULL,
+            refresh_token varchar(64) NOT NULL,
+            expires_at datetime NOT NULL,
+            revoked tinyint(1) NOT NULL DEFAULT 0,
+            created_at datetime NOT NULL,
+            PRIMARY KEY (id),
+            KEY token (token),
+            KEY refresh_token (refresh_token),
+            KEY user_type_user_id (user_type, user_id)
+        ) $charset_collate;";
+        dbDelta($sql_auth_tokens);
+
+        // Tabela: Push tokens dla powiadomień mobilnych
+        $table_push_tokens = $wpdb->prefix . 'ssm_push_tokens';
+        $sql_push_tokens = "CREATE TABLE IF NOT EXISTS $table_push_tokens (
+            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_type varchar(20) NOT NULL,
+            user_id bigint(20) UNSIGNED NOT NULL,
+            token varchar(255) NOT NULL,
+            platform varchar(20) NOT NULL,
+            created_at datetime NOT NULL,
+            PRIMARY KEY (id),
+            KEY user_type_user_id (user_type, user_id),
+            KEY token (token)
+        ) $charset_collate;";
+        dbDelta($sql_push_tokens);
+
+        // Tabela: Historia wysłanych powiadomień (deduplikacja)
+        $table_notification_sent = $wpdb->prefix . 'ssm_notification_sent';
+        $sql_notification_sent = "CREATE TABLE IF NOT EXISTS $table_notification_sent (
+            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            notification_key varchar(100) NOT NULL,
+            recipient_type varchar(20) NOT NULL,
+            recipient_id bigint(20) UNSIGNED NOT NULL,
+            sent_at datetime NOT NULL,
+            PRIMARY KEY (id),
+            UNIQUE KEY unique_notification (notification_key, recipient_type, recipient_id)
+        ) $charset_collate;";
+        dbDelta($sql_notification_sent);
     }
-    
+
     public function deactivate() {
         // Placeholder
     }
