@@ -1024,27 +1024,37 @@ function ssm_api_get_notifications($request) {
     // Determine recipient type and ID
     $recipient_info = ssm_api_get_recipient_info($user_id);
 
-    // Debug: also try to get notifications for user_id directly
-    $debug_info = array(
-        'user_id' => $user_id,
-        'recipient_info' => $recipient_info
-    );
+    // Build conditions based on user's roles
+    $conditions = array();
+    $params = array();
 
-    // Get notifications for this user - try multiple recipient types
+    // Always check for 'user' type notifications
+    $conditions[] = "(recipient_type = 'user' AND recipient_id = %d)";
+    $params[] = $user_id;
+
+    // If user is an instructor
+    if ($recipient_info['instructor_id']) {
+        $conditions[] = "(recipient_type = 'instructor' AND recipient_id = %d)";
+        $params[] = $recipient_info['instructor_id'];
+    }
+
+    // If user is a parent/client
+    if ($recipient_info['client_id']) {
+        $conditions[] = "(recipient_type IN ('parent', 'client') AND recipient_id = %d)";
+        $params[] = $recipient_info['client_id'];
+    }
+
+    $where_clause = implode(' OR ', $conditions);
+    $params[] = 50; // LIMIT
+
+    // Get notifications for this user - check all applicable recipient types
     $notifications = $wpdb->get_results($wpdb->prepare(
         "SELECT * FROM $table
-         WHERE (
-             (recipient_type = %s AND recipient_id = %d)
-             OR (recipient_type = 'user' AND recipient_id = %d)
-             OR (recipient_type = 'client' AND recipient_id = %d)
-         )
+         WHERE ($where_clause)
          AND (expires_at IS NULL OR expires_at > NOW())
          ORDER BY created_at DESC
-         LIMIT 50",
-        $recipient_info['type'],
-        $recipient_info['id'],
-        $user_id,
-        $recipient_info['id']
+         LIMIT %d",
+        $params
     ));
 
     $result = array();
@@ -1093,20 +1103,34 @@ function ssm_api_get_unread_count($request) {
 
     $recipient_info = ssm_api_get_recipient_info($user_id);
 
-    // Try multiple recipient types to match how notifications might be stored
+    // Build conditions based on user's roles
+    $conditions = array();
+    $params = array();
+
+    // Always check for 'user' type notifications
+    $conditions[] = "(recipient_type = 'user' AND recipient_id = %d)";
+    $params[] = $user_id;
+
+    // If user is an instructor
+    if ($recipient_info['instructor_id']) {
+        $conditions[] = "(recipient_type = 'instructor' AND recipient_id = %d)";
+        $params[] = $recipient_info['instructor_id'];
+    }
+
+    // If user is a parent/client
+    if ($recipient_info['client_id']) {
+        $conditions[] = "(recipient_type IN ('parent', 'client') AND recipient_id = %d)";
+        $params[] = $recipient_info['client_id'];
+    }
+
+    $where_clause = implode(' OR ', $conditions);
+
     $count = $wpdb->get_var($wpdb->prepare(
         "SELECT COUNT(*) FROM $table
-         WHERE (
-             (recipient_type = %s AND recipient_id = %d)
-             OR (recipient_type = 'user' AND recipient_id = %d)
-             OR (recipient_type = 'client' AND recipient_id = %d)
-         )
+         WHERE ($where_clause)
          AND is_read = 0
          AND (expires_at IS NULL OR expires_at > NOW())",
-        $recipient_info['type'],
-        $recipient_info['id'],
-        $user_id,
-        $recipient_info['id']
+        $params
     ));
 
     return array(
@@ -1152,20 +1176,33 @@ function ssm_api_mark_all_notifications_read($request) {
 
     $recipient_info = ssm_api_get_recipient_info($user_id);
 
-    // Update with multiple recipient type support
+    // Build conditions based on user's roles
+    $conditions = array();
+    $params = array(current_time('mysql')); // First param is read_at timestamp
+
+    // Always check for 'user' type notifications
+    $conditions[] = "(recipient_type = 'user' AND recipient_id = %d)";
+    $params[] = $user_id;
+
+    // If user is an instructor
+    if ($recipient_info['instructor_id']) {
+        $conditions[] = "(recipient_type = 'instructor' AND recipient_id = %d)";
+        $params[] = $recipient_info['instructor_id'];
+    }
+
+    // If user is a parent/client
+    if ($recipient_info['client_id']) {
+        $conditions[] = "(recipient_type IN ('parent', 'client') AND recipient_id = %d)";
+        $params[] = $recipient_info['client_id'];
+    }
+
+    $where_clause = implode(' OR ', $conditions);
+
     $result = $wpdb->query($wpdb->prepare(
         "UPDATE $table SET is_read = 1, read_at = %s
          WHERE is_read = 0
-         AND (
-             (recipient_type = %s AND recipient_id = %d)
-             OR (recipient_type = 'user' AND recipient_id = %d)
-             OR (recipient_type = 'client' AND recipient_id = %d)
-         )",
-        current_time('mysql'),
-        $recipient_info['type'],
-        $recipient_info['id'],
-        $user_id,
-        $recipient_info['id']
+         AND ($where_clause)",
+        $params
     ));
 
     return array(
@@ -1175,13 +1212,22 @@ function ssm_api_mark_all_notifications_read($request) {
 }
 
 // Helper function to get recipient info for notifications
+// Returns all matching identities (user can be both instructor and parent)
 function ssm_api_get_recipient_info($user_id) {
     global $wpdb;
+
+    $result = array(
+        'type' => 'user',  // Primary type (for backward compatibility)
+        'id' => $user_id,
+        'user_id' => $user_id,
+        'instructor_id' => null,
+        'client_id' => null
+    );
 
     // Get WordPress user email
     $user = get_userdata($user_id);
     if (!$user) {
-        return array('type' => 'user', 'id' => $user_id);
+        return $result;
     }
     $user_email = $user->user_email;
 
@@ -1194,7 +1240,9 @@ function ssm_api_get_recipient_info($user_id) {
     ));
 
     if ($instructor) {
-        return array('type' => 'instructor', 'id' => $instructor->id);
+        $result['type'] = 'instructor';
+        $result['id'] = $instructor->id;
+        $result['instructor_id'] = $instructor->id;
     }
 
     // Check if user is parent/client (by email - ssm_clients doesn't have user_id column)
@@ -1204,7 +1252,12 @@ function ssm_api_get_recipient_info($user_id) {
     ));
 
     if ($client) {
-        return array('type' => 'parent', 'id' => $client->id);
+        $result['client_id'] = $client->id;
+        // If not already instructor, set primary type as parent
+        if (!$instructor) {
+            $result['type'] = 'parent';
+            $result['id'] = $client->id;
+        }
     }
 
     // Fallback to user_id
