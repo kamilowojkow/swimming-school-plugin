@@ -1183,41 +1183,157 @@ function ssm_api_get_makeups_legacy($request) {
 }
 
 function ssm_api_get_notifications($request) {
-    return array(
-        array(
-            'id' => 1,
-            'title' => 'Przypomnienie o zajęciach',
-            'message' => 'Jutro o 16:00 zajęcia pływania dla Jana',
-            'created_at' => date('Y-m-d H:i:s', strtotime('-1 hour')),
-            'is_read' => false,
-            'type' => 'reminder',
-            'icon' => 'notifications',
-            'color' => '#3b82f6',
-            'time_ago' => '1 godzinę temu'
-        )
-    );
+    global $wpdb;
+    $user_id = ssm_api_get_user_id($request);
+    $table = $wpdb->prefix . 'ssm_notifications';
+
+    // Determine recipient type and ID
+    $recipient_info = ssm_api_get_recipient_info($user_id);
+
+    // Get notifications for this user
+    $notifications = $wpdb->get_results($wpdb->prepare(
+        "SELECT * FROM $table
+         WHERE recipient_type = %s AND recipient_id = %d
+         AND (expires_at IS NULL OR expires_at > NOW())
+         ORDER BY created_at DESC
+         LIMIT 50",
+        $recipient_info['type'],
+        $recipient_info['id']
+    ));
+
+    $result = array();
+    foreach ($notifications as $notif) {
+        // Calculate time ago
+        $created = strtotime($notif->created_at);
+        $diff = time() - $created;
+        if ($diff < 3600) {
+            $time_ago = floor($diff / 60) . ' min temu';
+        } elseif ($diff < 86400) {
+            $time_ago = floor($diff / 3600) . ' godz. temu';
+        } else {
+            $time_ago = floor($diff / 86400) . ' dni temu';
+        }
+
+        // Determine icon and color based on type
+        $type_config = array(
+            'reminder' => array('icon' => 'notifications', 'color' => '#3b82f6'),
+            'absence' => array('icon' => 'calendar-outline', 'color' => '#ef4444'),
+            'payment' => array('icon' => 'card-outline', 'color' => '#22c55e'),
+            'achievement' => array('icon' => 'trophy-outline', 'color' => '#f59e0b'),
+            'info' => array('icon' => 'information-circle-outline', 'color' => '#6b7280'),
+        );
+        $config = $type_config[$notif->type] ?? $type_config['info'];
+
+        $result[] = array(
+            'id' => intval($notif->id),
+            'title' => $notif->title,
+            'message' => $notif->message,
+            'created_at' => $notif->created_at,
+            'is_read' => (bool) $notif->is_read,
+            'type' => $notif->type,
+            'icon' => $config['icon'],
+            'color' => $config['color'],
+            'time_ago' => $time_ago
+        );
+    }
+
+    return $result;
 }
 
 function ssm_api_get_unread_count($request) {
+    global $wpdb;
+    $user_id = ssm_api_get_user_id($request);
+    $table = $wpdb->prefix . 'ssm_notifications';
+
+    $recipient_info = ssm_api_get_recipient_info($user_id);
+
+    $count = $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM $table
+         WHERE recipient_type = %s AND recipient_id = %d
+         AND is_read = 0
+         AND (expires_at IS NULL OR expires_at > NOW())",
+        $recipient_info['type'],
+        $recipient_info['id']
+    ));
+
     return array(
-        'unread_count' => 1
+        'unread_count' => intval($count)
     );
 }
 
 function ssm_api_mark_notification_read($request) {
-    $notification_id = $request->get_param('id');
-    // W prawdziwej implementacji: oznacz powiadomienie jako przeczytane w bazie
+    global $wpdb;
+    $user_id = ssm_api_get_user_id($request);
+    $notification_id = intval($request->get_param('id'));
+    $table = $wpdb->prefix . 'ssm_notifications';
+
+    $recipient_info = ssm_api_get_recipient_info($user_id);
+
+    $result = $wpdb->update(
+        $table,
+        array('is_read' => 1, 'read_at' => current_time('mysql')),
+        array(
+            'id' => $notification_id,
+            'recipient_type' => $recipient_info['type'],
+            'recipient_id' => $recipient_info['id']
+        )
+    );
+
     return array(
-        'success' => true,
+        'success' => $result !== false,
         'notification_id' => $notification_id
     );
 }
 
 function ssm_api_mark_all_notifications_read($request) {
-    // W prawdziwej implementacji: oznacz wszystkie powiadomienia jako przeczytane
-    return array(
-        'success' => true
+    global $wpdb;
+    $user_id = ssm_api_get_user_id($request);
+    $table = $wpdb->prefix . 'ssm_notifications';
+
+    $recipient_info = ssm_api_get_recipient_info($user_id);
+
+    $result = $wpdb->update(
+        $table,
+        array('is_read' => 1, 'read_at' => current_time('mysql')),
+        array(
+            'recipient_type' => $recipient_info['type'],
+            'recipient_id' => $recipient_info['id'],
+            'is_read' => 0
+        )
     );
+
+    return array(
+        'success' => $result !== false,
+        'marked_count' => $result ?: 0
+    );
+}
+
+// Helper function to get recipient info for notifications
+function ssm_api_get_recipient_info($user_id) {
+    global $wpdb;
+
+    // Check if user is instructor
+    $instructor = $wpdb->get_row($wpdb->prepare(
+        "SELECT id FROM {$wpdb->prefix}ssm_instructors WHERE user_id = %d",
+        $user_id
+    ));
+
+    if ($instructor) {
+        return array('type' => 'instructor', 'id' => $instructor->id);
+    }
+
+    // Check if user is parent/client
+    $client = $wpdb->get_row($wpdb->prepare(
+        "SELECT id FROM {$wpdb->prefix}ssm_clients WHERE user_id = %d",
+        $user_id
+    ));
+
+    if ($client) {
+        return array('type' => 'parent', 'id' => $client->id);
+    }
+
+    // Fallback to user_id
+    return array('type' => 'user', 'id' => $user_id);
 }
 
 function ssm_api_register_push_token($request) {
