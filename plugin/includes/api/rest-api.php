@@ -708,7 +708,7 @@ class SSM_REST_API {
         $children = $wpdb->get_results($wpdb->prepare("
             SELECT c.*,
                    (SELECT COUNT(*) FROM {$wpdb->prefix}ssm_enrollments e WHERE e.child_id = c.id AND e.status = 'active') as active_courses,
-                   (SELECT SUM(points) FROM {$wpdb->prefix}ssm_child_achievements ca WHERE ca.child_id = c.id) as total_points
+                   (SELECT COALESCE(cp.points, 0) FROM {$wpdb->prefix}ssm_child_points cp WHERE cp.child_id = c.id) as total_points
             FROM {$wpdb->prefix}ssm_children c
             JOIN {$wpdb->prefix}ssm_client_children cc ON c.id = cc.child_id
             WHERE cc.client_id = %d
@@ -721,8 +721,8 @@ class SSM_REST_API {
                 'id' => $child->id,
                 'first_name' => $child->first_name,
                 'last_name' => $child->last_name,
-                'birth_date' => $child->birth_date,
-                'age' => $this->calculate_age($child->birth_date),
+                'birth_date' => $child->date_of_birth,
+                'age' => $this->calculate_age($child->date_of_birth),
                 'gender' => $child->gender,
                 'photo' => $child->photo,
                 'swimming_level' => $child->swimming_level,
@@ -770,11 +770,11 @@ class SSM_REST_API {
 
         // Pobierz ostatnie osiągnięcia
         $achievements = $wpdb->get_results($wpdb->prepare("
-            SELECT a.*, ca.awarded_at, ca.points
+            SELECT a.*, ca.earned_at
             FROM {$wpdb->prefix}ssm_child_achievements ca
             JOIN {$wpdb->prefix}ssm_achievements a ON ca.achievement_id = a.id
             WHERE ca.child_id = %d
-            ORDER BY ca.awarded_at DESC
+            ORDER BY ca.earned_at DESC
             LIMIT 5
         ", $child_id));
 
@@ -782,8 +782,8 @@ class SSM_REST_API {
             'id' => $child->id,
             'first_name' => $child->first_name,
             'last_name' => $child->last_name,
-            'birth_date' => $child->birth_date,
-            'age' => $this->calculate_age($child->birth_date),
+            'birth_date' => $child->date_of_birth,
+            'age' => $this->calculate_age($child->date_of_birth),
             'gender' => $child->gender,
             'photo' => $child->photo,
             'swimming_level' => $child->swimming_level,
@@ -1090,17 +1090,17 @@ class SSM_REST_API {
         }
 
         $achievements = $wpdb->get_results($wpdb->prepare("
-            SELECT a.*, ca.awarded_at, ca.points,
+            SELECT a.*, ca.earned_at,
                    CONCAT(i.first_name, ' ', i.last_name) as awarded_by_name
             FROM {$wpdb->prefix}ssm_child_achievements ca
             JOIN {$wpdb->prefix}ssm_achievements a ON ca.achievement_id = a.id
             LEFT JOIN {$wpdb->prefix}ssm_instructors i ON ca.awarded_by = i.id
             WHERE ca.child_id = %d
-            ORDER BY ca.awarded_at DESC
+            ORDER BY ca.earned_at DESC
         ", $child_id));
 
         $total_points = $wpdb->get_var($wpdb->prepare(
-            "SELECT SUM(points) FROM {$wpdb->prefix}ssm_child_achievements WHERE child_id = %d",
+            "SELECT COALESCE(points, 0) FROM {$wpdb->prefix}ssm_child_points WHERE child_id = %d",
             $child_id
         ));
 
@@ -1212,7 +1212,7 @@ class SSM_REST_API {
         // Pobierz listę zapisanych dzieci
         $participants = $wpdb->get_results($wpdb->prepare("
             SELECT e.id as enrollment_id,
-                   ch.id as child_id, ch.first_name, ch.last_name, ch.birth_date,
+                   ch.id as child_id, ch.first_name, ch.last_name, ch.date_of_birth,
                    ch.swimming_level, ch.medical_notes,
                    a.status as attendance_status, a.notes as attendance_notes
             FROM {$wpdb->prefix}ssm_enrollments e

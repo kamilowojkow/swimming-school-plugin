@@ -17,7 +17,7 @@ class SSM_Installer {
     /**
      * Wersja schematu bazy danych
      */
-    const DB_VERSION = '2.66';
+    const DB_VERSION = '2.67';
 
     /**
      * Prefix tabel
@@ -68,6 +68,7 @@ class SSM_Installer {
         self::create_gallery_table();
         self::create_absences_table();
         self::create_instructor_unavailability_table();
+        self::create_makeup_slots_table();
 
         // Płatności
         self::create_payments_table();
@@ -400,6 +401,29 @@ class SSM_Installer {
             KEY replacement_instructor_id (replacement_instructor_id),
             KEY status (status),
             UNIQUE KEY unique_unavailability (instructor_id, session_id)
+        ) " . self::$charset_collate . ";";
+        dbDelta($sql);
+    }
+
+    /**
+     * Tabela: Terminy odrabiania zajęć (makeup slots)
+     */
+    private static function create_makeup_slots_table() {
+        $table = self::$prefix . 'makeup_slots';
+        $sql = "CREATE TABLE IF NOT EXISTS $table (
+            id mediumint(9) NOT NULL AUTO_INCREMENT,
+            session_date date NOT NULL,
+            time_start time NOT NULL,
+            time_end time NOT NULL,
+            class_name varchar(255) DEFAULT NULL,
+            facility_name varchar(255) DEFAULT NULL,
+            max_spots int DEFAULT 5,
+            booked_spots int DEFAULT 0,
+            status varchar(50) DEFAULT 'available',
+            created_at datetime DEFAULT NULL,
+            PRIMARY KEY (id),
+            KEY session_date (session_date),
+            KEY status (status)
         ) " . self::$charset_collate . ";";
         dbDelta($sql);
     }
@@ -910,6 +934,7 @@ class SSM_Installer {
             $prefix . 'gallery',
             $prefix . 'absences',
             $prefix . 'instructor_unavailability',
+            $prefix . 'makeup_slots',
             $prefix . 'payments',
             $prefix . 'payment_installments',
             $prefix . 'payment_transactions',

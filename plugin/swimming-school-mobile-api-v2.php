@@ -12,138 +12,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Create database tables on plugin activation
-register_activation_hook(__FILE__, 'ssm_api_create_tables');
-
-// Also check and create tables on init (for manual plugin updates)
-add_action('init', 'ssm_api_maybe_create_tables');
-
-function ssm_api_maybe_create_tables() {
-    if (get_option('ssm_api_db_version') !== '2.1.3') {
-        ssm_api_create_tables();
-    }
-}
-
-function ssm_api_create_tables() {
-    global $wpdb;
-    $charset_collate = $wpdb->get_charset_collate();
-
-    // Table for absences - dbDelta requires specific format (no IF NOT EXISTS)
-    $table_absences = $wpdb->prefix . 'ssm_absences';
-    $sql_absences = "CREATE TABLE $table_absences (
-        id bigint(20) NOT NULL AUTO_INCREMENT,
-        enrollment_id bigint(20) DEFAULT 1,
-        session_id bigint(20) NOT NULL,
-        child_id bigint(20) NOT NULL DEFAULT 1,
-        reported_at datetime DEFAULT CURRENT_TIMESTAMP,
-        reason text,
-        status varchar(50) DEFAULT 'reported',
-        can_makeup tinyint(1) DEFAULT 1,
-        makeup_session_id bigint(20) DEFAULT NULL,
-        PRIMARY KEY  (id),
-        KEY session_id (session_id),
-        KEY child_id (child_id)
-    ) $charset_collate;";
-
-    // Table for attendance
-    $table_attendance = $wpdb->prefix . 'ssm_attendance';
-    $sql_attendance = "CREATE TABLE $table_attendance (
-        id bigint(20) NOT NULL AUTO_INCREMENT,
-        session_id bigint(20) NOT NULL,
-        child_id bigint(20) NOT NULL,
-        status varchar(50) DEFAULT 'unmarked',
-        notes text,
-        marked_at datetime DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY  (id),
-        KEY session_id (session_id),
-        KEY child_id (child_id)
-    ) $charset_collate;";
-
-    // Table for instructor unavailability/substitutions
-    $table_unavailability = $wpdb->prefix . 'ssm_instructor_unavailability';
-    $sql_unavailability = "CREATE TABLE $table_unavailability (
-        id bigint(20) NOT NULL AUTO_INCREMENT,
-        instructor_id bigint(20) NOT NULL DEFAULT 1,
-        session_id bigint(20) NOT NULL,
-        reported_at datetime DEFAULT CURRENT_TIMESTAMP,
-        reason text,
-        status varchar(50) DEFAULT 'pending',
-        replacement_instructor_id bigint(20) DEFAULT NULL,
-        PRIMARY KEY  (id),
-        KEY instructor_id (instructor_id),
-        KEY session_id (session_id)
-    ) $charset_collate;";
-
-    // Table for enrollments - links children to courses/classes
-    $table_enrollments = $wpdb->prefix . 'ssm_enrollments';
-    $sql_enrollments = "CREATE TABLE $table_enrollments (
-        id bigint(20) NOT NULL AUTO_INCREMENT,
-        child_id bigint(20) NOT NULL,
-        course_id bigint(20) NOT NULL,
-        parent_id bigint(20) NOT NULL,
-        enrolled_at datetime DEFAULT CURRENT_TIMESTAMP,
-        status varchar(50) DEFAULT 'active',
-        sessions_total int DEFAULT 0,
-        sessions_remaining int DEFAULT 0,
-        PRIMARY KEY  (id),
-        KEY child_id (child_id),
-        KEY course_id (course_id),
-        KEY parent_id (parent_id)
-    ) $charset_collate;";
-
-    // Table for makeup slots - available times for makeup sessions
-    $table_makeup_slots = $wpdb->prefix . 'ssm_makeup_slots';
-    $sql_makeup_slots = "CREATE TABLE $table_makeup_slots (
-        id bigint(20) NOT NULL AUTO_INCREMENT,
-        session_date date NOT NULL,
-        time_start time NOT NULL,
-        time_end time NOT NULL,
-        class_name varchar(255) NOT NULL DEFAULT '',
-        facility_name varchar(255) NOT NULL DEFAULT '',
-        max_spots int(11) NOT NULL DEFAULT 5,
-        booked_spots int(11) NOT NULL DEFAULT 0,
-        status varchar(50) NOT NULL DEFAULT 'available',
-        created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY  (id),
-        KEY session_date (session_date),
-        KEY status (status)
-    ) $charset_collate;";
-
-    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-
-    // dbDelta will create tables if they don't exist or update if they do
-    $results = array();
-    $results['absences'] = dbDelta($sql_absences);
-    $results['attendance'] = dbDelta($sql_attendance);
-    $results['unavailability'] = dbDelta($sql_unavailability);
-    $results['enrollments'] = dbDelta($sql_enrollments);
-    $results['makeup_slots'] = dbDelta($sql_makeup_slots);
-
-    // Fallback: Create ssm_makeup_slots table manually if dbDelta failed
-    $makeup_table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_makeup_slots'") === $table_makeup_slots;
-    if (!$makeup_table_exists) {
-        $wpdb->query("CREATE TABLE IF NOT EXISTS $table_makeup_slots (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            session_date date NOT NULL,
-            time_start time NOT NULL,
-            time_end time NOT NULL,
-            class_name varchar(255) DEFAULT '',
-            facility_name varchar(255) DEFAULT '',
-            max_spots int(11) DEFAULT 5,
-            booked_spots int(11) DEFAULT 0,
-            status varchar(50) DEFAULT 'available',
-            created_at datetime DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            KEY session_date (session_date),
-            KEY status (status)
-        ) $charset_collate");
-        $results['makeup_slots_fallback'] = $wpdb->last_error ?: 'Created via fallback';
-    }
-
-    update_option('ssm_api_db_version', '2.1.3');
-
-    error_log('SSM API: Database tables created/updated. Results: ' . print_r($results, true));
-}
+// UWAGA: Tabele bazy danych są tworzone przez główną wtyczkę Swimming School Manager
+// w klasie SSM_Installer (includes/class-ssm-installer.php)
+// NIE definiujemy tabel tutaj, aby uniknąć konfliktów schematu
 
 add_action('rest_api_init', function () {
     $namespace = 'ssm/v1';
@@ -347,57 +218,21 @@ add_action('rest_api_init', function () {
 function ssm_api_setup_database() {
     global $wpdb;
     $prefix = $wpdb->prefix;
-    $debug_info = array();
 
-    // Force create tables
-    ssm_api_create_tables();
-
-    // Extra fallback for makeup_slots - try direct SQL
-    $table_makeup_slots = $prefix . 'ssm_makeup_slots';
-    $makeup_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_makeup_slots'") === $table_makeup_slots;
-
-    if (!$makeup_exists) {
-        // Try very simple table creation
-        $charset = $wpdb->charset ? "DEFAULT CHARACTER SET {$wpdb->charset}" : '';
-        $collate = $wpdb->collate ? "COLLATE {$wpdb->collate}" : '';
-
-        $simple_sql = "CREATE TABLE `$table_makeup_slots` (
-            `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-            `session_date` date DEFAULT NULL,
-            `time_start` varchar(10) DEFAULT NULL,
-            `time_end` varchar(10) DEFAULT NULL,
-            `class_name` varchar(255) DEFAULT NULL,
-            `facility_name` varchar(255) DEFAULT NULL,
-            `max_spots` int(11) DEFAULT 5,
-            `booked_spots` int(11) DEFAULT 0,
-            `status` varchar(50) DEFAULT 'available',
-            `created_at` datetime DEFAULT NULL,
-            PRIMARY KEY (`id`)
-        ) ENGINE=InnoDB $charset $collate";
-
-        $result = $wpdb->query($simple_sql);
-        $debug_info['makeup_slots_direct_create'] = array(
-            'result' => $result,
-            'error' => $wpdb->last_error,
-            'sql' => $simple_sql
-        );
+    // Użyj głównego instalatora do utworzenia wszystkich tabel
+    if (class_exists('SSM_Installer')) {
+        SSM_Installer::install();
     }
 
     // Check if tables exist
     $tables_status = array();
-    $tables_to_check = array(
-        'ssm_absences',
-        'ssm_attendance',
-        'ssm_instructor_unavailability',
-        'ssm_enrollments',
-        'ssm_makeup_slots'
-    );
+    $tables_to_check = SSM_Installer::get_tables();
 
-    foreach ($tables_to_check as $table) {
-        $full_table = $prefix . $table;
+    foreach ($tables_to_check as $full_table) {
+        $table_name = str_replace($prefix, '', $full_table);
         $exists = $wpdb->get_var("SHOW TABLES LIKE '$full_table'") === $full_table;
         $count = $exists ? $wpdb->get_var("SELECT COUNT(*) FROM $full_table") : 0;
-        $tables_status[$table] = array(
+        $tables_status[$table_name] = array(
             'exists' => $exists,
             'rows' => intval($count)
         );
@@ -406,10 +241,9 @@ function ssm_api_setup_database() {
     return array(
         'success' => true,
         'message' => 'Baza danych została skonfigurowana',
-        'db_version' => get_option('ssm_api_db_version'),
+        'db_version' => get_option('ssm_db_version'),
         'tables' => $tables_status,
-        'prefix' => $prefix,
-        'debug' => $debug_info
+        'prefix' => $prefix
     );
 }
 
