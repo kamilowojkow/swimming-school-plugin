@@ -505,43 +505,86 @@ function ssm_api_password_reset($request) {
 // ============ PARENT ENDPOINTS ============
 
 function ssm_api_get_children($request) {
+    global $wpdb;
     $user_id = ssm_api_get_user_id($request);
 
-    // Zwróć przykładowe dane testowe z poprawnymi nazwami pól
-    return array(
-        array(
-            'id' => 1,
-            'first_name' => 'Jan',
-            'last_name' => 'Kowalski',
-            'birth_date' => '2018-05-15',
-            'swimming_level' => 'Delfinek',
-            'active_courses' => 1,
-            'total_points' => 150,
-            'achievements_count' => 3,
-            'medical_notes' => '',
-            'next_session' => array(
-                'date' => date('Y-m-d', strtotime('next monday')),
-                'time' => '16:00',
-                'class_name' => 'Kurs pływania - poziom średni'
-            )
-        ),
-        array(
-            'id' => 2,
-            'first_name' => 'Anna',
-            'last_name' => 'Kowalska',
-            'birth_date' => '2020-03-22',
-            'swimming_level' => 'Żółwik',
-            'active_courses' => 1,
-            'total_points' => 45,
-            'achievements_count' => 1,
-            'medical_notes' => '',
-            'next_session' => array(
-                'date' => date('Y-m-d', strtotime('next wednesday')),
-                'time' => '17:00',
-                'class_name' => 'Kurs pływania - początkujący'
-            )
-        )
-    );
+    // Get client_id for current user
+    $user = get_userdata($user_id);
+    $user_email = $user ? $user->user_email : '';
+
+    $client = $wpdb->get_row($wpdb->prepare(
+        "SELECT id FROM {$wpdb->prefix}ssm_clients WHERE user_id = %d OR email = %s",
+        $user_id,
+        $user_email
+    ));
+
+    if (!$client) {
+        // No client record - return empty array
+        return array();
+    }
+
+    // Get children for this client through client_children relationship
+    $children = $wpdb->get_results($wpdb->prepare(
+        "SELECT
+            ch.id,
+            ch.first_name,
+            ch.last_name,
+            ch.date_of_birth,
+            ch.swimming_level,
+            ch.medical_notes,
+            ch.photo,
+            (SELECT COUNT(*) FROM {$wpdb->prefix}ssm_enrollments e
+             WHERE e.child_id = ch.id AND e.status = 'active') as active_courses,
+            COALESCE((SELECT cp.points FROM {$wpdb->prefix}ssm_child_points cp
+             WHERE cp.child_id = ch.id), 0) as total_points,
+            (SELECT COUNT(*) FROM {$wpdb->prefix}ssm_child_achievements ca
+             WHERE ca.child_id = ch.id) as achievements_count
+        FROM {$wpdb->prefix}ssm_children ch
+        JOIN {$wpdb->prefix}ssm_client_children cc ON cc.child_id = ch.id
+        WHERE cc.client_id = %d AND ch.active = 1
+        ORDER BY ch.first_name",
+        $client->id
+    ));
+
+    $result = array();
+    foreach ($children as $child) {
+        // Get next session for this child
+        $next_session = $wpdb->get_row($wpdb->prepare(
+            "SELECT
+                s.session_date as date,
+                TIME_FORMAT(s.time_start, '%%H:%%i') as time,
+                c.name as class_name
+            FROM {$wpdb->prefix}ssm_sessions s
+            JOIN {$wpdb->prefix}ssm_classes c ON s.class_id = c.id
+            JOIN {$wpdb->prefix}ssm_enrollments e ON e.class_id = c.id AND e.status = 'active'
+            WHERE e.child_id = %d
+            AND s.session_date >= CURDATE()
+            AND s.status = 'scheduled'
+            ORDER BY s.session_date, s.time_start
+            LIMIT 1",
+            $child->id
+        ));
+
+        $result[] = array(
+            'id' => intval($child->id),
+            'first_name' => $child->first_name,
+            'last_name' => $child->last_name,
+            'birth_date' => $child->date_of_birth,
+            'swimming_level' => $child->swimming_level ?: 'Początkujący',
+            'active_courses' => intval($child->active_courses),
+            'total_points' => intval($child->total_points),
+            'achievements_count' => intval($child->achievements_count),
+            'medical_notes' => $child->medical_notes ?: '',
+            'photo' => $child->photo,
+            'next_session' => $next_session ? array(
+                'date' => $next_session->date,
+                'time' => $next_session->time,
+                'class_name' => $next_session->class_name
+            ) : null
+        );
+    }
+
+    return $result;
 }
 
 function ssm_api_get_child_details($request) {
@@ -682,34 +725,73 @@ function ssm_api_get_child_details($request) {
 }
 
 function ssm_api_get_schedule($request) {
+    global $wpdb;
+    $user_id = ssm_api_get_user_id($request);
     $date_from = $request->get_param('date_from') ?? date('Y-m-d');
 
-    return array(
-        array(
-            'id' => 1,
-            'session_date' => date('Y-m-d', strtotime('next monday')),
-            'time_start' => '16:00',
-            'time_end' => '16:45',
-            'facility_name' => 'Basen Główny',
-            'instructor_name' => 'Anna Nowak',
-            'child_id' => 1,
-            'child_first_name' => 'Jan',
-            'class_name' => 'Kurs pływania - poziom średni',
-            'status' => 'scheduled'
-        ),
-        array(
-            'id' => 2,
-            'session_date' => date('Y-m-d', strtotime('next wednesday')),
-            'time_start' => '17:00',
-            'time_end' => '17:45',
-            'facility_name' => 'Basen Mały',
-            'instructor_name' => 'Piotr Wiśniewski',
-            'child_id' => 2,
-            'child_first_name' => 'Anna',
-            'class_name' => 'Kurs pływania - początkujący',
-            'status' => 'scheduled'
-        )
-    );
+    // Get client_id for current user
+    $user = get_userdata($user_id);
+    $user_email = $user ? $user->user_email : '';
+
+    $client = $wpdb->get_row($wpdb->prepare(
+        "SELECT id FROM {$wpdb->prefix}ssm_clients WHERE user_id = %d OR email = %s",
+        $user_id,
+        $user_email
+    ));
+
+    if (!$client) {
+        return array();
+    }
+
+    // Get scheduled sessions for all children of this parent
+    $sessions = $wpdb->get_results($wpdb->prepare(
+        "SELECT DISTINCT
+            s.id,
+            s.session_date,
+            TIME_FORMAT(s.time_start, '%%H:%%i') as time_start,
+            TIME_FORMAT(s.time_end, '%%H:%%i') as time_end,
+            c.name as class_name,
+            f.name as facility_name,
+            CONCAT(i.first_name, ' ', i.last_name) as instructor_name,
+            ch.id as child_id,
+            ch.first_name as child_first_name,
+            ch.last_name as child_last_name,
+            s.status,
+            (SELECT 1 FROM {$wpdb->prefix}ssm_absences a
+             WHERE a.session_id = s.id AND a.child_id = ch.id LIMIT 1) as is_absent
+        FROM {$wpdb->prefix}ssm_sessions s
+        JOIN {$wpdb->prefix}ssm_classes c ON s.class_id = c.id
+        LEFT JOIN {$wpdb->prefix}ssm_facilities f ON c.facility_id = f.id
+        LEFT JOIN {$wpdb->prefix}ssm_instructors i ON COALESCE(s.instructor_id, c.instructor_id) = i.id
+        JOIN {$wpdb->prefix}ssm_enrollments e ON e.class_id = c.id AND e.status = 'active'
+        JOIN {$wpdb->prefix}ssm_children ch ON e.child_id = ch.id
+        JOIN {$wpdb->prefix}ssm_client_children cc ON cc.child_id = ch.id AND cc.client_id = %d
+        WHERE s.session_date >= %s
+        AND s.status = 'scheduled'
+        ORDER BY s.session_date, s.time_start",
+        $client->id,
+        $date_from
+    ));
+
+    $result = array();
+    foreach ($sessions as $session) {
+        $result[] = array(
+            'id' => intval($session->id),
+            'session_date' => $session->session_date,
+            'time_start' => $session->time_start,
+            'time_end' => $session->time_end,
+            'facility_name' => $session->facility_name ?: 'Basen',
+            'instructor_name' => $session->instructor_name ?: 'Instruktor',
+            'child_id' => intval($session->child_id),
+            'child_first_name' => $session->child_first_name,
+            'child_last_name' => $session->child_last_name,
+            'class_name' => $session->class_name,
+            'status' => $session->status,
+            'is_absent' => !empty($session->is_absent)
+        );
+    }
+
+    return $result;
 }
 
 function ssm_api_get_payments($request) {
