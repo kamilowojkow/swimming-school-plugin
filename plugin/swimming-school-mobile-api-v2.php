@@ -1024,38 +1024,46 @@ function ssm_api_get_notifications($request) {
     // Determine recipient type and ID
     $recipient_info = ssm_api_get_recipient_info($user_id);
 
-    // Build conditions based on user's roles
-    $conditions = array();
-    $params = array();
-
-    // Always check for 'user' type notifications
-    $conditions[] = "(recipient_type = 'user' AND recipient_id = %d)";
-    $params[] = $user_id;
-
-    // If user is an instructor
-    if ($recipient_info['instructor_id']) {
-        $conditions[] = "(recipient_type = 'instructor' AND recipient_id = %d)";
-        $params[] = $recipient_info['instructor_id'];
+    // Build query based on user type
+    if ($recipient_info['type'] === 'instructor') {
+        // For instructors: check instructor notifications + user notifications
+        $notifications = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table
+             WHERE (
+                 (recipient_type = 'instructor' AND recipient_id = %d)
+                 OR (recipient_type = 'user' AND recipient_id = %d)
+             )
+             AND (expires_at IS NULL OR expires_at > NOW())
+             ORDER BY created_at DESC
+             LIMIT 50",
+            $recipient_info['instructor_id'],
+            $user_id
+        ));
+    } elseif ($recipient_info['type'] === 'parent') {
+        // For parents: check parent/client notifications + user notifications
+        $notifications = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table
+             WHERE (
+                 (recipient_type IN ('parent', 'client') AND recipient_id = %d)
+                 OR (recipient_type = 'user' AND recipient_id = %d)
+             )
+             AND (expires_at IS NULL OR expires_at > NOW())
+             ORDER BY created_at DESC
+             LIMIT 50",
+            $recipient_info['client_id'],
+            $user_id
+        ));
+    } else {
+        // For regular users: check only user notifications
+        $notifications = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table
+             WHERE recipient_type = 'user' AND recipient_id = %d
+             AND (expires_at IS NULL OR expires_at > NOW())
+             ORDER BY created_at DESC
+             LIMIT 50",
+            $user_id
+        ));
     }
-
-    // If user is a parent/client
-    if ($recipient_info['client_id']) {
-        $conditions[] = "(recipient_type IN ('parent', 'client') AND recipient_id = %d)";
-        $params[] = $recipient_info['client_id'];
-    }
-
-    $where_clause = implode(' OR ', $conditions);
-    $params[] = 50; // LIMIT
-
-    // Get notifications for this user - check all applicable recipient types
-    $notifications = $wpdb->get_results($wpdb->prepare(
-        "SELECT * FROM $table
-         WHERE ($where_clause)
-         AND (expires_at IS NULL OR expires_at > NOW())
-         ORDER BY created_at DESC
-         LIMIT %d",
-        ...$params
-    ));
 
     $result = array();
     foreach ($notifications as $notif) {
@@ -1103,35 +1111,40 @@ function ssm_api_get_unread_count($request) {
 
     $recipient_info = ssm_api_get_recipient_info($user_id);
 
-    // Build conditions based on user's roles
-    $conditions = array();
-    $params = array();
-
-    // Always check for 'user' type notifications
-    $conditions[] = "(recipient_type = 'user' AND recipient_id = %d)";
-    $params[] = $user_id;
-
-    // If user is an instructor
-    if ($recipient_info['instructor_id']) {
-        $conditions[] = "(recipient_type = 'instructor' AND recipient_id = %d)";
-        $params[] = $recipient_info['instructor_id'];
+    // Build query based on user type
+    if ($recipient_info['type'] === 'instructor') {
+        $count = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $table
+             WHERE (
+                 (recipient_type = 'instructor' AND recipient_id = %d)
+                 OR (recipient_type = 'user' AND recipient_id = %d)
+             )
+             AND is_read = 0
+             AND (expires_at IS NULL OR expires_at > NOW())",
+            $recipient_info['instructor_id'],
+            $user_id
+        ));
+    } elseif ($recipient_info['type'] === 'parent') {
+        $count = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $table
+             WHERE (
+                 (recipient_type IN ('parent', 'client') AND recipient_id = %d)
+                 OR (recipient_type = 'user' AND recipient_id = %d)
+             )
+             AND is_read = 0
+             AND (expires_at IS NULL OR expires_at > NOW())",
+            $recipient_info['client_id'],
+            $user_id
+        ));
+    } else {
+        $count = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $table
+             WHERE recipient_type = 'user' AND recipient_id = %d
+             AND is_read = 0
+             AND (expires_at IS NULL OR expires_at > NOW())",
+            $user_id
+        ));
     }
-
-    // If user is a parent/client
-    if ($recipient_info['client_id']) {
-        $conditions[] = "(recipient_type IN ('parent', 'client') AND recipient_id = %d)";
-        $params[] = $recipient_info['client_id'];
-    }
-
-    $where_clause = implode(' OR ', $conditions);
-
-    $count = $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM $table
-         WHERE ($where_clause)
-         AND is_read = 0
-         AND (expires_at IS NULL OR expires_at > NOW())",
-        ...$params
-    ));
 
     return array(
         'unread_count' => intval($count)
@@ -1173,37 +1186,44 @@ function ssm_api_mark_all_notifications_read($request) {
     global $wpdb;
     $user_id = ssm_api_get_user_id($request);
     $table = $wpdb->prefix . 'ssm_notifications';
+    $now = current_time('mysql');
 
     $recipient_info = ssm_api_get_recipient_info($user_id);
 
-    // Build conditions based on user's roles
-    $conditions = array();
-    $params = array(current_time('mysql')); // First param is read_at timestamp
-
-    // Always check for 'user' type notifications
-    $conditions[] = "(recipient_type = 'user' AND recipient_id = %d)";
-    $params[] = $user_id;
-
-    // If user is an instructor
-    if ($recipient_info['instructor_id']) {
-        $conditions[] = "(recipient_type = 'instructor' AND recipient_id = %d)";
-        $params[] = $recipient_info['instructor_id'];
+    // Build query based on user type
+    if ($recipient_info['type'] === 'instructor') {
+        $result = $wpdb->query($wpdb->prepare(
+            "UPDATE $table SET is_read = 1, read_at = %s
+             WHERE is_read = 0
+             AND (
+                 (recipient_type = 'instructor' AND recipient_id = %d)
+                 OR (recipient_type = 'user' AND recipient_id = %d)
+             )",
+            $now,
+            $recipient_info['instructor_id'],
+            $user_id
+        ));
+    } elseif ($recipient_info['type'] === 'parent') {
+        $result = $wpdb->query($wpdb->prepare(
+            "UPDATE $table SET is_read = 1, read_at = %s
+             WHERE is_read = 0
+             AND (
+                 (recipient_type IN ('parent', 'client') AND recipient_id = %d)
+                 OR (recipient_type = 'user' AND recipient_id = %d)
+             )",
+            $now,
+            $recipient_info['client_id'],
+            $user_id
+        ));
+    } else {
+        $result = $wpdb->query($wpdb->prepare(
+            "UPDATE $table SET is_read = 1, read_at = %s
+             WHERE is_read = 0
+             AND recipient_type = 'user' AND recipient_id = %d",
+            $now,
+            $user_id
+        ));
     }
-
-    // If user is a parent/client
-    if ($recipient_info['client_id']) {
-        $conditions[] = "(recipient_type IN ('parent', 'client') AND recipient_id = %d)";
-        $params[] = $recipient_info['client_id'];
-    }
-
-    $where_clause = implode(' OR ', $conditions);
-
-    $result = $wpdb->query($wpdb->prepare(
-        "UPDATE $table SET is_read = 1, read_at = %s
-         WHERE is_read = 0
-         AND ($where_clause)",
-        ...$params
-    ));
 
     return array(
         'success' => $result !== false,
@@ -1260,8 +1280,7 @@ function ssm_api_get_recipient_info($user_id) {
         }
     }
 
-    // Fallback to user_id
-    return array('type' => 'user', 'id' => $user_id);
+    return $result;
 }
 
 function ssm_api_register_push_token($request) {
