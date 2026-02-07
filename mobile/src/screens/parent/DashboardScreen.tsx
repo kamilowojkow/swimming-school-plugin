@@ -31,6 +31,7 @@ interface UpcomingSession {
   class_name: string;
   facility_name: string;
   child_first_name: string;
+  is_absent?: boolean;
 }
 
 interface Payment {
@@ -70,7 +71,9 @@ export default function ParentDashboard() {
       const paymentsArray = Array.isArray(paymentsData) ? paymentsData : (paymentsData?.payments || []);
 
       setChildren(childrenArray);
-      setUpcomingSessions(scheduleArray.slice(0, 3));
+      // Filter out sessions with reported absences, then take first 3
+      const activeSessions = scheduleArray.filter((s: UpcomingSession) => !s.is_absent);
+      setUpcomingSessions(activeSessions.slice(0, 3));
       setPendingPayments(paymentsArray.filter((p: Payment) => p.status !== 'paid').slice(0, 3));
       await fetchUnreadCount();
     } catch (error) {
