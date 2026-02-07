@@ -800,23 +800,26 @@ function ssm_ajax_enroll_child() {
         wp_send_json_error('To dziecko jest już zapisane na ten kurs!');
     }
     
-    // Sprawdź czy kurs nie jest pełny
+    // Sprawdź czy kurs nie jest pełny i pobierz limit odrobień
     $class = $wpdb->get_row($wpdb->prepare(
-        "SELECT max_participants FROM {$wpdb->prefix}ssm_classes WHERE id = %d",
+        "SELECT max_participants, max_absences FROM {$wpdb->prefix}ssm_classes WHERE id = %d",
         $data['class_id']
     ));
-    
+
     $enrolled_count = $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$wpdb->prefix}ssm_enrollments 
+        "SELECT COUNT(*) FROM {$wpdb->prefix}ssm_enrollments
          WHERE class_id = %d AND status = 'active'",
         $data['class_id']
     ));
-    
+
     if ($enrolled_count >= $class->max_participants) {
         wp_send_json_error('Kurs jest pełny! (' . $enrolled_count . '/' . $class->max_participants . ')');
     }
-    
-    $result = $wpdb->insert($wpdb->prefix . 'ssm_enrollments', $data);
+
+    // Dodaj limit odrobień z kursu
+    $data['max_makeups'] = intval($class->max_absences) ?: 2;
+
+    $result = $wpdb->insert($wpdb->prefix . 'ssm_enrollments', $data)
     
     if ($result) {
         wp_send_json_success('Dziecko zapisane na kurs!');

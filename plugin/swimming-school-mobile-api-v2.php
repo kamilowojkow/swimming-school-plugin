@@ -1028,6 +1028,20 @@ function ssm_api_absences($request) {
             return new WP_REST_Response(array('message' => 'Nieobecność już została zgłoszona'), 400);
         }
 
+        // Get enrollment for this child and class (with max_makeups limit)
+        $enrollment = $wpdb->get_row($wpdb->prepare(
+            "SELECT id, max_makeups FROM {$wpdb->prefix}ssm_enrollments
+             WHERE child_id = %d AND class_id = %d AND status = 'active'",
+            $child_id,
+            $session->class_id
+        ));
+
+        if (!$enrollment) {
+            return new WP_REST_Response(array('message' => 'Dziecko nie jest zapisane na ten kurs'), 400);
+        }
+
+        $enrollment_id = $enrollment->id;
+
         // Check 24h rule
         $session_datetime = $session->session_date . ' ' . $session->time_start;
         $session_timestamp = strtotime($session_datetime);
@@ -1039,48 +1053,32 @@ function ssm_api_absences($request) {
         // Check if class allows makeups
         $class_allows_makeups = (bool) $session->allow_makeups;
 
-        // Debug: log class settings
-        error_log('=== SSM ABSENCE POST DEBUG ===');
-        error_log('Session data: ' . json_encode($session));
-        error_log('class_id: ' . $session->class_id);
-        error_log('allow_makeups raw: ' . var_export($session->allow_makeups, true));
-        error_log('max_absences raw: ' . var_export($session->max_absences, true));
+        // Check makeup limit from enrollment (per child per course)
+        $used_makeups = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}ssm_absences
+             WHERE enrollment_id = %d AND can_makeup = 1",
+            $enrollment_id
+        ));
 
-        // Check makeup limit - count makeups already used for this child in this class
-        $used_makeups_query = $wpdb->prepare(
-            "SELECT COUNT(*) FROM {$wpdb->prefix}ssm_absences a
-             JOIN {$wpdb->prefix}ssm_sessions s ON a.session_id = s.id
-             WHERE a.child_id = %d AND s.class_id = %d AND a.can_makeup = 1",
-            $child_id,
-            $session->class_id
-        );
-        error_log('Used makeups query: ' . $used_makeups_query);
-
-        $used_makeups = $wpdb->get_var($used_makeups_query);
-        error_log('Used makeups result: ' . $used_makeups);
-
-        $max_makeups = intval($session->max_absences);
+        $max_makeups = intval($enrollment->max_makeups) ?: 2;
         $within_limit = $used_makeups < $max_makeups;
 
-        error_log('max_makeups (parsed): ' . $max_makeups);
+        // Debug logging
+        error_log('=== SSM ABSENCE POST DEBUG ===');
+        error_log('enrollment_id: ' . $enrollment_id);
+        error_log('used_makeups: ' . $used_makeups);
+        error_log('max_makeups (from enrollment): ' . $max_makeups);
         error_log('within_limit: ' . ($within_limit ? 'true' : 'false'));
         error_log('class_allows_makeups: ' . ($class_allows_makeups ? 'true' : 'false'));
         error_log('reported_on_time: ' . ($reported_on_time ? 'true' : 'false'));
+        error_log('hours_until_session: ' . round($hours_until_session, 1));
 
         // Determine if this absence can be made up
         $can_makeup = $class_allows_makeups && $reported_on_time && $within_limit ? 1 : 0;
 
-        // Get enrollment_id for this child and class
-        $enrollment_id = $wpdb->get_var($wpdb->prepare(
-            "SELECT id FROM {$wpdb->prefix}ssm_enrollments
-             WHERE child_id = %d AND class_id = %d AND status = 'active'",
-            $child_id,
-            $session->class_id
-        ));
-
         // Insert absence
         $result = $wpdb->insert($table_absences, array(
-            'enrollment_id' => $enrollment_id ?: 0,
+            'enrollment_id' => $enrollment_id,
             'session_id' => $session_id,
             'child_id' => $child_id,
             'reported_at' => current_time('mysql'),
@@ -1115,6 +1113,7 @@ function ssm_api_absences($request) {
             'absence_id' => $wpdb->insert_id,
             'can_makeup' => (bool) $can_makeup,
             '_debug' => array(
+                'enrollment_id' => $enrollment_id,
                 'hours_until_session' => round($hours_until_session, 1),
                 'reported_on_time' => $reported_on_time,
                 'class_allows_makeups' => $class_allows_makeups,

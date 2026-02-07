@@ -310,6 +310,7 @@ class SSM_Installer {
             class_id mediumint(9) NOT NULL,
             enrollment_date datetime DEFAULT NULL,
             status varchar(20) DEFAULT 'active',
+            max_makeups int DEFAULT 2,
             notes text DEFAULT NULL,
             PRIMARY KEY (id),
             KEY client_id (client_id),
@@ -920,6 +921,20 @@ class SSM_Installer {
             }
             if (!self::column_exists($table, 'allow_makeups')) {
                 $wpdb->query("ALTER TABLE $table ADD COLUMN allow_makeups tinyint(1) DEFAULT 1 AFTER max_absences");
+            }
+        }
+
+        // Zapisy - max_makeups (limit odrobień per dziecko per kurs)
+        $table = self::$prefix . 'enrollments';
+        if (self::table_exists($table)) {
+            if (!self::column_exists($table, 'max_makeups')) {
+                $wpdb->query("ALTER TABLE $table ADD COLUMN max_makeups int DEFAULT 2 AFTER status");
+                // Zaktualizuj istniejące zapisy - skopiuj limit z kursu
+                $wpdb->query("
+                    UPDATE {$table} e
+                    JOIN " . self::$prefix . "classes c ON e.class_id = c.id
+                    SET e.max_makeups = COALESCE(c.max_absences, 2)
+                ");
             }
         }
     }
