@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotificationStore } from '../../store/notificationStore';
+import { useAuthStore } from '../../store/authStore';
 
 export default function NotificationsScreen() {
   const {
@@ -19,11 +20,13 @@ export default function NotificationsScreen() {
     markAsRead,
     markAllAsRead,
   } = useNotificationStore();
+  const { activeRole } = useAuthStore();
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
+    console.log('NotificationsScreen: Fetching notifications for role:', activeRole);
     fetchNotifications();
-  }, []);
+  }, [activeRole]);
 
   const onRefresh = async () => {
     setRefreshing(true);
