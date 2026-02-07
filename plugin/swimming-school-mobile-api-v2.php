@@ -288,6 +288,55 @@ function ssm_api_get_user_id($request) {
     return ssm_api_validate_token($token);
 }
 
+/**
+ * Get or auto-create client record for a user with ssm_parent role
+ * Returns client object with 'id' property, or null if user is not a parent
+ */
+function ssm_api_get_or_create_client($user_id) {
+    global $wpdb;
+
+    $user = get_userdata($user_id);
+    if (!$user) {
+        return null;
+    }
+
+    $user_email = $user->user_email;
+
+    // Try to find existing client record
+    $client = $wpdb->get_row($wpdb->prepare(
+        "SELECT id FROM {$wpdb->prefix}ssm_clients WHERE user_id = %d OR email = %s",
+        $user_id,
+        $user_email
+    ));
+
+    if ($client) {
+        return $client;
+    }
+
+    // Auto-create client record for users with ssm_parent role
+    if (in_array('ssm_parent', (array) $user->roles)) {
+        $wpdb->insert(
+            $wpdb->prefix . 'ssm_clients',
+            array(
+                'user_id' => $user_id,
+                'email' => $user_email,
+                'first_name' => $user->first_name ?: $user->display_name,
+                'last_name' => $user->last_name ?: '',
+                'created_at' => current_time('mysql')
+            ),
+            array('%d', '%s', '%s', '%s', '%s')
+        );
+
+        $client_id = $wpdb->insert_id;
+        if ($client_id) {
+            error_log("SSM API: Auto-created client record id=$client_id for user_id=$user_id");
+            return (object) array('id' => $client_id);
+        }
+    }
+
+    return null;
+}
+
 // ============ AUTH ENDPOINTS ============
 
 // Helper function to determine user roles for the mobile app
@@ -508,26 +557,16 @@ function ssm_api_get_children($request) {
     global $wpdb;
     $user_id = ssm_api_get_user_id($request);
 
-    // Get client_id for current user
-    $user = get_userdata($user_id);
-    $user_email = $user ? $user->user_email : '';
+    // Get or create client record (auto-creates for ssm_parent users)
+    $client = ssm_api_get_or_create_client($user_id);
 
-    $client = $wpdb->get_row($wpdb->prepare(
-        "SELECT id FROM {$wpdb->prefix}ssm_clients WHERE user_id = %d OR email = %s",
-        $user_id,
-        $user_email
-    ));
-
-    // DEBUG: Log what we're looking for
-    error_log("SSM API get_children: user_id=$user_id, email=$user_email, client_id=" . ($client ? $client->id : 'NULL'));
+    error_log("SSM API get_children: user_id=$user_id, client_id=" . ($client ? $client->id : 'NULL'));
 
     if (!$client) {
-        // No client record - return empty array with debug info
         return array(
             '_debug' => array(
-                'error' => 'No client record found',
-                'user_id' => $user_id,
-                'user_email' => $user_email
+                'error' => 'No client record found and user is not a parent',
+                'user_id' => $user_id
             ),
             'children' => array()
         );
@@ -751,15 +790,8 @@ function ssm_api_get_schedule($request) {
     $user_id = ssm_api_get_user_id($request);
     $date_from = $request->get_param('date_from') ?? date('Y-m-d');
 
-    // Get client_id for current user
-    $user = get_userdata($user_id);
-    $user_email = $user ? $user->user_email : '';
-
-    $client = $wpdb->get_row($wpdb->prepare(
-        "SELECT id FROM {$wpdb->prefix}ssm_clients WHERE user_id = %d OR email = %s",
-        $user_id,
-        $user_email
-    ));
+    // Get or create client record (auto-creates for ssm_parent users)
+    $client = ssm_api_get_or_create_client($user_id);
 
     if (!$client) {
         return array();
