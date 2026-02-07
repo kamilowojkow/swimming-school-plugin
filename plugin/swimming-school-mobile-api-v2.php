@@ -1190,14 +1190,26 @@ function ssm_api_get_notifications($request) {
     // Determine recipient type and ID
     $recipient_info = ssm_api_get_recipient_info($user_id);
 
-    // Get notifications for this user
+    // Debug: also try to get notifications for user_id directly
+    $debug_info = array(
+        'user_id' => $user_id,
+        'recipient_info' => $recipient_info
+    );
+
+    // Get notifications for this user - try multiple recipient types
     $notifications = $wpdb->get_results($wpdb->prepare(
         "SELECT * FROM $table
-         WHERE recipient_type = %s AND recipient_id = %d
+         WHERE (
+             (recipient_type = %s AND recipient_id = %d)
+             OR (recipient_type = 'user' AND recipient_id = %d)
+             OR (recipient_type = 'client' AND recipient_id = %d)
+         )
          AND (expires_at IS NULL OR expires_at > NOW())
          ORDER BY created_at DESC
          LIMIT 50",
         $recipient_info['type'],
+        $recipient_info['id'],
+        $user_id,
         $recipient_info['id']
     ));
 
@@ -1247,12 +1259,19 @@ function ssm_api_get_unread_count($request) {
 
     $recipient_info = ssm_api_get_recipient_info($user_id);
 
+    // Try multiple recipient types to match how notifications might be stored
     $count = $wpdb->get_var($wpdb->prepare(
         "SELECT COUNT(*) FROM $table
-         WHERE recipient_type = %s AND recipient_id = %d
+         WHERE (
+             (recipient_type = %s AND recipient_id = %d)
+             OR (recipient_type = 'user' AND recipient_id = %d)
+             OR (recipient_type = 'client' AND recipient_id = %d)
+         )
          AND is_read = 0
          AND (expires_at IS NULL OR expires_at > NOW())",
         $recipient_info['type'],
+        $recipient_info['id'],
+        $user_id,
         $recipient_info['id']
     ));
 
@@ -1269,15 +1288,22 @@ function ssm_api_mark_notification_read($request) {
 
     $recipient_info = ssm_api_get_recipient_info($user_id);
 
-    $result = $wpdb->update(
-        $table,
-        array('is_read' => 1, 'read_at' => current_time('mysql')),
-        array(
-            'id' => $notification_id,
-            'recipient_type' => $recipient_info['type'],
-            'recipient_id' => $recipient_info['id']
-        )
-    );
+    // Update with multiple recipient type support
+    $result = $wpdb->query($wpdb->prepare(
+        "UPDATE $table SET is_read = 1, read_at = %s
+         WHERE id = %d
+         AND (
+             (recipient_type = %s AND recipient_id = %d)
+             OR (recipient_type = 'user' AND recipient_id = %d)
+             OR (recipient_type = 'client' AND recipient_id = %d)
+         )",
+        current_time('mysql'),
+        $notification_id,
+        $recipient_info['type'],
+        $recipient_info['id'],
+        $user_id,
+        $recipient_info['id']
+    ));
 
     return array(
         'success' => $result !== false,
@@ -1292,15 +1318,21 @@ function ssm_api_mark_all_notifications_read($request) {
 
     $recipient_info = ssm_api_get_recipient_info($user_id);
 
-    $result = $wpdb->update(
-        $table,
-        array('is_read' => 1, 'read_at' => current_time('mysql')),
-        array(
-            'recipient_type' => $recipient_info['type'],
-            'recipient_id' => $recipient_info['id'],
-            'is_read' => 0
-        )
-    );
+    // Update with multiple recipient type support
+    $result = $wpdb->query($wpdb->prepare(
+        "UPDATE $table SET is_read = 1, read_at = %s
+         WHERE is_read = 0
+         AND (
+             (recipient_type = %s AND recipient_id = %d)
+             OR (recipient_type = 'user' AND recipient_id = %d)
+             OR (recipient_type = 'client' AND recipient_id = %d)
+         )",
+        current_time('mysql'),
+        $recipient_info['type'],
+        $recipient_info['id'],
+        $user_id,
+        $recipient_info['id']
+    ));
 
     return array(
         'success' => $result !== false,
