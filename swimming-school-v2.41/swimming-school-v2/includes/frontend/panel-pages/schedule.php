@@ -68,90 +68,74 @@ if ($absences_table_exists && $sessions) {
     <p>Wszystkie zaplanowane zajęcia Twoich dzieci</p>
 </div>
 
-<?php if ($sessions):
-    $months_pl = array(1 => 'stycznia', 2 => 'lutego', 3 => 'marca', 4 => 'kwietnia', 5 => 'maja', 6 => 'czerwca', 7 => 'lipca', 8 => 'sierpnia', 9 => 'września', 10 => 'października', 11 => 'listopada', 12 => 'grudnia');
-    $days_full_pl = array(1 => 'Poniedziałek', 2 => 'Wtorek', 3 => 'Środa', 4 => 'Czwartek', 5 => 'Piątek', 6 => 'Sobota', 7 => 'Niedziela');
-    $current_date = '';
-?>
-    <div class="ssm-vtimeline">
-        <?php foreach ($sessions as $session):
-            $date = new DateTime($session->session_date);
-            $date_label = $date->format('Y-m-d');
-            $is_today = ($date_label == date('Y-m-d'));
-            $is_tomorrow = ($date_label == date('Y-m-d', strtotime('+1 day')));
-            $is_new_date = ($date_label != $current_date);
-            $current_date = $date_label;
-
-            $session_datetime = new DateTime($session->session_date . ' ' . $session->time_start);
-            $now = new DateTime();
-            $hours_until = ($session_datetime->getTimestamp() - $now->getTimestamp()) / 3600;
-            $can_report = ($hours_until >= 24);
-            $is_absent = ($session->is_absent > 0);
-            $absences_left = max(0, $session->max_absences - $session->used_absences);
-        ?>
-
-            <?php if ($is_new_date): ?>
-                <div class="ssm-vtimeline-date <?php echo $is_today ? 'is-today' : ''; ?>">
-                    <div class="ssm-vtimeline-date-dot"></div>
-                    <div class="ssm-vtimeline-date-label">
-                        <?php if ($is_today): ?>
-                            <span class="ssm-vtimeline-badge-today">Dzisiaj</span>
-                        <?php elseif ($is_tomorrow): ?>
-                            <span class="ssm-vtimeline-badge-tomorrow">Jutro</span>
-                        <?php endif; ?>
-                        <span class="ssm-vtimeline-day-name"><?php echo $days_full_pl[(int)$date->format('N')]; ?></span>
-                        <span class="ssm-vtimeline-day-date"><?php echo $date->format('d'); ?> <?php echo $months_pl[(int)$date->format('n')]; ?> <?php echo $date->format('Y'); ?></span>
-                    </div>
-                </div>
-            <?php endif; ?>
-
-            <div class="ssm-vtimeline-item <?php echo $is_today ? 'is-today' : ''; ?> <?php echo $is_absent ? 'is-absent' : ''; ?>">
-                <div class="ssm-vtimeline-item-dot"></div>
-                <div class="ssm-vtimeline-card">
-                    <div class="ssm-vtimeline-card-time">
-                        <span class="ssm-vtimeline-clock">🕐</span>
-                        <?php echo substr($session->time_start, 0, 5); ?> - <?php echo substr($session->time_end, 0, 5); ?>
-                    </div>
-                    <div class="ssm-vtimeline-card-body">
-                        <h4 class="ssm-vtimeline-card-title"><?php echo esc_html($session->class_name); ?></h4>
-                        <div class="ssm-vtimeline-card-details">
-                            <div class="ssm-vtimeline-detail">
-                                <span class="ssm-vtimeline-detail-icon">👶</span>
-                                <span><?php echo esc_html($session->child_name); ?></span>
-                            </div>
-                            <div class="ssm-vtimeline-detail">
-                                <span class="ssm-vtimeline-detail-icon">📍</span>
-                                <span><?php echo esc_html($session->facility_name); ?></span>
-                            </div>
-                            <div class="ssm-vtimeline-detail">
-                                <span class="ssm-vtimeline-detail-icon">🏊</span>
-                                <span><?php echo esc_html($session->instructor_name); ?></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="ssm-vtimeline-card-action">
-                        <?php if ($is_absent): ?>
-                            <span class="ssm-vtimeline-status-absent">Nieobecność zgłoszona</span>
-                        <?php elseif ($session->allow_makeups && $can_report && $absences_left > 0): ?>
-                            <button class="ssm-btn-absence-report"
-                                    data-session-id="<?php echo $session->id; ?>"
-                                    data-enrollment-id="<?php echo $session->enrollment_id; ?>"
-                                    data-child-name="<?php echo esc_attr($session->child_name); ?>"
-                                    data-class-name="<?php echo esc_attr($session->class_name); ?>"
-                                    data-date="<?php echo $date->format('d.m.Y'); ?>">
-                                Zgłoś nieobecność
-                            </button>
-                            <span class="ssm-vtimeline-absences-left">Pozostało: <?php echo $absences_left; ?>/<?php echo $session->max_absences; ?></span>
-                        <?php elseif ($absences_left == 0): ?>
-                            <span class="ssm-vtimeline-status-nolimit">Wykorzystano limit nieobecności</span>
-                        <?php elseif (!$can_report): ?>
-                            <span class="ssm-vtimeline-status-toolate">Zgłoszenie niedostępne (&lt;24h)</span>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-
-        <?php endforeach; ?>
+<?php if ($sessions): ?>
+    <div class="ssm-schedule-table-container">
+        <table class="ssm-schedule-table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Godzina</th>
+                    <th>Dziecko</th>
+                    <th>Kurs</th>
+                    <th>Obiekt</th>
+                    <th>Instruktor</th>
+                    <th>Akcja</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php 
+                $current_date = '';
+                foreach ($sessions as $session): 
+                    $date = new DateTime($session->session_date);
+                    $date_label = $date->format('Y-m-d');
+                    $is_today = ($date_label == date('Y-m-d'));
+                    $is_new_date = ($date_label != $current_date);
+                    $current_date = $date_label;
+                    
+                    // Sprawdź możliwość zgłoszenia
+                    $session_datetime = new DateTime($session->session_date . ' ' . $session->time_start);
+                    $now = new DateTime();
+                    $hours_until = ($session_datetime->getTimestamp() - $now->getTimestamp()) / 3600;
+                    $can_report = ($hours_until >= 24);
+                    $is_absent = ($session->is_absent > 0);
+                    $absences_left = max(0, $session->max_absences - $session->used_absences);
+                ?>
+                    <tr class="<?php echo $is_today ? 'is-today' : ''; ?> <?php echo $is_absent ? 'is-absent' : ''; ?>">
+                        <td>
+                            <?php if ($is_new_date): ?>
+                                <strong><?php echo $date->format('d.m.Y'); ?></strong><br>
+                                <small><?php echo $days_pl[$date->format('N')]; ?></small>
+                            <?php endif; ?>
+                        </td>
+                        <td><?php echo substr($session->time_start, 0, 5); ?> - <?php echo substr($session->time_end, 0, 5); ?></td>
+                        <td><strong><?php echo esc_html($session->child_name); ?></strong></td>
+                        <td><?php echo esc_html($session->class_name); ?></td>
+                        <td><?php echo esc_html($session->facility_name); ?></td>
+                        <td><?php echo esc_html($session->instructor_name); ?></td>
+                        <td>
+                            <?php if ($is_absent): ?>
+                                <span class="ssm-badge-absent">Nieobecność</span>
+                            <?php elseif ($session->allow_makeups && $can_report && $absences_left > 0): ?>
+                                <button class="ssm-btn-absence-small" 
+                                        data-session-id="<?php echo $session->id; ?>"
+                                        data-enrollment-id="<?php echo $session->enrollment_id; ?>"
+                                        data-child-name="<?php echo esc_attr($session->child_name); ?>"
+                                        data-class-name="<?php echo esc_attr($session->class_name); ?>"
+                                        data-date="<?php echo $date->format('d.m.Y'); ?>">
+                                    Zgłoś
+                                </button>
+                            <?php elseif ($absences_left == 0): ?>
+                                <small style="color:#95a5a6;">Brak limitu</small>
+                            <?php elseif (!$can_report): ?>
+                                <small style="color:#95a5a6;">Za późno</small>
+                            <?php else: ?>
+                                -
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
     </div>
 <?php else: ?>
     <div class="ssm-empty-state">
@@ -193,7 +177,7 @@ jQuery(document).ready(function($) {
     let currentSessionId = 0;
     let currentEnrollmentId = 0;
     
-    $('.ssm-btn-absence-report').on('click', function() {
+    $('.ssm-btn-absence-small').on('click', function() {
         currentSessionId = $(this).data('session-id');
         currentEnrollmentId = $(this).data('enrollment-id');
         
