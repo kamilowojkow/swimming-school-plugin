@@ -1044,18 +1044,37 @@ function ssm_api_get_notifications($request) {
         ));
     } elseif ($recipient_info['type'] === 'parent') {
         // For parents: check parent/client notifications + user notifications
-        $notifications = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM $table
-             WHERE (
-                 (recipient_type IN ('parent', 'client') AND recipient_id = %d)
-                 OR (recipient_type = 'user' AND recipient_id = %d)
-             )
-             AND (expires_at IS NULL OR expires_at > NOW())
-             ORDER BY created_at DESC
-             LIMIT 50",
-            $recipient_info['client_id'],
-            $user_id
-        ));
+        // Check both client_id (if found) and user_id (as fallback)
+        if ($recipient_info['client_id']) {
+            $notifications = $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM $table
+                 WHERE (
+                     (recipient_type IN ('parent', 'client') AND recipient_id = %d)
+                     OR (recipient_type IN ('parent', 'client') AND recipient_id = %d)
+                     OR (recipient_type = 'user' AND recipient_id = %d)
+                 )
+                 AND (expires_at IS NULL OR expires_at > NOW())
+                 ORDER BY created_at DESC
+                 LIMIT 50",
+                $recipient_info['client_id'],
+                $user_id,
+                $user_id
+            ));
+        } else {
+            // No client_id found - search by user_id only
+            $notifications = $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM $table
+                 WHERE (
+                     (recipient_type IN ('parent', 'client') AND recipient_id = %d)
+                     OR (recipient_type = 'user' AND recipient_id = %d)
+                 )
+                 AND (expires_at IS NULL OR expires_at > NOW())
+                 ORDER BY created_at DESC
+                 LIMIT 50",
+                $user_id,
+                $user_id
+            ));
+        }
     } else {
         // For regular users: check only user notifications
         $notifications = $wpdb->get_results($wpdb->prepare(
@@ -1128,17 +1147,33 @@ function ssm_api_get_unread_count($request) {
             $user_id
         ));
     } elseif ($recipient_info['type'] === 'parent') {
-        $count = $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM $table
-             WHERE (
-                 (recipient_type IN ('parent', 'client') AND recipient_id = %d)
-                 OR (recipient_type = 'user' AND recipient_id = %d)
-             )
-             AND is_read = 0
-             AND (expires_at IS NULL OR expires_at > NOW())",
-            $recipient_info['client_id'],
-            $user_id
-        ));
+        if ($recipient_info['client_id']) {
+            $count = $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM $table
+                 WHERE (
+                     (recipient_type IN ('parent', 'client') AND recipient_id = %d)
+                     OR (recipient_type IN ('parent', 'client') AND recipient_id = %d)
+                     OR (recipient_type = 'user' AND recipient_id = %d)
+                 )
+                 AND is_read = 0
+                 AND (expires_at IS NULL OR expires_at > NOW())",
+                $recipient_info['client_id'],
+                $user_id,
+                $user_id
+            ));
+        } else {
+            $count = $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM $table
+                 WHERE (
+                     (recipient_type IN ('parent', 'client') AND recipient_id = %d)
+                     OR (recipient_type = 'user' AND recipient_id = %d)
+                 )
+                 AND is_read = 0
+                 AND (expires_at IS NULL OR expires_at > NOW())",
+                $user_id,
+                $user_id
+            ));
+        }
     } else {
         $count = $wpdb->get_var($wpdb->prepare(
             "SELECT COUNT(*) FROM $table
@@ -1207,17 +1242,33 @@ function ssm_api_mark_all_notifications_read($request) {
             $user_id
         ));
     } elseif ($recipient_info['type'] === 'parent') {
-        $result = $wpdb->query($wpdb->prepare(
-            "UPDATE $table SET is_read = 1, read_at = %s
-             WHERE is_read = 0
-             AND (
-                 (recipient_type IN ('parent', 'client') AND recipient_id = %d)
-                 OR (recipient_type = 'user' AND recipient_id = %d)
-             )",
-            $now,
-            $recipient_info['client_id'],
-            $user_id
-        ));
+        if ($recipient_info['client_id']) {
+            $result = $wpdb->query($wpdb->prepare(
+                "UPDATE $table SET is_read = 1, read_at = %s
+                 WHERE is_read = 0
+                 AND (
+                     (recipient_type IN ('parent', 'client') AND recipient_id = %d)
+                     OR (recipient_type IN ('parent', 'client') AND recipient_id = %d)
+                     OR (recipient_type = 'user' AND recipient_id = %d)
+                 )",
+                $now,
+                $recipient_info['client_id'],
+                $user_id,
+                $user_id
+            ));
+        } else {
+            $result = $wpdb->query($wpdb->prepare(
+                "UPDATE $table SET is_read = 1, read_at = %s
+                 WHERE is_read = 0
+                 AND (
+                     (recipient_type IN ('parent', 'client') AND recipient_id = %d)
+                     OR (recipient_type = 'user' AND recipient_id = %d)
+                 )",
+                $now,
+                $user_id,
+                $user_id
+            ));
+        }
     } else {
         $result = $wpdb->query($wpdb->prepare(
             "UPDATE $table SET is_read = 1, read_at = %s
