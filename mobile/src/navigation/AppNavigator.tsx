@@ -20,7 +20,7 @@ import ChildrenScreen from '../screens/parent/ChildrenScreen';
 import ChildDetailsScreen from '../screens/parent/ChildDetailsScreen';
 import ParentScheduleScreen from '../screens/parent/ScheduleScreen';
 import PaymentsScreen from '../screens/parent/PaymentsScreen';
-import AbsencesScreen from '../screens/parent/AbsencesScreen';
+import MakeupsScreen from '../screens/parent/MakeupsScreen';
 
 // Instructor Screens
 import InstructorDashboard from '../screens/instructor/DashboardScreen';
@@ -57,7 +57,7 @@ export type ParentTabParamList = {
   Dashboard: undefined;
   Children: undefined;
   Schedule: undefined;
-  Absences: undefined;
+  Makeups: undefined;
   More: undefined;
 };
 
@@ -93,7 +93,7 @@ function AuthNavigator() {
 
 function ParentTabNavigator() {
   const unreadCount = useNotificationStore((state) => state.unreadCount);
-  const { t, isDark } = useSettingsStore();
+  const { t, language, isDark } = useSettingsStore();
   const colors = useThemeColors('parent');
 
   return (
@@ -112,8 +112,8 @@ function ParentTabNavigator() {
             case 'Schedule':
               iconName = focused ? 'calendar' : 'calendar-outline';
               break;
-            case 'Absences':
-              iconName = focused ? 'close-circle' : 'close-circle-outline';
+            case 'Makeups':
+              iconName = focused ? 'refresh-circle' : 'refresh-circle-outline';
               break;
             case 'More':
               iconName = focused ? 'menu' : 'menu-outline';
@@ -150,9 +150,9 @@ function ParentTabNavigator() {
         options={{ title: t.nav.schedule }}
       />
       <ParentTabs.Screen
-        name="Absences"
-        component={AbsencesScreen}
-        options={{ title: t.absences?.title || 'Nieobecności' }}
+        name="Makeups"
+        component={MakeupsScreen}
+        options={{ title: language === 'pl' ? 'Odrabianie' : 'Makeups' }}
       />
       <ParentTabs.Screen
         name="More"
