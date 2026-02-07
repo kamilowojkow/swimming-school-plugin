@@ -1021,11 +1021,22 @@ function ssm_api_get_notifications($request) {
     $user_id = ssm_api_get_user_id($request);
     $table = $wpdb->prefix . 'ssm_notifications';
 
+    // Get role from request parameter (sent by mobile app based on active view)
+    $requested_role = $request->get_param('role');
+
     // Determine recipient type and ID
     $recipient_info = ssm_api_get_recipient_info($user_id);
 
-    // Build query based on user type
-    if ($recipient_info['type'] === 'instructor') {
+    // Use requested role if provided and valid, otherwise use detected type
+    $active_role = $recipient_info['type'];
+    if ($requested_role === 'instructor' && $recipient_info['instructor_id']) {
+        $active_role = 'instructor';
+    } elseif ($requested_role === 'parent' && $recipient_info['client_id']) {
+        $active_role = 'parent';
+    }
+
+    // Build query based on active role
+    if ($active_role === 'instructor') {
         // For instructors: check instructor notifications + user notifications
         $notifications = $wpdb->get_results($wpdb->prepare(
             "SELECT * FROM $table
@@ -1039,7 +1050,7 @@ function ssm_api_get_notifications($request) {
             $recipient_info['instructor_id'],
             $user_id
         ));
-    } elseif ($recipient_info['type'] === 'parent') {
+    } elseif ($active_role === 'parent') {
         // For parents: check parent/client notifications + user notifications
         // Check both client_id (if found) and user_id (as fallback)
         if ($recipient_info['client_id']) {
@@ -1128,10 +1139,21 @@ function ssm_api_get_unread_count($request) {
     $user_id = ssm_api_get_user_id($request);
     $table = $wpdb->prefix . 'ssm_notifications';
 
+    // Get role from request parameter
+    $requested_role = $request->get_param('role');
+
     $recipient_info = ssm_api_get_recipient_info($user_id);
 
-    // Build query based on user type
-    if ($recipient_info['type'] === 'instructor') {
+    // Use requested role if provided and valid
+    $active_role = $recipient_info['type'];
+    if ($requested_role === 'instructor' && $recipient_info['instructor_id']) {
+        $active_role = 'instructor';
+    } elseif ($requested_role === 'parent' && $recipient_info['client_id']) {
+        $active_role = 'parent';
+    }
+
+    // Build query based on active role
+    if ($active_role === 'instructor') {
         $count = $wpdb->get_var($wpdb->prepare(
             "SELECT COUNT(*) FROM $table
              WHERE (
@@ -1143,7 +1165,7 @@ function ssm_api_get_unread_count($request) {
             $recipient_info['instructor_id'],
             $user_id
         ));
-    } elseif ($recipient_info['type'] === 'parent') {
+    } elseif ($active_role === 'parent') {
         if ($recipient_info['client_id']) {
             $count = $wpdb->get_var($wpdb->prepare(
                 "SELECT COUNT(*) FROM $table
@@ -1192,23 +1214,41 @@ function ssm_api_mark_notification_read($request) {
     $notification_id = intval($request->get_param('id'));
     $table = $wpdb->prefix . 'ssm_notifications';
 
+    // Get role from request body (POST data)
+    $params = $request->get_json_params();
+    $requested_role = isset($params['role']) ? $params['role'] : null;
+
     $recipient_info = ssm_api_get_recipient_info($user_id);
 
-    // Update with multiple recipient type support
+    // Use requested role if provided and valid
+    $active_role = $recipient_info['type'];
+    if ($requested_role === 'instructor' && $recipient_info['instructor_id']) {
+        $active_role = 'instructor';
+    } elseif ($requested_role === 'parent' && $recipient_info['client_id']) {
+        $active_role = 'parent';
+    }
+
+    // Get the appropriate recipient_id based on active role
+    $recipient_id = $user_id;
+    if ($active_role === 'instructor' && $recipient_info['instructor_id']) {
+        $recipient_id = $recipient_info['instructor_id'];
+    } elseif ($active_role === 'parent' && $recipient_info['client_id']) {
+        $recipient_id = $recipient_info['client_id'];
+    }
+
+    // Update notification
     $result = $wpdb->query($wpdb->prepare(
         "UPDATE $table SET is_read = 1, read_at = %s
          WHERE id = %d
          AND (
              (recipient_type = %s AND recipient_id = %d)
              OR (recipient_type = 'user' AND recipient_id = %d)
-             OR (recipient_type = 'client' AND recipient_id = %d)
          )",
         current_time('mysql'),
         $notification_id,
-        $recipient_info['type'],
-        $recipient_info['id'],
-        $user_id,
-        $recipient_info['id']
+        $active_role,
+        $recipient_id,
+        $user_id
     ));
 
     return array(
@@ -1223,10 +1263,22 @@ function ssm_api_mark_all_notifications_read($request) {
     $table = $wpdb->prefix . 'ssm_notifications';
     $now = current_time('mysql');
 
+    // Get role from request body (POST data)
+    $params = $request->get_json_params();
+    $requested_role = isset($params['role']) ? $params['role'] : null;
+
     $recipient_info = ssm_api_get_recipient_info($user_id);
 
-    // Build query based on user type
-    if ($recipient_info['type'] === 'instructor') {
+    // Use requested role if provided and valid
+    $active_role = $recipient_info['type'];
+    if ($requested_role === 'instructor' && $recipient_info['instructor_id']) {
+        $active_role = 'instructor';
+    } elseif ($requested_role === 'parent' && $recipient_info['client_id']) {
+        $active_role = 'parent';
+    }
+
+    // Build query based on active role
+    if ($active_role === 'instructor') {
         $result = $wpdb->query($wpdb->prepare(
             "UPDATE $table SET is_read = 1, read_at = %s
              WHERE is_read = 0
@@ -1238,7 +1290,7 @@ function ssm_api_mark_all_notifications_read($request) {
             $recipient_info['instructor_id'],
             $user_id
         ));
-    } elseif ($recipient_info['type'] === 'parent') {
+    } elseif ($active_role === 'parent') {
         if ($recipient_info['client_id']) {
             $result = $wpdb->query($wpdb->prepare(
                 "UPDATE $table SET is_read = 1, read_at = %s

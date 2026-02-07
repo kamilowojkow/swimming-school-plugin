@@ -335,25 +335,27 @@ class ApiClient {
   // NOTIFICATIONS ENDPOINTS
   // ============================================
 
-  async getNotifications(limit = 20, offset = 0, unreadOnly = false) {
+  async getNotifications(limit = 20, offset = 0, unreadOnly = false, role?: 'parent' | 'instructor') {
     const response = await this.client.get('/notifications', {
-      params: { limit, offset, unread_only: unreadOnly },
+      params: { limit, offset, unread_only: unreadOnly, role },
     });
     return response.data;
   }
 
-  async getUnreadCount() {
-    const response = await this.client.get('/notifications/unread-count');
+  async getUnreadCount(role?: 'parent' | 'instructor') {
+    const response = await this.client.get('/notifications/unread-count', {
+      params: { role },
+    });
     return response.data;
   }
 
-  async markNotificationRead(notificationId: number) {
-    const response = await this.client.post(`/notifications/${notificationId}/read`);
+  async markNotificationRead(notificationId: number, role?: 'parent' | 'instructor') {
+    const response = await this.client.post(`/notifications/${notificationId}/read`, { role });
     return response.data;
   }
 
-  async markAllNotificationsRead() {
-    const response = await this.client.post('/notifications/read-all');
+  async markAllNotificationsRead(role?: 'parent' | 'instructor') {
+    const response = await this.client.post('/notifications/read-all', { role });
     return response.data;
   }
 

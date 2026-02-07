@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import api from '../api/client';
+import { useAuthStore } from './authStore';
 
 export interface Notification {
   id: number;
@@ -27,6 +28,11 @@ interface NotificationState {
   markAllAsRead: () => Promise<void>;
 }
 
+// Helper to get current active role
+const getActiveRole = (): 'parent' | 'instructor' | undefined => {
+  return useAuthStore.getState().activeRole || undefined;
+};
+
 export const useNotificationStore = create<NotificationState>((set, get) => ({
   notifications: [],
   unreadCount: 0,
@@ -35,7 +41,8 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   fetchNotifications: async (limit = 20, offset = 0) => {
     set({ isLoading: true });
     try {
-      const data = await api.getNotifications(limit, offset);
+      const role = getActiveRole();
+      const data = await api.getNotifications(limit, offset, false, role);
       // Handle both array and object with notifications key
       const notificationsArray = Array.isArray(data) ? data : (data?.notifications || []);
       if (offset === 0) {
@@ -53,7 +60,8 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   fetchUnreadCount: async () => {
     try {
-      const { unread_count } = await api.getUnreadCount();
+      const role = getActiveRole();
+      const { unread_count } = await api.getUnreadCount(role);
       set({ unreadCount: unread_count });
     } catch (error) {
       console.error('Error fetching unread count:', error);
@@ -62,7 +70,8 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   markAsRead: async (id: number) => {
     try {
-      await api.markNotificationRead(id);
+      const role = getActiveRole();
+      await api.markNotificationRead(id, role);
       set({
         notifications: get().notifications.map((n) =>
           n.id === id ? { ...n, is_read: true } : n
@@ -76,7 +85,8 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   markAllAsRead: async () => {
     try {
-      await api.markAllNotificationsRead();
+      const role = getActiveRole();
+      await api.markAllNotificationsRead(role);
       set({
         notifications: get().notifications.map((n) => ({ ...n, is_read: true })),
         unreadCount: 0,
