@@ -1111,14 +1111,38 @@ function ssm_api_absences($request) {
 
     // GET - return absences from database with real data
     $user_id = ssm_api_get_user_id($request);
-    $client = ssm_api_get_or_create_client($user_id);
+    $result_client = ssm_api_get_or_create_client($user_id, true);
+    $client = $result_client['client'];
+    $debug_info = $result_client['debug'];
 
     if (!$client) {
-        return array();
+        return array(
+            '_debug' => array_merge($debug_info, array('error' => 'No client found')),
+            'absences' => array()
+        );
     }
 
+    // First, get child IDs for this client
+    $child_ids = $wpdb->get_col($wpdb->prepare(
+        "SELECT child_id FROM {$wpdb->prefix}ssm_client_children WHERE client_id = %d",
+        $client->id
+    ));
+
+    $debug_info['client_id'] = $client->id;
+    $debug_info['child_ids'] = $child_ids;
+
+    if (empty($child_ids)) {
+        return array(
+            '_debug' => array_merge($debug_info, array('error' => 'No children linked to client')),
+            'absences' => array()
+        );
+    }
+
+    // Build IN clause for child_ids
+    $placeholders = implode(',', array_fill(0, count($child_ids), '%d'));
+
     // Get absences for children of this parent
-    $absences = $wpdb->get_results($wpdb->prepare(
+    $query = $wpdb->prepare(
         "SELECT
             a.id,
             a.child_id,
@@ -1130,17 +1154,23 @@ function ssm_api_absences($request) {
             a.status,
             a.reason,
             a.reported_at,
-            a.can_makeup,
+            COALESCE(a.can_makeup, 0) as can_makeup,
             a.makeup_session_id
         FROM {$wpdb->prefix}ssm_absences a
-        JOIN {$wpdb->prefix}ssm_children ch ON a.child_id = ch.id
-        JOIN {$wpdb->prefix}ssm_client_children cc ON ch.id = cc.child_id AND cc.client_id = %d
+        LEFT JOIN {$wpdb->prefix}ssm_children ch ON a.child_id = ch.id
         LEFT JOIN {$wpdb->prefix}ssm_sessions s ON a.session_id = s.id
         LEFT JOIN {$wpdb->prefix}ssm_classes c ON s.class_id = c.id
+        WHERE a.child_id IN ($placeholders)
         ORDER BY a.reported_at DESC
         LIMIT 50",
-        $client->id
-    ));
+        ...$child_ids
+    );
+
+    $absences = $wpdb->get_results($query);
+
+    $debug_info['query'] = $query;
+    $debug_info['last_error'] = $wpdb->last_error;
+    $debug_info['absences_count'] = count($absences);
 
     $result = array();
     foreach ($absences as $absence) {
@@ -1166,7 +1196,7 @@ function ssm_api_absences($request) {
         $result[] = array(
             'id' => intval($absence->id),
             'child_id' => intval($absence->child_id),
-            'child_name' => $absence->child_name,
+            'child_name' => $absence->child_name ?: 'Nieznane dziecko',
             'session_id' => intval($absence->session_id),
             'session_date' => $absence->session_date,
             'time_start' => $absence->time_start,
@@ -1179,7 +1209,10 @@ function ssm_api_absences($request) {
         );
     }
 
-    return $result;
+    return array(
+        '_debug' => $debug_info,
+        'absences' => $result
+    );
 }
 
 function ssm_api_get_upcoming_sessions($request) {
