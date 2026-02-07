@@ -344,7 +344,8 @@ function ssm_api_login($request) {
 
     $token = ssm_api_generate_token($user->ID);
     $roles = ssm_api_get_user_roles($user->ID, $user->roles);
-    $primary_type = in_array('instructor', $roles) ? 'instructor' : 'parent';
+    // For multi-role users, default to 'parent'. For single-role, use their role.
+    $primary_type = count($roles) > 1 ? 'parent' : $roles[0];
 
     return array(
         'token' => $token,
@@ -381,7 +382,8 @@ function ssm_api_get_me($request) {
     }
 
     $roles = ssm_api_get_user_roles($user_id, (array)$user->roles);
-    $primary_type = in_array('instructor', $roles) ? 'instructor' : 'parent';
+    // For multi-role users, default to 'parent'. For single-role, use their role.
+    $primary_type = count($roles) > 1 ? 'parent' : $roles[0];
 
     return array(
         'id' => $user->ID,
@@ -1027,12 +1029,26 @@ function ssm_api_get_notifications($request) {
     // Determine recipient type and ID
     $recipient_info = ssm_api_get_recipient_info($user_id);
 
-    // Use requested role if provided and valid, otherwise use detected type
+    // Determine active role for notification filtering
+    // For multi-role users, MUST use requested_role from mobile app
+    // For single-role users, use detected type
     $active_role = $recipient_info['type'];
-    if ($requested_role === 'instructor' && $recipient_info['instructor_id']) {
-        $active_role = 'instructor';
-    } elseif ($requested_role === 'parent' && $recipient_info['client_id']) {
-        $active_role = 'parent';
+
+    if ($recipient_info['has_multiple_roles']) {
+        // Multi-role user - requested_role is required
+        if ($requested_role === 'instructor' && $recipient_info['instructor_id']) {
+            $active_role = 'instructor';
+        } elseif ($requested_role === 'parent' && $recipient_info['client_id']) {
+            $active_role = 'parent';
+        }
+        // If no valid requested_role, active_role stays 'user' (generic notifications only)
+    } else {
+        // Single-role user - use detected type, but allow override if valid
+        if ($requested_role === 'instructor' && $recipient_info['instructor_id']) {
+            $active_role = 'instructor';
+        } elseif ($requested_role === 'parent' && $recipient_info['client_id']) {
+            $active_role = 'parent';
+        }
     }
 
     // DEBUG: Add to response
@@ -1040,6 +1056,7 @@ function ssm_api_get_notifications($request) {
         'user_id' => $user_id,
         'requested_role' => $requested_role,
         'detected_type' => $recipient_info['type'],
+        'has_multiple_roles' => $recipient_info['has_multiple_roles'],
         'active_role' => $active_role,
         'instructor_id' => $recipient_info['instructor_id'],
         'client_id' => $recipient_info['client_id']
@@ -1354,11 +1371,12 @@ function ssm_api_get_recipient_info($user_id) {
     global $wpdb;
 
     $result = array(
-        'type' => 'user',  // Primary type (for backward compatibility)
+        'type' => 'user',  // Default type - will remain 'user' if multiple roles
         'id' => $user_id,
         'user_id' => $user_id,
         'instructor_id' => null,
-        'client_id' => null
+        'client_id' => null,
+        'has_multiple_roles' => false
     );
 
     // Get WordPress user
@@ -1368,7 +1386,7 @@ function ssm_api_get_recipient_info($user_id) {
     }
     $user_email = $user->user_email;
 
-    // Check if user is instructor by WordPress role (same logic as rest-api-for-wordpress.php)
+    // Check if user is instructor by WordPress role
     $is_instructor_role = in_array('administrator', (array) $user->roles) || in_array('ssm_instructor', (array) $user->roles);
 
     if ($is_instructor_role) {
@@ -1381,13 +1399,9 @@ function ssm_api_get_recipient_info($user_id) {
         ));
 
         if ($instructor) {
-            $result['type'] = 'instructor';
-            $result['id'] = $instructor->id;
             $result['instructor_id'] = $instructor->id;
         } else {
-            // Has role but no record - still treat as instructor, use user_id
-            $result['type'] = 'instructor';
-            $result['id'] = $user_id;
+            // Has role but no record - use user_id as instructor_id
             $result['instructor_id'] = $user_id;
         }
     }
@@ -1401,12 +1415,24 @@ function ssm_api_get_recipient_info($user_id) {
 
     if ($client) {
         $result['client_id'] = $client->id;
-        // If not already instructor, set primary type as parent
-        if (!$is_instructor_role) {
-            $result['type'] = 'parent';
-            $result['id'] = $client->id;
-        }
     }
+
+    // Determine type based on what roles user has
+    $has_instructor = !empty($result['instructor_id']);
+    $has_parent = !empty($result['client_id']);
+
+    if ($has_instructor && $has_parent) {
+        // User has both roles - keep type as 'user', let requested role decide
+        $result['type'] = 'user';
+        $result['has_multiple_roles'] = true;
+    } elseif ($has_instructor) {
+        $result['type'] = 'instructor';
+        $result['id'] = $result['instructor_id'];
+    } elseif ($has_parent) {
+        $result['type'] = 'parent';
+        $result['id'] = $result['client_id'];
+    }
+    // else: type remains 'user'
 
     return $result;
 }
