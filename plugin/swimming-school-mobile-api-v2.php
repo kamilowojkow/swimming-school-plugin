@@ -1178,20 +1178,29 @@ function ssm_api_mark_all_notifications_read($request) {
 function ssm_api_get_recipient_info($user_id) {
     global $wpdb;
 
-    // Check if user is instructor
+    // Get WordPress user email
+    $user = get_userdata($user_id);
+    if (!$user) {
+        return array('type' => 'user', 'id' => $user_id);
+    }
+    $user_email = $user->user_email;
+
+    // Check if user is instructor (by user_id or email)
     $instructor = $wpdb->get_row($wpdb->prepare(
-        "SELECT id FROM {$wpdb->prefix}ssm_instructors WHERE user_id = %d",
-        $user_id
+        "SELECT id FROM {$wpdb->prefix}ssm_instructors
+         WHERE user_id = %d OR email = %s",
+        $user_id,
+        $user_email
     ));
 
     if ($instructor) {
         return array('type' => 'instructor', 'id' => $instructor->id);
     }
 
-    // Check if user is parent/client
+    // Check if user is parent/client (by email - ssm_clients doesn't have user_id column)
     $client = $wpdb->get_row($wpdb->prepare(
-        "SELECT id FROM {$wpdb->prefix}ssm_clients WHERE user_id = %d",
-        $user_id
+        "SELECT id FROM {$wpdb->prefix}ssm_clients WHERE email = %s",
+        $user_email
     ));
 
     if ($client) {
