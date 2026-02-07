@@ -310,10 +310,9 @@ function ssm_api_get_or_create_client($user_id, $return_debug = false) {
     $debug['user_email'] = $user_email;
     $debug['user_roles'] = (array) $user->roles;
 
-    // Try to find existing client record
+    // Try to find existing client record by email (user_id column doesn't exist in this schema)
     $query = $wpdb->prepare(
-        "SELECT id FROM {$wpdb->prefix}ssm_clients WHERE user_id = %d OR email = %s",
-        $user_id,
+        "SELECT id FROM {$wpdb->prefix}ssm_clients WHERE email = %s",
         $user_email
     );
     $debug['client_query'] = $query;
@@ -336,13 +335,12 @@ function ssm_api_get_or_create_client($user_id, $return_debug = false) {
         $wpdb->insert(
             $wpdb->prefix . 'ssm_clients',
             array(
-                'user_id' => $user_id,
                 'email' => $user_email,
                 'first_name' => $user->first_name ?: $user->display_name,
                 'last_name' => $user->last_name ?: '',
                 'created_at' => current_time('mysql')
             ),
-            array('%d', '%s', '%s', '%s', '%s')
+            array('%s', '%s', '%s', '%s')
         );
 
         $client_id = $wpdb->insert_id;
