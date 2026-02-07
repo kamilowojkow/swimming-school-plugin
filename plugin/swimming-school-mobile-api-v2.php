@@ -1244,25 +1244,35 @@ function ssm_api_get_recipient_info($user_id) {
         'client_id' => null
     );
 
-    // Get WordPress user email
+    // Get WordPress user
     $user = get_userdata($user_id);
     if (!$user) {
         return $result;
     }
     $user_email = $user->user_email;
 
-    // Check if user is instructor (by user_id or email)
-    $instructor = $wpdb->get_row($wpdb->prepare(
-        "SELECT id FROM {$wpdb->prefix}ssm_instructors
-         WHERE user_id = %d OR email = %s",
-        $user_id,
-        $user_email
-    ));
+    // Check if user is instructor by WordPress role (same logic as rest-api-for-wordpress.php)
+    $is_instructor_role = in_array('administrator', (array) $user->roles) || in_array('ssm_instructor', (array) $user->roles);
 
-    if ($instructor) {
-        $result['type'] = 'instructor';
-        $result['id'] = $instructor->id;
-        $result['instructor_id'] = $instructor->id;
+    if ($is_instructor_role) {
+        // User has instructor role - find their instructor record
+        $instructor = $wpdb->get_row($wpdb->prepare(
+            "SELECT id FROM {$wpdb->prefix}ssm_instructors
+             WHERE user_id = %d OR email = %s",
+            $user_id,
+            $user_email
+        ));
+
+        if ($instructor) {
+            $result['type'] = 'instructor';
+            $result['id'] = $instructor->id;
+            $result['instructor_id'] = $instructor->id;
+        } else {
+            // Has role but no record - still treat as instructor, use user_id
+            $result['type'] = 'instructor';
+            $result['id'] = $user_id;
+            $result['instructor_id'] = $user_id;
+        }
     }
 
     // Check if user is parent/client (by email - ssm_clients doesn't have user_id column)
@@ -1274,7 +1284,7 @@ function ssm_api_get_recipient_info($user_id) {
     if ($client) {
         $result['client_id'] = $client->id;
         // If not already instructor, set primary type as parent
-        if (!$instructor) {
+        if (!$is_instructor_role) {
             $result['type'] = 'parent';
             $result['id'] = $client->id;
         }
