@@ -1054,7 +1054,7 @@ function ssm_api_get_notifications($request) {
          AND (expires_at IS NULL OR expires_at > NOW())
          ORDER BY created_at DESC
          LIMIT %d",
-        $params
+        ...$params
     ));
 
     $result = array();
@@ -1130,7 +1130,7 @@ function ssm_api_get_unread_count($request) {
          WHERE ($where_clause)
          AND is_read = 0
          AND (expires_at IS NULL OR expires_at > NOW())",
-        $params
+        ...$params
     ));
 
     return array(
@@ -1202,7 +1202,7 @@ function ssm_api_mark_all_notifications_read($request) {
         "UPDATE $table SET is_read = 1, read_at = %s
          WHERE is_read = 0
          AND ($where_clause)",
-        $params
+        ...$params
     ));
 
     return array(
