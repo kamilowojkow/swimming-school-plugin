@@ -1026,35 +1026,67 @@ function ssm_api_absences($request) {
 }
 
 function ssm_api_get_upcoming_sessions($request) {
-    return array(
-        array(
-            'id' => 201,
-            'session_date' => date('Y-m-d', strtotime('+2 days')),
-            'time_start' => '16:00',
-            'class_name' => 'Kurs pływania - poziom średni',
-            'child_id' => 1,
-            'child_name' => 'Jan Kowalski',
-            'can_report_absence' => true
-        ),
-        array(
-            'id' => 202,
-            'session_date' => date('Y-m-d', strtotime('+4 days')),
-            'time_start' => '17:00',
-            'class_name' => 'Kurs pływania - początkujący',
-            'child_id' => 2,
-            'child_name' => 'Anna Kowalska',
-            'can_report_absence' => true
-        ),
-        array(
-            'id' => 203,
-            'session_date' => date('Y-m-d', strtotime('+7 days')),
-            'time_start' => '16:00',
-            'class_name' => 'Kurs pływania - poziom średni',
-            'child_id' => 1,
-            'child_name' => 'Jan Kowalski',
-            'can_report_absence' => true
-        )
-    );
+    global $wpdb;
+    $user_id = ssm_api_get_user_id($request);
+
+    // Get client_id for current user
+    $client = $wpdb->get_row($wpdb->prepare(
+        "SELECT id FROM {$wpdb->prefix}ssm_clients WHERE user_id = %d",
+        $user_id
+    ));
+
+    if (!$client) {
+        // No client record - return empty array
+        return array();
+    }
+
+    // Get upcoming sessions for this parent's children
+    $sessions = $wpdb->get_results($wpdb->prepare(
+        "SELECT DISTINCT
+            s.id,
+            s.session_date,
+            s.time_start,
+            s.time_end,
+            c.name as class_name,
+            f.name as facility_name,
+            ch.id as child_id,
+            CONCAT(ch.first_name, ' ', ch.last_name) as child_name
+        FROM {$wpdb->prefix}ssm_sessions s
+        JOIN {$wpdb->prefix}ssm_classes c ON s.class_id = c.id
+        LEFT JOIN {$wpdb->prefix}ssm_facilities f ON c.facility_id = f.id
+        JOIN {$wpdb->prefix}ssm_enrollments e ON e.class_id = c.id AND e.status = 'active'
+        JOIN {$wpdb->prefix}ssm_children ch ON e.child_id = ch.id
+        JOIN {$wpdb->prefix}ssm_client_children cc ON cc.child_id = ch.id AND cc.client_id = %d
+        WHERE s.session_date >= CURDATE()
+        AND s.status = 'scheduled'
+        ORDER BY s.session_date, s.time_start
+        LIMIT 20",
+        $client->id
+    ));
+
+    $result = array();
+    foreach ($sessions as $session) {
+        // Check if absence can be reported (not already reported)
+        $existing_absence = $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM {$wpdb->prefix}ssm_absences
+             WHERE session_id = %d AND child_id = %d",
+            $session->id, $session->child_id
+        ));
+
+        $result[] = array(
+            'id' => intval($session->id),
+            'session_date' => $session->session_date,
+            'time_start' => substr($session->time_start, 0, 5),
+            'time_end' => substr($session->time_end ?: '', 0, 5),
+            'class_name' => $session->class_name,
+            'facility_name' => $session->facility_name ?: 'Basen',
+            'child_id' => intval($session->child_id),
+            'child_name' => $session->child_name,
+            'can_report_absence' => empty($existing_absence)
+        );
+    }
+
+    return $result;
 }
 
 function ssm_api_makeups($request) {
@@ -1205,68 +1237,70 @@ function ssm_api_register_push_token($request) {
 // ============ INSTRUCTOR ENDPOINTS ============
 
 function ssm_api_get_instructor_schedule($request) {
+    global $wpdb;
+    $user_id = ssm_api_get_user_id($request);
+
     $date_from = $request->get_param('date_from') ?: date('Y-m-d');
     $date_to = $request->get_param('date_to') ?: date('Y-m-d', strtotime('+14 days'));
 
-    // Przykładowe dane
-    return array(
-        array(
-            'id' => 101,
-            'session_date' => date('Y-m-d'),
-            'time_start' => '09:00:00',
-            'time_end' => '09:45:00',
-            'class_name' => 'Kurs pływania - początkujący',
-            'level' => 'Początkujący',
-            'facility_name' => 'Basen Główny',
-            'facility_address' => 'ul. Sportowa 15',
-            'enrolled_count' => 8,
-            'max_participants' => 10,
-            'attendance_marked' => 0,
-            'status' => 'scheduled'
-        ),
-        array(
-            'id' => 102,
-            'session_date' => date('Y-m-d'),
-            'time_start' => '10:00:00',
-            'time_end' => '10:45:00',
-            'class_name' => 'Kurs pływania - średniozaawansowany',
-            'level' => 'Średniozaawansowany',
-            'facility_name' => 'Basen Główny',
-            'facility_address' => 'ul. Sportowa 15',
-            'enrolled_count' => 6,
-            'max_participants' => 8,
-            'attendance_marked' => 1,
-            'status' => 'completed'
-        ),
-        array(
-            'id' => 103,
-            'session_date' => date('Y-m-d', strtotime('+1 day')),
-            'time_start' => '16:00:00',
-            'time_end' => '16:45:00',
-            'class_name' => 'Kurs pływania - zaawansowany',
-            'level' => 'Zaawansowany',
-            'facility_name' => 'Basen Mały',
-            'facility_address' => 'ul. Wodna 8',
-            'enrolled_count' => 5,
-            'max_participants' => 6,
-            'attendance_marked' => 0,
-            'status' => 'scheduled'
-        ),
-        array(
-            'id' => 104,
-            'session_date' => date('Y-m-d', strtotime('+2 days')),
-            'time_start' => '09:00:00',
-            'time_end' => '09:45:00',
-            'class_name' => 'Kurs pływania - początkujący',
-            'level' => 'Początkujący',
-            'facility_name' => 'Basen Główny',
-            'facility_address' => 'ul. Sportowa 15',
-            'enrolled_count' => 8,
-            'max_participants' => 10,
-            'attendance_marked' => 0,
-            'status' => 'scheduled'
-        )
-    );
+    // Get instructor_id for current user
+    $instructor = $wpdb->get_row($wpdb->prepare(
+        "SELECT id FROM {$wpdb->prefix}ssm_instructors WHERE user_id = %d",
+        $user_id
+    ));
+
+    if (!$instructor) {
+        // No instructor record - return empty array
+        return array();
+    }
+
+    // Get sessions for this instructor
+    $sessions = $wpdb->get_results($wpdb->prepare(
+        "SELECT
+            s.id,
+            s.session_date,
+            s.time_start,
+            s.time_end,
+            s.status,
+            c.name as class_name,
+            c.level,
+            c.max_participants,
+            f.name as facility_name,
+            f.address as facility_address,
+            (SELECT COUNT(*) FROM {$wpdb->prefix}ssm_enrollments e
+             WHERE e.class_id = c.id AND e.status = 'active') as enrolled_count,
+            (SELECT COUNT(*) FROM {$wpdb->prefix}ssm_attendance a
+             WHERE a.session_id = s.id) as attendance_marked
+        FROM {$wpdb->prefix}ssm_sessions s
+        JOIN {$wpdb->prefix}ssm_classes c ON s.class_id = c.id
+        LEFT JOIN {$wpdb->prefix}ssm_facilities f ON c.facility_id = f.id
+        WHERE s.instructor_id = %d
+        AND s.session_date BETWEEN %s AND %s
+        ORDER BY s.session_date, s.time_start",
+        $instructor->id,
+        $date_from,
+        $date_to
+    ));
+
+    $result = array();
+    foreach ($sessions as $session) {
+        $result[] = array(
+            'id' => intval($session->id),
+            'session_date' => $session->session_date,
+            'time_start' => $session->time_start,
+            'time_end' => $session->time_end,
+            'class_name' => $session->class_name,
+            'level' => $session->level ?: 'Początkujący',
+            'facility_name' => $session->facility_name ?: 'Basen',
+            'facility_address' => $session->facility_address ?: '',
+            'enrolled_count' => intval($session->enrolled_count),
+            'max_participants' => intval($session->max_participants) ?: 10,
+            'attendance_marked' => intval($session->attendance_marked) > 0 ? 1 : 0,
+            'status' => $session->status ?: 'scheduled'
+        );
+    }
+
+    return $result;
 }
 
 function ssm_api_get_session_details($request) {
