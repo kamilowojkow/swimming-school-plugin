@@ -41,7 +41,7 @@ export type RootStackParamList = {
   ParentTabs: undefined;
   InstructorTabs: undefined;
   ChildDetails: { childId: number };
-  Absences: undefined;
+  Payments: undefined;
   Attendance: { sessionId: number };
   Notifications: undefined;
   Profile: undefined;
@@ -57,7 +57,7 @@ export type ParentTabParamList = {
   Dashboard: undefined;
   Children: undefined;
   Schedule: undefined;
-  Payments: undefined;
+  Absences: undefined;
   More: undefined;
 };
 
@@ -112,8 +112,8 @@ function ParentTabNavigator() {
             case 'Schedule':
               iconName = focused ? 'calendar' : 'calendar-outline';
               break;
-            case 'Payments':
-              iconName = focused ? 'card' : 'card-outline';
+            case 'Absences':
+              iconName = focused ? 'close-circle' : 'close-circle-outline';
               break;
             case 'More':
               iconName = focused ? 'menu' : 'menu-outline';
@@ -150,9 +150,9 @@ function ParentTabNavigator() {
         options={{ title: t.nav.schedule }}
       />
       <ParentTabs.Screen
-        name="Payments"
-        component={PaymentsScreen}
-        options={{ title: t.nav.payments }}
+        name="Absences"
+        component={AbsencesScreen}
+        options={{ title: t.absences?.title || 'Nieobecności' }}
       />
       <ParentTabs.Screen
         name="More"
@@ -286,10 +286,10 @@ function MoreParentScreen() {
 
       <TouchableOpacity
         style={styles.menuItem}
-        onPress={() => navigation.navigate('Absences')}
+        onPress={() => navigation.navigate('Payments')}
       >
-        <Ionicons name="calendar-outline" size={24} color={colors.text} />
-        <Text style={styles.menuText}>{t.absences?.title || 'Nieobecności'}</Text>
+        <Ionicons name="card-outline" size={24} color={colors.text} />
+        <Text style={styles.menuText}>{t.nav.payments}</Text>
         <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
       </TouchableOpacity>
 
@@ -448,11 +448,11 @@ export default function AppNavigator() {
               }}
             />
             <RootStack.Screen
-              name="Absences"
-              component={AbsencesScreen}
+              name="Payments"
+              component={PaymentsScreen}
               options={{
                 headerShown: true,
-                title: t.absences?.title || 'Nieobecności',
+                title: t.nav.payments,
                 headerStyle: { backgroundColor: colors.primary },
                 headerTintColor: '#fff',
               }}
