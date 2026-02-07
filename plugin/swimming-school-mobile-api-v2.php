@@ -1406,6 +1406,16 @@ function ssm_api_get_recipient_info($user_id) {
         }
     }
 
+    // Check if user is parent by WordPress role
+    $is_parent_role = in_array('ssm_parent', (array) $user->roles) ||
+                      in_array('subscriber', (array) $user->roles) ||
+                      in_array('customer', (array) $user->roles);
+
+    // For administrators, also allow parent view (for testing/demo)
+    if (in_array('administrator', (array) $user->roles)) {
+        $is_parent_role = true;
+    }
+
     // Check if user is parent/client (by user_id first, then email)
     $client = $wpdb->get_row($wpdb->prepare(
         "SELECT id FROM {$wpdb->prefix}ssm_clients WHERE user_id = %d OR email = %s",
@@ -1415,6 +1425,9 @@ function ssm_api_get_recipient_info($user_id) {
 
     if ($client) {
         $result['client_id'] = $client->id;
+    } elseif ($is_parent_role) {
+        // Has parent role but no record - use user_id as client_id (fallback)
+        $result['client_id'] = $user_id;
     }
 
     // Determine type based on what roles user has
