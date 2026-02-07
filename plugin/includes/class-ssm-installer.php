@@ -40,6 +40,9 @@ class SSM_Installer {
 
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
+        // Tworzenie ról użytkowników
+        self::create_roles();
+
         // Tworzenie wszystkich tabel
         self::create_tables();
 
@@ -48,6 +51,26 @@ class SSM_Installer {
 
         // Zapisz wersję schematu
         update_option('ssm_db_version', self::DB_VERSION);
+    }
+
+    /**
+     * Tworzenie ról użytkowników
+     */
+    private static function create_roles() {
+        // Rola instruktora
+        if (!get_role('ssm_instructor')) {
+            add_role('ssm_instructor', 'Instruktor SSM', array(
+                'read' => true,
+                'upload_files' => true
+            ));
+        }
+
+        // Rola rodzica
+        if (!get_role('ssm_parent')) {
+            add_role('ssm_parent', 'Rodzic SSM', array(
+                'read' => true
+            ));
+        }
     }
 
     /**
@@ -118,10 +141,12 @@ class SSM_Installer {
             invoice_city varchar(100) DEFAULT NULL,
             wants_invoice tinyint(1) DEFAULT 0,
             date_of_birth date DEFAULT NULL,
+            user_id bigint(20) DEFAULT NULL,
             notes text DEFAULT NULL,
             created_at datetime DEFAULT NULL,
             PRIMARY KEY (id),
-            KEY email (email)
+            KEY email (email),
+            KEY user_id (user_id)
         ) " . self::$charset_collate . ";";
         dbDelta($sql);
     }
@@ -880,6 +905,10 @@ class SSM_Installer {
             }
             if (!self::column_exists($table, 'wants_invoice')) {
                 $wpdb->query("ALTER TABLE $table ADD COLUMN wants_invoice tinyint(1) DEFAULT 0 AFTER invoice_city");
+            }
+            if (!self::column_exists($table, 'user_id')) {
+                $wpdb->query("ALTER TABLE $table ADD COLUMN user_id bigint(20) DEFAULT NULL AFTER date_of_birth");
+                $wpdb->query("ALTER TABLE $table ADD KEY user_id (user_id)");
             }
         }
 

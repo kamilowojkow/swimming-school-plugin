@@ -11,30 +11,142 @@ if (!defined('ABSPATH')) exit;
 add_action('wp_ajax_ssm_save_client', 'ssm_ajax_save_client');
 function ssm_ajax_save_client() {
     check_ajax_referer('ssm_admin_nonce', 'nonce');
-    
+
     if (!current_user_can('manage_options')) {
         wp_send_json_error('Brak uprawnień');
     }
-    
+
     global $wpdb;
     $table = $wpdb->prefix . 'ssm_clients';
-    
+
+    $email = sanitize_email($_POST['email']);
+    $first_name = sanitize_text_field($_POST['first_name']);
+    $last_name = sanitize_text_field($_POST['last_name']);
+
     $data = array(
-        'first_name' => sanitize_text_field($_POST['first_name']),
-        'last_name' => sanitize_text_field($_POST['last_name']),
-        'email' => sanitize_email($_POST['email']),
+        'first_name' => $first_name,
+        'last_name' => $last_name,
+        'email' => $email,
         'phone' => isset($_POST['phone']) ? sanitize_text_field($_POST['phone']) : '',
         'notes' => isset($_POST['notes']) ? sanitize_textarea_field($_POST['notes']) : ''
     );
-    
+
     if (isset($_POST['id']) && !empty($_POST['id'])) {
-        $wpdb->update($table, $data, array('id' => intval($_POST['id'])));
+        // Update existing client
+        $client_id = intval($_POST['id']);
+        $wpdb->update($table, $data, array('id' => $client_id));
+
+        // If client has user_id, update WordPress user info too
+        $client = $wpdb->get_row($wpdb->prepare("SELECT user_id FROM $table WHERE id = %d", $client_id));
+        if ($client && $client->user_id) {
+            wp_update_user(array(
+                'ID' => $client->user_id,
+                'user_email' => $email,
+                'first_name' => $first_name,
+                'last_name' => $last_name,
+                'display_name' => $first_name . ' ' . $last_name
+            ));
+        }
+
         wp_send_json_success('Rodzic zaktualizowany');
     } else {
+        // Create new client
         $data['created_at'] = current_time('mysql');
+
+        // Check if WordPress user with this email already exists
+        $existing_user = get_user_by('email', $email);
+
+        if ($existing_user) {
+            // User exists - link to existing account
+            $data['user_id'] = $existing_user->ID;
+
+            // Add ssm_parent role if not already
+            $user = new WP_User($existing_user->ID);
+            if (!in_array('ssm_parent', $user->roles)) {
+                $user->add_role('ssm_parent');
+            }
+        } else {
+            // Create new WordPress user
+            $username = ssm_generate_unique_username($email, $first_name, $last_name);
+            $password = wp_generate_password(12, true, true);
+
+            $user_id = wp_insert_user(array(
+                'user_login' => $username,
+                'user_email' => $email,
+                'user_pass' => $password,
+                'first_name' => $first_name,
+                'last_name' => $last_name,
+                'display_name' => $first_name . ' ' . $last_name,
+                'role' => 'ssm_parent'
+            ));
+
+            if (!is_wp_error($user_id)) {
+                $data['user_id'] = $user_id;
+
+                // Send email with login credentials
+                ssm_send_welcome_email($email, $username, $password, $first_name);
+            }
+        }
+
         $wpdb->insert($table, $data);
         wp_send_json_success('Rodzic dodany');
     }
+}
+
+/**
+ * Generate unique username from email or name
+ */
+function ssm_generate_unique_username($email, $first_name, $last_name) {
+    // Try email prefix first
+    $base_username = sanitize_user(strtok($email, '@'), true);
+
+    if (empty($base_username)) {
+        // Fallback to name
+        $base_username = sanitize_user(strtolower($first_name . '.' . $last_name), true);
+    }
+
+    if (empty($base_username)) {
+        $base_username = 'rodzic';
+    }
+
+    $username = $base_username;
+    $counter = 1;
+
+    while (username_exists($username)) {
+        $username = $base_username . $counter;
+        $counter++;
+    }
+
+    return $username;
+}
+
+/**
+ * Send welcome email to new parent with login credentials
+ */
+function ssm_send_welcome_email($email, $username, $password, $first_name) {
+    $site_name = get_bloginfo('name');
+    $login_url = wp_login_url();
+
+    $subject = sprintf('[%s] Twoje konto rodzica zostało utworzone', $site_name);
+
+    $message = sprintf(
+        "Cześć %s,\n\n" .
+        "Twoje konto rodzica w systemie %s zostało utworzone.\n\n" .
+        "Dane do logowania:\n" .
+        "Login: %s\n" .
+        "Hasło: %s\n\n" .
+        "Zaloguj się tutaj: %s\n\n" .
+        "Zalecamy zmianę hasła po pierwszym logowaniu.\n\n" .
+        "Pozdrawiamy,\n%s",
+        $first_name,
+        $site_name,
+        $username,
+        $password,
+        $login_url,
+        $site_name
+    );
+
+    wp_mail($email, $subject, $message);
 }
 
 add_action('wp_ajax_ssm_delete_client', 'ssm_ajax_delete_client');

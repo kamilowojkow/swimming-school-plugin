@@ -1024,9 +1024,6 @@ function ssm_api_get_notifications($request) {
     // Determine recipient type and ID
     $recipient_info = ssm_api_get_recipient_info($user_id);
 
-    // DEBUG: Log to see what's happening
-    error_log('SSM Notifications Debug - user_id: ' . $user_id . ', recipient_info: ' . json_encode($recipient_info));
-
     // Build query based on user type
     if ($recipient_info['type'] === 'instructor') {
         // For instructors: check instructor notifications + user notifications
@@ -1112,7 +1109,7 @@ function ssm_api_get_notifications($request) {
 
         $result[] = array(
             'id' => intval($notif->id),
-            'title' => '[' . $recipient_info['type'] . '] ' . $notif->title,  // DEBUG: prefix with detected type
+            'title' => $notif->title,
             'message' => $notif->message,
             'created_at' => $notif->created_at,
             'is_read' => (bool) $notif->is_read,
@@ -1329,9 +1326,10 @@ function ssm_api_get_recipient_info($user_id) {
         }
     }
 
-    // Check if user is parent/client (by email - ssm_clients doesn't have user_id column)
+    // Check if user is parent/client (by user_id first, then email)
     $client = $wpdb->get_row($wpdb->prepare(
-        "SELECT id FROM {$wpdb->prefix}ssm_clients WHERE email = %s",
+        "SELECT id FROM {$wpdb->prefix}ssm_clients WHERE user_id = %d OR email = %s",
+        $user_id,
         $user_email
     ));
 
