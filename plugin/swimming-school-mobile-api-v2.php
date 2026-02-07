@@ -1035,6 +1035,16 @@ function ssm_api_get_notifications($request) {
         $active_role = 'parent';
     }
 
+    // DEBUG: Add to response
+    $debug_info = array(
+        'user_id' => $user_id,
+        'requested_role' => $requested_role,
+        'detected_type' => $recipient_info['type'],
+        'active_role' => $active_role,
+        'instructor_id' => $recipient_info['instructor_id'],
+        'client_id' => $recipient_info['client_id']
+    );
+
     // Build query based on active role
     if ($active_role === 'instructor') {
         // For instructors: check instructor notifications + user notifications
@@ -1131,7 +1141,11 @@ function ssm_api_get_notifications($request) {
         );
     }
 
-    return $result;
+    // DEBUG: Return with debug info
+    return array(
+        '_debug' => $debug_info,
+        'notifications' => $result
+    );
 }
 
 function ssm_api_get_unread_count($request) {
