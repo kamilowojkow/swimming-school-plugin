@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,9 +50,13 @@ export default function LoginScreen() {
         {/* Logo / Header */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Ionicons name="water" size={64} color={colors.primary} />
+            <Image
+              source={require('../../../assets/icon.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </View>
-          <Text style={styles.title}>Szkółka Pływania</Text>
+          <Text style={styles.title}>Pasjaplywania.pl</Text>
           <Text style={styles.subtitle}>{t.auth.login}</Text>
         </View>
 
@@ -159,11 +164,17 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>, isDark: boolean
     logoContainer: {
       width: 120,
       height: 120,
-      borderRadius: 60,
+      borderRadius: 28,
       backgroundColor: colors.primaryLight,
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: 16,
+      overflow: 'hidden',
+    },
+    logoImage: {
+      width: 120,
+      height: 120,
+      borderRadius: 28,
     },
     title: {
       fontSize: 28,
