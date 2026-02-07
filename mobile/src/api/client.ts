@@ -178,6 +178,7 @@ class ApiClient {
 
   async getChildren() {
     const response = await this.client.get('/parent/children');
+    console.log('API getChildren response:', JSON.stringify(response.data, null, 2));
     return response.data;
   }
 
