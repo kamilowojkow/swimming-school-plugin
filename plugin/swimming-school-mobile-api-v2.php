@@ -290,27 +290,45 @@ function ssm_api_get_user_id($request) {
 
 /**
  * Get or auto-create client record for a user with ssm_parent role
- * Returns client object with 'id' property, or null if user is not a parent
+ * Returns array with 'client' object and 'debug' info
  */
-function ssm_api_get_or_create_client($user_id) {
+function ssm_api_get_or_create_client($user_id, $return_debug = false) {
     global $wpdb;
+
+    $debug = array(
+        'user_id' => $user_id,
+        'db_prefix' => $wpdb->prefix
+    );
 
     $user = get_userdata($user_id);
     if (!$user) {
-        return null;
+        $debug['error'] = 'User not found';
+        return $return_debug ? array('client' => null, 'debug' => $debug) : null;
     }
 
     $user_email = $user->user_email;
+    $debug['user_email'] = $user_email;
+    $debug['user_roles'] = (array) $user->roles;
 
     // Try to find existing client record
-    $client = $wpdb->get_row($wpdb->prepare(
+    $query = $wpdb->prepare(
         "SELECT id FROM {$wpdb->prefix}ssm_clients WHERE user_id = %d OR email = %s",
         $user_id,
         $user_email
-    ));
+    );
+    $debug['client_query'] = $query;
+
+    $client = $wpdb->get_row($query);
+    $debug['client_found'] = $client ? true : false;
+    $debug['sql_error'] = $wpdb->last_error;
+
+    // Also check: how many total clients exist?
+    $total_clients = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}ssm_clients");
+    $debug['total_clients_in_db'] = $total_clients;
 
     if ($client) {
-        return $client;
+        $debug['client_id'] = $client->id;
+        return $return_debug ? array('client' => $client, 'debug' => $debug) : $client;
     }
 
     // Auto-create client record for users with ssm_parent role
@@ -330,11 +348,15 @@ function ssm_api_get_or_create_client($user_id) {
         $client_id = $wpdb->insert_id;
         if ($client_id) {
             error_log("SSM API: Auto-created client record id=$client_id for user_id=$user_id");
-            return (object) array('id' => $client_id);
+            $client = (object) array('id' => $client_id);
+            $debug['auto_created'] = true;
+            $debug['client_id'] = $client_id;
+            return $return_debug ? array('client' => $client, 'debug' => $debug) : $client;
         }
     }
 
-    return null;
+    $debug['error'] = 'No client found and user is not ssm_parent';
+    return $return_debug ? array('client' => null, 'debug' => $debug) : null;
 }
 
 // ============ AUTH ENDPOINTS ============
@@ -557,21 +579,16 @@ function ssm_api_get_children($request) {
     global $wpdb;
     $user_id = ssm_api_get_user_id($request);
 
-    // Get or create client record (auto-creates for ssm_parent users)
-    $client = ssm_api_get_or_create_client($user_id);
-
-    // DEBUG: Log prefix and client info
-    $debug_info = array(
-        'db_prefix' => $wpdb->prefix,
-        'user_id' => $user_id,
-        'client_id' => $client ? $client->id : null
-    );
+    // Get or create client record with full debug info
+    $result = ssm_api_get_or_create_client($user_id, true);
+    $client = $result['client'];
+    $debug_info = $result['debug'];
 
     error_log("SSM API get_children DEBUG: " . json_encode($debug_info));
 
     if (!$client) {
         return array(
-            '_debug' => array_merge($debug_info, array('error' => 'No client record')),
+            '_debug' => $debug_info,
             'children' => array()
         );
     }
