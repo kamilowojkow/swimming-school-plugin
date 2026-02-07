@@ -518,9 +518,19 @@ function ssm_api_get_children($request) {
         $user_email
     ));
 
+    // DEBUG: Log what we're looking for
+    error_log("SSM API get_children: user_id=$user_id, email=$user_email, client_id=" . ($client ? $client->id : 'NULL'));
+
     if (!$client) {
-        // No client record - return empty array
-        return array();
+        // No client record - return empty array with debug info
+        return array(
+            '_debug' => array(
+                'error' => 'No client record found',
+                'user_id' => $user_id,
+                'user_email' => $user_email
+            ),
+            'children' => array()
+        );
     }
 
     // Get children for this client through client_children relationship
@@ -545,6 +555,9 @@ function ssm_api_get_children($request) {
         ORDER BY ch.first_name",
         $client->id
     ));
+
+    // DEBUG: Check how many children found
+    error_log("SSM API get_children: client_id={$client->id}, found " . count($children) . " children");
 
     $result = array();
     foreach ($children as $child) {
@@ -584,7 +597,16 @@ function ssm_api_get_children($request) {
         );
     }
 
-    return $result;
+    // Return with debug info
+    return array(
+        '_debug' => array(
+            'user_id' => $user_id,
+            'user_email' => $user_email,
+            'client_id' => $client->id,
+            'children_count' => count($result)
+        ),
+        'children' => $result
+    );
 }
 
 function ssm_api_get_child_details($request) {

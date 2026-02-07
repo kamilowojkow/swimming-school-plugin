@@ -69,6 +69,7 @@ export default function ChildrenScreen() {
   const fetchChildren = async () => {
     try {
       const data = await api.getChildren();
+      console.log('Children API response:', JSON.stringify(data, null, 2));
       // Handle both array and object with children property
       const childrenArray = Array.isArray(data) ? data : (data.children || data.data || []);
       const normalizedChildren = childrenArray.map(normalizeChild);
