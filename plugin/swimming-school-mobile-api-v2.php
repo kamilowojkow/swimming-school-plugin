@@ -1039,17 +1039,33 @@ function ssm_api_absences($request) {
         // Check if class allows makeups
         $class_allows_makeups = (bool) $session->allow_makeups;
 
+        // Debug: log class settings
+        error_log('=== SSM ABSENCE POST DEBUG ===');
+        error_log('Session data: ' . json_encode($session));
+        error_log('class_id: ' . $session->class_id);
+        error_log('allow_makeups raw: ' . var_export($session->allow_makeups, true));
+        error_log('max_absences raw: ' . var_export($session->max_absences, true));
+
         // Check makeup limit - count makeups already used for this child in this class
-        $used_makeups = $wpdb->get_var($wpdb->prepare(
+        $used_makeups_query = $wpdb->prepare(
             "SELECT COUNT(*) FROM {$wpdb->prefix}ssm_absences a
              JOIN {$wpdb->prefix}ssm_sessions s ON a.session_id = s.id
              WHERE a.child_id = %d AND s.class_id = %d AND a.can_makeup = 1",
             $child_id,
             $session->class_id
-        ));
+        );
+        error_log('Used makeups query: ' . $used_makeups_query);
+
+        $used_makeups = $wpdb->get_var($used_makeups_query);
+        error_log('Used makeups result: ' . $used_makeups);
 
         $max_makeups = intval($session->max_absences);
         $within_limit = $used_makeups < $max_makeups;
+
+        error_log('max_makeups (parsed): ' . $max_makeups);
+        error_log('within_limit: ' . ($within_limit ? 'true' : 'false'));
+        error_log('class_allows_makeups: ' . ($class_allows_makeups ? 'true' : 'false'));
+        error_log('reported_on_time: ' . ($reported_on_time ? 'true' : 'false'));
 
         // Determine if this absence can be made up
         $can_makeup = $class_allows_makeups && $reported_on_time && $within_limit ? 1 : 0;
