@@ -26,6 +26,7 @@ interface Absence {
   class_name: string;
   status: 'reported' | 'confirmed' | 'makeup_scheduled' | 'makeup_completed';
   reason?: string;
+  can_makeup: boolean;
   makeup_session?: {
     id: number;
     date: string;
@@ -128,9 +129,13 @@ export default function MakeupsScreen() {
     }
   };
 
-  // Absences waiting for makeup scheduling
+  // Absences waiting for makeup scheduling (only those that CAN be made up)
   const pendingMakeups = absences.filter(
-    (a) => a.status === 'reported' || a.status === 'confirmed'
+    (a) => (a.status === 'reported' || a.status === 'confirmed') && a.can_makeup
+  );
+  // Absences that cannot be made up (too late, limit exceeded, etc.)
+  const expiredAbsences = absences.filter(
+    (a) => (a.status === 'reported' || a.status === 'confirmed') && !a.can_makeup
   );
   const scheduledMakeups = absences.filter((a) => a.status === 'makeup_scheduled');
   const completedMakeups = absences.filter((a) => a.status === 'makeup_completed');
@@ -163,11 +168,11 @@ export default function MakeupsScreen() {
             {language === 'pl' ? 'Zaplanowane' : 'Scheduled'}
           </Text>
         </View>
-        <View style={[styles.summaryCard, { backgroundColor: colors.successLight }]}>
-          <Ionicons name="checkmark-circle" size={24} color={colors.success} />
-          <Text style={styles.summaryNumber}>{completedMakeups.length}</Text>
+        <View style={[styles.summaryCard, { backgroundColor: colors.errorLight || '#fee2e2' }]}>
+          <Ionicons name="close-circle" size={24} color={colors.error} />
+          <Text style={styles.summaryNumber}>{expiredAbsences.length}</Text>
           <Text style={styles.summaryLabel}>
-            {language === 'pl' ? 'Odrobione' : 'Completed'}
+            {language === 'pl' ? 'Bez odrobienia' : 'No makeup'}
           </Text>
         </View>
       </View>
@@ -204,6 +209,35 @@ export default function MakeupsScreen() {
                     {language === 'pl' ? 'Zaplanuj' : 'Schedule'}
                   </Text>
                 </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Expired Absences - cannot be made up */}
+        {expiredAbsences.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {language === 'pl' ? 'Bez możliwości odrobienia' : 'Cannot be made up'}
+            </Text>
+            <Text style={styles.sectionSubtitle}>
+              {language === 'pl'
+                ? 'Zgłoszone po terminie (min. 24h przed) lub przekroczony limit odrabiań'
+                : 'Reported too late (min. 24h before) or makeup limit exceeded'}
+            </Text>
+
+            {expiredAbsences.map((absence) => (
+              <View key={absence.id} style={styles.expiredCard}>
+                <View style={styles.expiredIcon}>
+                  <Ionicons name="close-circle" size={20} color={colors.error} />
+                </View>
+                <View style={styles.expiredInfo}>
+                  <Text style={styles.expiredClass}>{absence.class_name}</Text>
+                  <Text style={styles.expiredDate}>
+                    {safeFormatDate(absence.session_date, 'd MMMM yyyy')}
+                  </Text>
+                  <Text style={styles.expiredChild}>{absence.child_name}</Text>
+                </View>
               </View>
             ))}
           </View>
@@ -383,6 +417,11 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>, isDark: boolean
       fontSize: 18,
       fontWeight: '600',
       color: colors.text,
+      marginBottom: 4,
+    },
+    sectionSubtitle: {
+      fontSize: 13,
+      color: colors.textSecondary,
       marginBottom: 12,
     },
     emptyCard: {
@@ -435,6 +474,36 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>, isDark: boolean
       fontSize: 14,
       fontWeight: '600',
       color: '#fff',
+    },
+    expiredCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 8,
+      opacity: 0.7,
+    },
+    expiredIcon: {
+      marginRight: 12,
+    },
+    expiredInfo: {
+      flex: 1,
+    },
+    expiredClass: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.text,
+    },
+    expiredDate: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    expiredChild: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      marginTop: 2,
     },
     makeupCard: {
       flexDirection: 'row',
