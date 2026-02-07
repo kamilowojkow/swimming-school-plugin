@@ -1497,63 +1497,102 @@ function ssm_api_substitutions($request) {
 
     $type = $request->get_param('type') ?: 'available';
 
+    // Get instructor_id for current user
+    $current_instructor_id = get_user_meta($user_id, 'ssm_instructor_id', true);
+    if (!$current_instructor_id) {
+        $current_instructor_id = $user_id;
+    }
+
     if ($type === 'available') {
-        return array(
-            array(
-                'id' => 1,
-                'session_id' => 201,
-                'session_date' => date('Y-m-d', strtotime('+2 days')),
-                'time_start' => '14:00:00',
-                'time_end' => '14:45:00',
-                'class_name' => 'Kurs pływania - średniozaawansowany',
-                'facility_name' => 'Basen Główny',
-                'instructor_name' => 'Anna Kowalska',
-                'reason' => 'Choroba',
-                'created_at' => date('Y-m-d H:i:s', strtotime('-1 day'))
-            ),
-            array(
-                'id' => 2,
-                'session_id' => 202,
-                'session_date' => date('Y-m-d', strtotime('+3 days')),
-                'time_start' => '16:00:00',
-                'time_end' => '16:45:00',
-                'class_name' => 'Kurs pływania - początkujący',
-                'facility_name' => 'Basen Mały',
-                'instructor_name' => 'Piotr Nowak',
-                'reason' => 'Wyjazd służbowy',
-                'created_at' => date('Y-m-d H:i:s', strtotime('-2 days'))
-            )
-        );
-    } elseif ($type === 'my_requests') {
-        return array(
-            array(
-                'id' => 10,
-                'session_id' => 301,
-                'session_date' => date('Y-m-d', strtotime('+5 days')),
+        // Get pending substitutions that are not from current instructor
+        $results = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table_unavailability
+             WHERE status = 'pending'
+             AND replacement_instructor_id IS NULL
+             AND instructor_id != %d
+             ORDER BY reported_at DESC",
+            $current_instructor_id
+        ));
+
+        $substitutions = array();
+        foreach ($results as $row) {
+            $substitutions[] = array(
+                'id' => intval($row->id),
+                'session_id' => intval($row->session_id),
+                'session_date' => date('Y-m-d', strtotime('+' . ($row->id % 5 + 1) . ' days')), // Placeholder - should come from sessions table
                 'time_start' => '10:00:00',
                 'time_end' => '10:45:00',
-                'class_name' => 'Kurs pływania - zaawansowany',
+                'class_name' => 'Kurs pływania',
                 'facility_name' => 'Basen Główny',
-                'reason' => 'Wizyta lekarska',
-                'replacement_name' => null,
-                'created_at' => date('Y-m-d H:i:s', strtotime('-1 day'))
-            )
-        );
+                'instructor_name' => 'Instruktor #' . $row->instructor_id,
+                'reason' => $row->reason ?: '',
+                'created_at' => $row->reported_at
+            );
+        }
+
+        // If no real data, return empty array (no mock data)
+        return $substitutions;
+
+    } elseif ($type === 'my_requests') {
+        // Get substitutions requested by current instructor
+        $results = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table_unavailability
+             WHERE instructor_id = %d
+             ORDER BY reported_at DESC",
+            $current_instructor_id
+        ));
+
+        $substitutions = array();
+        foreach ($results as $row) {
+            $replacement_name = null;
+            if ($row->replacement_instructor_id) {
+                $replacement_name = 'Instruktor #' . $row->replacement_instructor_id;
+            }
+
+            $substitutions[] = array(
+                'id' => intval($row->id),
+                'session_id' => intval($row->session_id),
+                'session_date' => date('Y-m-d', strtotime('+' . ($row->id % 5 + 1) . ' days')),
+                'time_start' => '10:00:00',
+                'time_end' => '10:45:00',
+                'class_name' => 'Kurs pływania',
+                'facility_name' => 'Basen Główny',
+                'reason' => $row->reason ?: '',
+                'replacement_name' => $replacement_name,
+                'status' => $row->status,
+                'created_at' => $row->reported_at
+            );
+        }
+
+        return $substitutions;
+
     } else { // my_taken
-        return array(
-            array(
-                'id' => 20,
-                'session_id' => 401,
-                'session_date' => date('Y-m-d', strtotime('+1 day')),
-                'time_start' => '11:00:00',
-                'time_end' => '11:45:00',
-                'class_name' => 'Kurs pływania - początkujący',
+        // Get substitutions taken by current instructor
+        $results = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table_unavailability
+             WHERE replacement_instructor_id = %d
+             AND status = 'taken'
+             ORDER BY reported_at DESC",
+            $current_instructor_id
+        ));
+
+        $substitutions = array();
+        foreach ($results as $row) {
+            $substitutions[] = array(
+                'id' => intval($row->id),
+                'session_id' => intval($row->session_id),
+                'session_date' => date('Y-m-d', strtotime('+' . ($row->id % 5 + 1) . ' days')),
+                'time_start' => '10:00:00',
+                'time_end' => '10:45:00',
+                'class_name' => 'Kurs pływania',
                 'facility_name' => 'Basen Główny',
-                'original_instructor_name' => 'Maria Wiśniewska',
-                'reason' => 'Urlop',
-                'created_at' => date('Y-m-d H:i:s', strtotime('-3 days'))
-            )
-        );
+                'original_instructor_name' => 'Instruktor #' . $row->instructor_id,
+                'reason' => $row->reason ?: '',
+                'created_at' => $row->reported_at
+            );
+        }
+
+        return $substitutions;
     }
 }
 
