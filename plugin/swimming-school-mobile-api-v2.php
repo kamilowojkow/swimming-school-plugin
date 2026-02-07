@@ -888,58 +888,105 @@ function ssm_api_get_schedule($request) {
 }
 
 function ssm_api_get_payments($request) {
-    return array(
-        array(
-            'id' => 1,
-            'title' => 'Kurs pływania - luty 2026',
-            'description' => 'Opłata miesięczna za kurs',
-            'total_amount' => 350.00,
-            'paid_amount' => 0,
-            'remaining_amount' => 350.00,
-            'due_date' => date('Y-m-d', strtotime('+7 days')),
-            'status' => 'pending',
-            'child_name' => 'Jan Kowalski',
-            'created_at' => date('Y-m-d H:i:s', strtotime('-5 days'))
-        ),
-        array(
-            'id' => 2,
-            'title' => 'Kurs pływania - styczeń 2026',
-            'description' => 'Opłata miesięczna za kurs',
-            'total_amount' => 280.00,
-            'paid_amount' => 280.00,
-            'remaining_amount' => 0,
-            'due_date' => date('Y-m-d', strtotime('-23 days')),
-            'status' => 'paid',
-            'child_name' => 'Jan Kowalski',
-            'created_at' => date('Y-m-d H:i:s', strtotime('-35 days'))
-        )
-    );
+    global $wpdb;
+    $user_id = ssm_api_get_user_id($request);
+    $status_filter = $request->get_param('status'); // 'pending', 'paid', or null for all
+
+    // Get client for this user
+    $client = ssm_api_get_or_create_client($user_id);
+    if (!$client) {
+        return array();
+    }
+
+    // Build query
+    $where_status = '';
+    if ($status_filter === 'pending') {
+        $where_status = "AND p.status IN ('pending', 'partial', 'overdue')";
+    } elseif ($status_filter === 'paid') {
+        $where_status = "AND p.status = 'paid'";
+    }
+
+    $payments = $wpdb->get_results($wpdb->prepare(
+        "SELECT
+            p.id,
+            p.title,
+            p.description,
+            p.total_amount,
+            p.paid_amount,
+            (p.total_amount - p.paid_amount) as remaining_amount,
+            p.due_date,
+            p.status,
+            p.created_at,
+            e.child_id,
+            CONCAT(ch.first_name, ' ', ch.last_name) as child_name
+        FROM {$wpdb->prefix}ssm_payments p
+        LEFT JOIN {$wpdb->prefix}ssm_enrollments e ON p.enrollment_id = e.id
+        LEFT JOIN {$wpdb->prefix}ssm_children ch ON e.child_id = ch.id
+        WHERE p.client_id = %d
+        $where_status
+        ORDER BY
+            CASE WHEN p.status IN ('pending', 'partial', 'overdue') THEN 0 ELSE 1 END,
+            p.due_date ASC",
+        $client->id
+    ));
+
+    $result = array();
+    foreach ($payments as $payment) {
+        $result[] = array(
+            'id' => intval($payment->id),
+            'title' => $payment->title,
+            'description' => $payment->description ?: '',
+            'total_amount' => floatval($payment->total_amount),
+            'paid_amount' => floatval($payment->paid_amount),
+            'remaining_amount' => floatval($payment->remaining_amount),
+            'due_date' => $payment->due_date,
+            'status' => $payment->status,
+            'child_name' => $payment->child_name ?: '',
+            'created_at' => $payment->created_at
+        );
+    }
+
+    return $result;
 }
 
 function ssm_api_get_payment_history($request) {
-    return array(
-        array(
-            'id' => 1,
-            'amount' => 280.00,
-            'payment_date' => date('Y-m-d\TH:i:s', strtotime('-25 days')),
-            'payment_method' => 'Przelew',
-            'invoice_title' => 'Kurs pływania - styczeń 2026'
-        ),
-        array(
-            'id' => 2,
-            'amount' => 350.00,
-            'payment_date' => date('Y-m-d\TH:i:s', strtotime('-55 days')),
-            'payment_method' => 'Karta',
-            'invoice_title' => 'Kurs pływania - grudzień 2025'
-        ),
-        array(
-            'id' => 3,
-            'amount' => 350.00,
-            'payment_date' => date('Y-m-d\TH:i:s', strtotime('-85 days')),
-            'payment_method' => 'Przelew',
-            'invoice_title' => 'Kurs pływania - listopad 2025'
-        )
-    );
+    global $wpdb;
+    $user_id = ssm_api_get_user_id($request);
+
+    // Get client for this user
+    $client = ssm_api_get_or_create_client($user_id);
+    if (!$client) {
+        return array();
+    }
+
+    // Get payment transactions for all payments belonging to this client
+    $transactions = $wpdb->get_results($wpdb->prepare(
+        "SELECT
+            t.id,
+            t.amount,
+            t.created_at as payment_date,
+            t.payment_method,
+            t.notes,
+            p.title as invoice_title
+        FROM {$wpdb->prefix}ssm_payment_transactions t
+        JOIN {$wpdb->prefix}ssm_payments p ON t.payment_id = p.id
+        WHERE p.client_id = %d
+        ORDER BY t.created_at DESC",
+        $client->id
+    ));
+
+    $result = array();
+    foreach ($transactions as $tx) {
+        $result[] = array(
+            'id' => intval($tx->id),
+            'amount' => floatval($tx->amount),
+            'payment_date' => $tx->payment_date,
+            'payment_method' => $tx->payment_method ?: 'Przelew',
+            'invoice_title' => $tx->invoice_title
+        );
+    }
+
+    return $result;
 }
 
 function ssm_api_absences($request) {
