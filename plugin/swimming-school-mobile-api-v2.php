@@ -2252,61 +2252,89 @@ function ssm_api_get_instructor_schedule($request) {
 }
 
 function ssm_api_get_session_details($request) {
-    $session_id = $request->get_param('id');
+    global $wpdb;
+    $session_id = intval($request->get_param('id'));
+    $user_id = ssm_api_get_user_id($request);
+
+    // Get instructor for current user
+    $instructor = $wpdb->get_row($wpdb->prepare(
+        "SELECT id FROM {$wpdb->prefix}ssm_instructors WHERE user_id = %d",
+        $user_id
+    ));
+
+    // Get session details
+    $session = $wpdb->get_row($wpdb->prepare(
+        "SELECT
+            s.id,
+            s.session_date,
+            s.time_start,
+            s.time_end,
+            s.status,
+            s.instructor_id,
+            c.id as class_id,
+            c.name as class_name,
+            c.level,
+            c.max_participants,
+            c.description,
+            f.name as facility_name,
+            f.address as facility_address
+        FROM {$wpdb->prefix}ssm_sessions s
+        JOIN {$wpdb->prefix}ssm_classes c ON s.class_id = c.id
+        LEFT JOIN {$wpdb->prefix}ssm_facilities f ON c.facility_id = f.id
+        WHERE s.id = %d",
+        $session_id
+    ));
+
+    if (!$session) {
+        return new WP_REST_Response(array('message' => 'Sesja nie znaleziona'), 404);
+    }
+
+    // Get enrolled participants for this class
+    $participants = $wpdb->get_results($wpdb->prepare(
+        "SELECT
+            e.id as enrollment_id,
+            ch.id as child_id,
+            ch.first_name,
+            ch.last_name,
+            ch.swimming_level,
+            ch.medical_notes,
+            COALESCE(a.status, 'unmarked') as status,
+            COALESCE(a.notes, '') as notes
+        FROM {$wpdb->prefix}ssm_enrollments e
+        JOIN {$wpdb->prefix}ssm_client_children ch ON e.child_id = ch.id
+        LEFT JOIN {$wpdb->prefix}ssm_attendance a ON a.session_id = %d AND a.child_id = ch.id
+        WHERE e.class_id = %d AND e.status = 'active'
+        ORDER BY ch.last_name, ch.first_name",
+        $session_id,
+        $session->class_id
+    ));
+
+    $participants_array = array();
+    foreach ($participants as $p) {
+        $participants_array[] = array(
+            'enrollment_id' => intval($p->enrollment_id),
+            'child_id' => intval($p->child_id),
+            'first_name' => $p->first_name,
+            'last_name' => $p->last_name,
+            'status' => $p->status,
+            'notes' => $p->notes,
+            'swimming_level' => $p->swimming_level ?: 'Początkujący',
+            'medical_notes' => $p->medical_notes ?: ''
+        );
+    }
 
     return array(
-        'id' => $session_id,
-        'session_date' => date('Y-m-d'),
-        'time_start' => '09:00:00',
-        'time_end' => '09:45:00',
-        'class_name' => 'Kurs pływania - początkujący',
-        'level' => 'Początkujący',
-        'facility_name' => 'Basen Główny',
-        'facility_address' => 'ul. Sportowa 15',
-        'max_participants' => 10,
-        'description' => 'Zajęcia dla początkujących - nauka podstaw pływania.',
-        'participants' => array(
-            array(
-                'enrollment_id' => 1,
-                'child_id' => 1,
-                'first_name' => 'Jan',
-                'last_name' => 'Kowalski',
-                'status' => 'unmarked',
-                'notes' => '',
-                'swimming_level' => 'Początkujący',
-                'medical_notes' => ''
-            ),
-            array(
-                'enrollment_id' => 2,
-                'child_id' => 2,
-                'first_name' => 'Anna',
-                'last_name' => 'Nowak',
-                'status' => 'unmarked',
-                'notes' => '',
-                'swimming_level' => 'Początkujący',
-                'medical_notes' => 'Alergia na chlor - wymaga okularów'
-            ),
-            array(
-                'enrollment_id' => 3,
-                'child_id' => 3,
-                'first_name' => 'Piotr',
-                'last_name' => 'Wiśniewski',
-                'status' => 'unmarked',
-                'notes' => '',
-                'swimming_level' => 'Początkujący',
-                'medical_notes' => ''
-            ),
-            array(
-                'enrollment_id' => 4,
-                'child_id' => 4,
-                'first_name' => 'Maria',
-                'last_name' => 'Dąbrowska',
-                'status' => 'unmarked',
-                'notes' => '',
-                'swimming_level' => 'Początkujący',
-                'medical_notes' => ''
-            )
-        )
+        'id' => intval($session->id),
+        'session_date' => $session->session_date,
+        'time_start' => $session->time_start,
+        'time_end' => $session->time_end,
+        'class_name' => $session->class_name,
+        'level' => $session->level ?: 'Początkujący',
+        'facility_name' => $session->facility_name ?: 'Basen',
+        'facility_address' => $session->facility_address ?: '',
+        'max_participants' => intval($session->max_participants) ?: 10,
+        'description' => $session->description ?: '',
+        'participants' => $participants_array
     );
 }
 
@@ -2379,46 +2407,52 @@ function ssm_api_session_attendance($request) {
         }
     }
 
-    // GET - return attendance for session from DB or sample data
-    $attendance = $wpdb->get_results($wpdb->prepare(
-        "SELECT * FROM $table_attendance WHERE session_id = %d",
+    // GET - return real participants with their attendance status
+    // First, get the class_id for this session
+    $session = $wpdb->get_row($wpdb->prepare(
+        "SELECT class_id FROM {$wpdb->prefix}ssm_sessions WHERE id = %d",
         $session_id
     ));
 
-    if (!empty($attendance)) {
-        $result = array();
-        foreach ($attendance as $record) {
-            $result[] = array(
-                'enrollment_id' => $record->id,
-                'child_id' => $record->child_id,
-                'first_name' => 'Dziecko',
-                'last_name' => '#' . $record->child_id,
-                'status' => $record->status,
-                'notes' => $record->notes
-            );
-        }
-        return $result;
+    if (!$session) {
+        return new WP_REST_Response(array('message' => 'Sesja nie znaleziona'), 404);
     }
 
-    // Return sample data for testing
-    return array(
-        array(
-            'enrollment_id' => 1,
-            'child_id' => 1,
-            'first_name' => 'Jan',
-            'last_name' => 'Kowalski',
-            'status' => 'unmarked',
-            'notes' => ''
-        ),
-        array(
-            'enrollment_id' => 2,
-            'child_id' => 2,
-            'first_name' => 'Anna',
-            'last_name' => 'Nowak',
-            'status' => 'unmarked',
-            'notes' => ''
-        )
-    );
+    // Get all enrolled children for this class with their attendance status
+    $participants = $wpdb->get_results($wpdb->prepare(
+        "SELECT
+            e.id as enrollment_id,
+            ch.id as child_id,
+            ch.first_name,
+            ch.last_name,
+            ch.swimming_level,
+            ch.medical_notes,
+            COALESCE(a.status, 'unmarked') as status,
+            COALESCE(a.notes, '') as notes
+        FROM {$wpdb->prefix}ssm_enrollments e
+        JOIN {$wpdb->prefix}ssm_client_children ch ON e.child_id = ch.id
+        LEFT JOIN $table_attendance a ON a.session_id = %d AND a.child_id = ch.id
+        WHERE e.class_id = %d AND e.status = 'active'
+        ORDER BY ch.last_name, ch.first_name",
+        $session_id,
+        $session->class_id
+    ));
+
+    $result = array();
+    foreach ($participants as $p) {
+        $result[] = array(
+            'enrollment_id' => intval($p->enrollment_id),
+            'child_id' => intval($p->child_id),
+            'first_name' => $p->first_name,
+            'last_name' => $p->last_name,
+            'status' => $p->status,
+            'notes' => $p->notes,
+            'swimming_level' => $p->swimming_level ?: '',
+            'medical_notes' => $p->medical_notes ?: ''
+        );
+    }
+
+    return $result;
 }
 
 function ssm_api_substitutions($request) {
@@ -2623,57 +2657,88 @@ function ssm_api_take_substitution($request) {
 }
 
 function ssm_api_get_salary($request) {
-    $month = $request->get_param('month') ?: date('n');
-    $year = $request->get_param('year') ?: date('Y');
+    global $wpdb;
+    $user_id = ssm_api_get_user_id($request);
+
+    $month = intval($request->get_param('month') ?: date('n'));
+    $year = intval($request->get_param('year') ?: date('Y'));
+
+    // Get instructor for current user
+    $instructor = $wpdb->get_row($wpdb->prepare(
+        "SELECT id, hourly_rate FROM {$wpdb->prefix}ssm_instructors WHERE user_id = %d",
+        $user_id
+    ));
+
+    if (!$instructor) {
+        return array(
+            'month' => $month,
+            'year' => $year,
+            'hourly_rate' => 0,
+            'total_hours' => 0,
+            'total_salary' => 0,
+            'sessions_count' => 0,
+            'sessions' => array()
+        );
+    }
+
+    $hourly_rate = floatval($instructor->hourly_rate) ?: 0;
+
+    // Calculate date range for the month
+    $date_from = sprintf('%04d-%02d-01', $year, $month);
+    $date_to = date('Y-m-t', strtotime($date_from));
+
+    // Get completed sessions for this instructor in the given month
+    // Only count sessions that have at least one attendance marked (confirmed sessions)
+    $sessions = $wpdb->get_results($wpdb->prepare(
+        "SELECT
+            s.id,
+            s.session_date,
+            s.time_start,
+            s.time_end,
+            c.name as class_name,
+            TIMESTAMPDIFF(MINUTE, s.time_start, s.time_end) as duration_minutes
+        FROM {$wpdb->prefix}ssm_sessions s
+        JOIN {$wpdb->prefix}ssm_classes c ON s.class_id = c.id
+        WHERE s.instructor_id = %d
+        AND s.session_date BETWEEN %s AND %s
+        AND s.session_date <= CURDATE()
+        AND EXISTS (
+            SELECT 1 FROM {$wpdb->prefix}ssm_attendance a
+            WHERE a.session_id = s.id
+        )
+        ORDER BY s.session_date DESC, s.time_start",
+        $instructor->id,
+        $date_from,
+        $date_to
+    ));
+
+    $sessions_array = array();
+    $total_minutes = 0;
+
+    foreach ($sessions as $session) {
+        $duration = intval($session->duration_minutes) ?: 45;
+        $total_minutes += $duration;
+
+        $sessions_array[] = array(
+            'id' => intval($session->id),
+            'session_date' => $session->session_date,
+            'time_start' => $session->time_start,
+            'time_end' => $session->time_end,
+            'class_name' => $session->class_name,
+            'duration_minutes' => $duration
+        );
+    }
+
+    $total_hours = $total_minutes / 60;
+    $total_salary = $total_hours * $hourly_rate;
 
     return array(
-        'month' => intval($month),
-        'year' => intval($year),
-        'hourly_rate' => 80,
-        'total_hours' => 32.5,
-        'total_salary' => 2600,
-        'sessions_count' => 43,
-        'sessions' => array(
-            array(
-                'id' => 1,
-                'session_date' => date('Y-m-d', strtotime('-1 day')),
-                'time_start' => '09:00:00',
-                'time_end' => '09:45:00',
-                'class_name' => 'Kurs pływania - początkujący',
-                'duration_minutes' => 45
-            ),
-            array(
-                'id' => 2,
-                'session_date' => date('Y-m-d', strtotime('-1 day')),
-                'time_start' => '10:00:00',
-                'time_end' => '10:45:00',
-                'class_name' => 'Kurs pływania - średniozaawansowany',
-                'duration_minutes' => 45
-            ),
-            array(
-                'id' => 3,
-                'session_date' => date('Y-m-d', strtotime('-2 days')),
-                'time_start' => '16:00:00',
-                'time_end' => '16:45:00',
-                'class_name' => 'Kurs pływania - zaawansowany',
-                'duration_minutes' => 45
-            ),
-            array(
-                'id' => 4,
-                'session_date' => date('Y-m-d', strtotime('-3 days')),
-                'time_start' => '09:00:00',
-                'time_end' => '09:45:00',
-                'class_name' => 'Kurs pływania - początkujący',
-                'duration_minutes' => 45
-            ),
-            array(
-                'id' => 5,
-                'session_date' => date('Y-m-d', strtotime('-4 days')),
-                'time_start' => '14:00:00',
-                'time_end' => '14:45:00',
-                'class_name' => 'Kurs pływania - średniozaawansowany',
-                'duration_minutes' => 45
-            )
-        )
+        'month' => $month,
+        'year' => $year,
+        'hourly_rate' => $hourly_rate,
+        'total_hours' => round($total_hours, 2),
+        'total_salary' => round($total_salary, 2),
+        'sessions_count' => count($sessions_array),
+        'sessions' => $sessions_array
     );
 }
