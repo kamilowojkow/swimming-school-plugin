@@ -75,36 +75,18 @@ export default function MakeupsScreen() {
 
   const fetchData = async () => {
     try {
-      console.log('=== MAKEUPS SCREEN: Fetching data ===');
-
       const [absencesData, slotsData] = await Promise.all([
         api.getAbsences(),
         api.getMakeupSlots(),
       ]);
 
-      console.log('=== RAW absencesData ===');
-      console.log(JSON.stringify(absencesData, null, 2));
-
-      console.log('=== RAW slotsData ===');
-      console.log(JSON.stringify(slotsData, null, 2));
-
       const absencesArray = Array.isArray(absencesData) ? absencesData : (absencesData?.absences || []);
       const slotsArray = Array.isArray(slotsData) ? slotsData : (slotsData?.slots || []);
-
-      console.log('=== Parsed absencesArray ===');
-      console.log('Count:', absencesArray.length);
-      console.log(JSON.stringify(absencesArray, null, 2));
-
-      console.log('=== Debug info from API ===');
-      if (absencesData?._debug) {
-        console.log(JSON.stringify(absencesData._debug, null, 2));
-      }
 
       setAbsences(absencesArray);
       setMakeupSlots(slotsArray);
     } catch (error) {
-      console.error('=== ERROR fetching makeups data ===');
-      console.error(error);
+      console.error('Error fetching makeups data:', error);
     } finally {
       setIsLoading(false);
     }
@@ -148,9 +130,6 @@ export default function MakeupsScreen() {
   };
 
   const cancelAbsence = (absence: Absence) => {
-    console.log('=== CANCEL ABSENCE DEBUG ===');
-    console.log('Absence to cancel:', JSON.stringify(absence, null, 2));
-
     Alert.alert(
       language === 'pl' ? 'Cofnij zgłoszenie' : 'Cancel absence',
       language === 'pl'
@@ -166,18 +145,13 @@ export default function MakeupsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              console.log('=== Calling API cancelAbsence with id:', absence.id);
-              const result = await api.cancelAbsence(absence.id);
-              console.log('=== Cancel result:', JSON.stringify(result, null, 2));
+              await api.cancelAbsence(absence.id);
               Alert.alert(
                 language === 'pl' ? 'Sukces' : 'Success',
                 language === 'pl' ? 'Zgłoszenie nieobecności zostało cofnięte' : 'Absence report has been cancelled'
               );
               fetchData();
             } catch (error: any) {
-              console.log('=== Cancel error:', error);
-              console.log('=== Error response:', JSON.stringify(error?.response?.data, null, 2));
-              console.log('=== Error status:', error?.response?.status);
               Alert.alert(
                 t.common.error,
                 error?.response?.data?.message ||
@@ -361,6 +335,12 @@ export default function MakeupsScreen() {
                   )}
                   <Text style={styles.makeupChild}>{absence.child_name}</Text>
                 </View>
+                <TouchableOpacity
+                  style={styles.cancelButtonSmall}
+                  onPress={() => cancelAbsence(absence)}
+                >
+                  <Ionicons name="close" size={16} color={colors.textSecondary} />
+                </TouchableOpacity>
               </View>
             ))
           )}

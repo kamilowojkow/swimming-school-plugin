@@ -1063,16 +1063,6 @@ function ssm_api_absences($request) {
         $max_makeups = intval($enrollment->max_makeups) ?: 2;
         $within_limit = $used_makeups < $max_makeups;
 
-        // Debug logging
-        error_log('=== SSM ABSENCE POST DEBUG ===');
-        error_log('enrollment_id: ' . $enrollment_id);
-        error_log('used_makeups: ' . $used_makeups);
-        error_log('max_makeups (from enrollment): ' . $max_makeups);
-        error_log('within_limit: ' . ($within_limit ? 'true' : 'false'));
-        error_log('class_allows_makeups: ' . ($class_allows_makeups ? 'true' : 'false'));
-        error_log('reported_on_time: ' . ($reported_on_time ? 'true' : 'false'));
-        error_log('hours_until_session: ' . round($hours_until_session, 1));
-
         // Determine if this absence can be made up
         $can_makeup = $class_allows_makeups && $reported_on_time && $within_limit ? 1 : 0;
 
@@ -1124,29 +1114,19 @@ function ssm_api_absences($request) {
         );
     }
 
-    // DELETE - cancel/withdraw absence report
+    // DELETE - cancel/withdraw absence report or scheduled makeup
     if ($request->get_method() === 'DELETE') {
-        error_log('=== SSM API ABSENCES DELETE ===');
-
         $params = $request->get_json_params();
-        error_log('DELETE params: ' . json_encode($params));
-
         $absence_id = intval($params['absence_id'] ?? 0);
-        error_log('absence_id: ' . $absence_id);
 
         if (!$absence_id) {
-            error_log('DELETE error: No absence_id provided');
             return new WP_REST_Response(array('message' => 'Brak ID nieobecności'), 400);
         }
 
         $user_id = ssm_api_get_user_id($request);
-        error_log('user_id: ' . $user_id);
-
         $client = ssm_api_get_or_create_client($user_id);
-        error_log('client: ' . ($client ? 'ID:' . $client->id : 'NULL'));
 
         if (!$client) {
-            error_log('DELETE error: No client found');
             return new WP_REST_Response(array('message' => 'Nie znaleziono klienta'), 404);
         }
 
@@ -1155,10 +1135,8 @@ function ssm_api_absences($request) {
             "SELECT child_id FROM {$wpdb->prefix}ssm_client_children WHERE client_id = %d",
             $client->id
         ));
-        error_log('child_ids: ' . json_encode($child_ids));
 
         if (empty($child_ids)) {
-            error_log('DELETE error: No children linked');
             return new WP_REST_Response(array('message' => 'Brak przypisanych dzieci'), 400);
         }
 
@@ -1166,27 +1144,22 @@ function ssm_api_absences($request) {
         $placeholders = implode(',', array_fill(0, count($child_ids), '%d'));
         $query_params = array_merge([$absence_id], $child_ids);
 
-        $query = $wpdb->prepare(
+        $absence = $wpdb->get_row($wpdb->prepare(
             "SELECT a.*, s.session_date, s.time_start
              FROM {$wpdb->prefix}ssm_absences a
              JOIN {$wpdb->prefix}ssm_sessions s ON a.session_id = s.id
              WHERE a.id = %d AND a.child_id IN ($placeholders)",
             ...$query_params
-        );
-        error_log('Absence query: ' . $query);
-
-        $absence = $wpdb->get_row($query);
-        error_log('Absence found: ' . ($absence ? json_encode($absence) : 'NULL'));
+        ));
 
         if (!$absence) {
-            error_log('DELETE error: Absence not found or no permission');
             return new WP_REST_Response(array('message' => 'Nieobecność nie znaleziona lub brak uprawnień'), 404);
         }
 
-        // Check if absence can be cancelled
-        if ($absence->status === 'makeup_scheduled' || $absence->status === 'makeup_completed') {
+        // Check if makeup is already completed - cannot cancel
+        if ($absence->status === 'makeup_completed') {
             return new WP_REST_Response(array(
-                'message' => 'Nie można cofnąć nieobecności - odrabianie zostało już zaplanowane'
+                'message' => 'Nie można cofnąć - odrabianie zostało już zrealizowane'
             ), 400);
         }
 
@@ -1201,36 +1174,54 @@ function ssm_api_absences($request) {
             ), 400);
         }
 
-        // Delete the absence
-        $result = $wpdb->delete($table_absences, array('id' => $absence_id));
+        // Handle based on status
+        if ($absence->status === 'makeup_scheduled') {
+            // Cancel scheduled makeup - revert to 'reported' status
+            $result = $wpdb->update(
+                $table_absences,
+                array(
+                    'status' => 'reported',
+                    'makeup_session_id' => null
+                ),
+                array('id' => $absence_id)
+            );
 
-        if ($result === false) {
-            return new WP_REST_Response(array(
-                'message' => 'Błąd podczas usuwania nieobecności',
-                'debug' => $wpdb->last_error
-            ), 500);
+            if ($result === false) {
+                return new WP_REST_Response(array(
+                    'message' => 'Błąd podczas cofania zaplanowanego odrabiania',
+                    'debug' => $wpdb->last_error
+                ), 500);
+            }
+
+            return array(
+                'success' => true,
+                'message' => 'Zaplanowane odrabianie zostało cofnięte. Możesz zaplanować je ponownie.'
+            );
+        } else {
+            // Delete the absence entirely (for 'reported' or 'confirmed' status)
+            $result = $wpdb->delete($table_absences, array('id' => $absence_id));
+
+            if ($result === false) {
+                return new WP_REST_Response(array(
+                    'message' => 'Błąd podczas usuwania nieobecności',
+                    'debug' => $wpdb->last_error
+                ), 500);
+            }
+
+            return array(
+                'success' => true,
+                'message' => 'Zgłoszenie nieobecności zostało cofnięte'
+            );
         }
-
-        return array(
-            'success' => true,
-            'message' => 'Zgłoszenie nieobecności zostało cofnięte'
-        );
     }
 
     // GET - return absences from database with real data
-    error_log('=== SSM API ABSENCES GET ===');
-
     $user_id = ssm_api_get_user_id($request);
-    error_log('SSM Absences: user_id = ' . $user_id);
-
     $result_client = ssm_api_get_or_create_client($user_id, true);
     $client = $result_client['client'];
     $debug_info = $result_client['debug'];
 
-    error_log('SSM Absences: client = ' . ($client ? 'ID:' . $client->id : 'NULL'));
-
     if (!$client) {
-        error_log('SSM Absences: No client found, returning empty');
         return array(
             '_debug' => array_merge($debug_info, array('error' => 'No client found')),
             'absences' => array()
@@ -1243,22 +1234,15 @@ function ssm_api_absences($request) {
         $client->id
     ));
 
-    error_log('SSM Absences: child_ids = ' . json_encode($child_ids));
-
     $debug_info['client_id'] = $client->id;
     $debug_info['child_ids'] = $child_ids;
 
     if (empty($child_ids)) {
-        error_log('SSM Absences: No children linked, returning empty');
         return array(
             '_debug' => array_merge($debug_info, array('error' => 'No children linked to client')),
             'absences' => array()
         );
     }
-
-    // Check what's in the absences table for these children
-    $total_absences_count = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}ssm_absences");
-    error_log('SSM Absences: Total absences in table = ' . $total_absences_count);
 
     // Build IN clause for child_ids
     $placeholders = implode(',', array_fill(0, count($child_ids), '%d'));
@@ -1288,15 +1272,8 @@ function ssm_api_absences($request) {
         ...$child_ids
     );
 
-    error_log('SSM Absences: Query = ' . $query);
-
     $absences = $wpdb->get_results($query);
 
-    error_log('SSM Absences: Query returned ' . count($absences) . ' rows');
-    error_log('SSM Absences: Last error = ' . $wpdb->last_error);
-
-    $debug_info['query'] = $query;
-    $debug_info['last_error'] = $wpdb->last_error;
     $debug_info['absences_count'] = count($absences);
     $debug_info['total_absences_in_table'] = $total_absences_count;
 
