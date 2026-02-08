@@ -2686,6 +2686,9 @@ function ssm_api_get_salary($request) {
     $month = intval($request->get_param('month') ?: date('n'));
     $year = intval($request->get_param('year') ?: date('Y'));
 
+    // Version marker to confirm code update
+    $api_version = 'v2.1-debug-' . date('Y-m-d-His');
+
     // Get user email for lookup
     $user_data = get_userdata($user_id);
     $user_email = $user_data ? $user_data->user_email : '';
@@ -2699,6 +2702,7 @@ function ssm_api_get_salary($request) {
     if (!$instructor) {
         return array(
             '_debug' => array(
+                'api_version' => $api_version,
                 'error' => 'No instructor found',
                 'user_id' => $user_id,
                 'user_email' => $user_email
@@ -2766,6 +2770,7 @@ function ssm_api_get_salary($request) {
 
     return array(
         '_debug' => array(
+            'api_version' => $api_version,
             'user_id' => $user_id,
             'user_email' => $user_email,
             'instructor_id' => $instructor->id,
