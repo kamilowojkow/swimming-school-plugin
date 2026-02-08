@@ -1126,17 +1126,27 @@ function ssm_api_absences($request) {
 
     // DELETE - cancel/withdraw absence report
     if ($request->get_method() === 'DELETE') {
+        error_log('=== SSM API ABSENCES DELETE ===');
+
         $params = $request->get_json_params();
+        error_log('DELETE params: ' . json_encode($params));
+
         $absence_id = intval($params['absence_id'] ?? 0);
+        error_log('absence_id: ' . $absence_id);
 
         if (!$absence_id) {
+            error_log('DELETE error: No absence_id provided');
             return new WP_REST_Response(array('message' => 'Brak ID nieobecności'), 400);
         }
 
         $user_id = ssm_api_get_user_id($request);
+        error_log('user_id: ' . $user_id);
+
         $client = ssm_api_get_or_create_client($user_id);
+        error_log('client: ' . ($client ? 'ID:' . $client->id : 'NULL'));
 
         if (!$client) {
+            error_log('DELETE error: No client found');
             return new WP_REST_Response(array('message' => 'Nie znaleziono klienta'), 404);
         }
 
@@ -1145,8 +1155,10 @@ function ssm_api_absences($request) {
             "SELECT child_id FROM {$wpdb->prefix}ssm_client_children WHERE client_id = %d",
             $client->id
         ));
+        error_log('child_ids: ' . json_encode($child_ids));
 
         if (empty($child_ids)) {
+            error_log('DELETE error: No children linked');
             return new WP_REST_Response(array('message' => 'Brak przypisanych dzieci'), 400);
         }
 
@@ -1154,15 +1166,20 @@ function ssm_api_absences($request) {
         $placeholders = implode(',', array_fill(0, count($child_ids), '%d'));
         $query_params = array_merge([$absence_id], $child_ids);
 
-        $absence = $wpdb->get_row($wpdb->prepare(
+        $query = $wpdb->prepare(
             "SELECT a.*, s.session_date, s.time_start
              FROM {$wpdb->prefix}ssm_absences a
              JOIN {$wpdb->prefix}ssm_sessions s ON a.session_id = s.id
              WHERE a.id = %d AND a.child_id IN ($placeholders)",
             ...$query_params
-        ));
+        );
+        error_log('Absence query: ' . $query);
+
+        $absence = $wpdb->get_row($query);
+        error_log('Absence found: ' . ($absence ? json_encode($absence) : 'NULL'));
 
         if (!$absence) {
+            error_log('DELETE error: Absence not found or no permission');
             return new WP_REST_Response(array('message' => 'Nieobecność nie znaleziona lub brak uprawnień'), 404);
         }
 

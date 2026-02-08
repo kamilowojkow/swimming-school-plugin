@@ -148,6 +148,9 @@ export default function MakeupsScreen() {
   };
 
   const cancelAbsence = (absence: Absence) => {
+    console.log('=== CANCEL ABSENCE DEBUG ===');
+    console.log('Absence to cancel:', JSON.stringify(absence, null, 2));
+
     Alert.alert(
       language === 'pl' ? 'Cofnij zgłoszenie' : 'Cancel absence',
       language === 'pl'
@@ -163,13 +166,18 @@ export default function MakeupsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await api.cancelAbsence(absence.id);
+              console.log('=== Calling API cancelAbsence with id:', absence.id);
+              const result = await api.cancelAbsence(absence.id);
+              console.log('=== Cancel result:', JSON.stringify(result, null, 2));
               Alert.alert(
                 language === 'pl' ? 'Sukces' : 'Success',
                 language === 'pl' ? 'Zgłoszenie nieobecności zostało cofnięte' : 'Absence report has been cancelled'
               );
               fetchData();
             } catch (error: any) {
+              console.log('=== Cancel error:', error);
+              console.log('=== Error response:', JSON.stringify(error?.response?.data, null, 2));
+              console.log('=== Error status:', error?.response?.status);
               Alert.alert(
                 t.common.error,
                 error?.response?.data?.message ||
