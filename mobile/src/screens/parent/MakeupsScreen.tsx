@@ -339,7 +339,7 @@ export default function MakeupsScreen() {
                   style={styles.cancelButtonSmall}
                   onPress={() => cancelAbsence(absence)}
                 >
-                  <Ionicons name="close" size={16} color={colors.textSecondary} />
+                  <Ionicons name="arrow-undo" size={16} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
             ))
