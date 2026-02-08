@@ -377,7 +377,7 @@ function ssm_api_get_user_roles_debug($user_id, $wp_roles) {
 
     $roles = array();
 
-    // Check if user is an instructor
+    // Check if user is an instructor by WordPress role
     $is_admin = in_array('administrator', $wp_roles);
     $is_ssm_instructor = in_array('ssm_instructor', $wp_roles);
     $is_instructor_role = in_array('instructor', $wp_roles);
@@ -387,6 +387,25 @@ function ssm_api_get_user_roles_debug($user_id, $wp_roles) {
     $debug['checks']['is_ssm_instructor'] = $is_ssm_instructor;
     $debug['checks']['is_instructor_role'] = $is_instructor_role;
     $debug['checks']['is_instructor_combined'] = $is_instructor;
+
+    // Check if user exists in ssm_instructors table (by user_id or email)
+    $user_data = get_userdata($user_id);
+    $user_email = $user_data ? $user_data->user_email : '';
+    $table_instructors = $wpdb->prefix . 'ssm_instructors';
+
+    $in_instructors_table = $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM $table_instructors WHERE user_id = %d OR email = %s",
+        $user_id, $user_email
+    ));
+
+    $debug['checks']['user_email'] = $user_email;
+    $debug['checks']['in_instructors_table'] = (int)$in_instructors_table;
+
+    if ($in_instructors_table > 0) {
+        $is_instructor = true;
+    }
+
+    $debug['checks']['is_instructor_after_table_check'] = $is_instructor;
 
     // Check if user is explicitly a parent (has ssm_parent role)
     $is_ssm_parent = in_array('ssm_parent', $wp_roles);
@@ -455,12 +474,27 @@ function ssm_api_get_user_roles_debug($user_id, $wp_roles) {
 
 // Helper function to determine user roles for the mobile app
 function ssm_api_get_user_roles($user_id, $wp_roles) {
+    global $wpdb;
     $roles = array();
 
-    // Check if user is an instructor
+    // Check if user is an instructor by WordPress role
     $is_instructor = in_array('administrator', $wp_roles) ||
                      in_array('ssm_instructor', $wp_roles) ||
                      in_array('instructor', $wp_roles);
+
+    // Check if user exists in ssm_instructors table (by user_id or email)
+    $user_data = get_userdata($user_id);
+    $user_email = $user_data ? $user_data->user_email : '';
+    $table_instructors = $wpdb->prefix . 'ssm_instructors';
+
+    $in_instructors_table = $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM $table_instructors WHERE user_id = %d OR email = %s",
+        $user_id, $user_email
+    ));
+
+    if ($in_instructors_table > 0) {
+        $is_instructor = true;
+    }
 
     // Check if user is explicitly a parent (has ssm_parent role)
     $is_parent = in_array('ssm_parent', $wp_roles) ||
@@ -474,7 +508,6 @@ function ssm_api_get_user_roles($user_id, $wp_roles) {
     if ($has_parent_flag) $is_parent = true;
 
     // Check if user has children associated (makes them a parent)
-    global $wpdb;
     $table_children = $wpdb->prefix . 'ssm_client_children';
     $table_clients = $wpdb->prefix . 'ssm_clients';
 

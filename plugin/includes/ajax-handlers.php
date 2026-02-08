@@ -399,9 +399,9 @@ function ssm_ajax_save_instructor() {
             return;
         }
         
-        // Ustaw rolę
+        // Ustaw rolę instruktora
         $user = new WP_User($user_id);
-        $user->set_role('subscriber'); // Lub inna rola
+        $user->set_role('ssm_instructor');
         
         // Ustaw dane użytkownika
         wp_update_user(array(
