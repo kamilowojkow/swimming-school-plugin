@@ -28,7 +28,7 @@ const safeFormatDate = (dateStr: string | undefined, formatStr: string, locale: 
   }
 };
 
-type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused' | 'unmarked';
+type AttendanceStatus = 'present' | 'absent' | 'excused' | 'unmarked';
 
 interface Participant {
   enrollment_id: number;
@@ -76,8 +76,7 @@ export default function AttendanceScreen() {
   const STATUS_CONFIG: Record<AttendanceStatus, { label: string; color: string; bg: string; icon: string }> = {
     present: { label: t.attendance.present, color: colors.secondary, bg: colors.secondaryLight, icon: 'checkmark-circle' },
     absent: { label: t.attendance.absent, color: colors.error, bg: colors.errorLight, icon: 'close-circle' },
-    late: { label: t.attendance.late, color: colors.warning, bg: colors.warningLight, icon: 'time' },
-    excused: { label: t.attendance.excused, color: colors.primary, bg: colors.primaryLight, icon: 'document-text' },
+    excused: { label: language === 'pl' ? 'Zgłoszona nieobecność' : 'Reported absence', color: colors.warning, bg: colors.warningLight, icon: 'alert-circle' },
     unmarked: { label: t.attendance.unmarked, color: colors.textSecondary, bg: colors.surfaceSecondary, icon: 'help-circle' },
   };
 
@@ -173,7 +172,6 @@ export default function AttendanceScreen() {
     const counts: Record<AttendanceStatus, number> = {
       present: 0,
       absent: 0,
-      late: 0,
       excused: 0,
       unmarked: 0,
     };
@@ -239,11 +237,13 @@ export default function AttendanceScreen() {
             {counts.absent} {language === 'pl' ? 'nieobecnych' : 'absent'}
           </Text>
         </View>
-        <View style={[styles.statBadge, { backgroundColor: STATUS_CONFIG.unmarked.bg }]}>
-          <Text style={[styles.statBadgeText, { color: STATUS_CONFIG.unmarked.color }]}>
-            {counts.unmarked} {language === 'pl' ? 'bez statusu' : 'unmarked'}
-          </Text>
-        </View>
+        {counts.excused > 0 && (
+          <View style={[styles.statBadge, { backgroundColor: STATUS_CONFIG.excused.bg }]}>
+            <Text style={[styles.statBadgeText, { color: STATUS_CONFIG.excused.color }]}>
+              {counts.excused} {language === 'pl' ? 'zgłoszonych' : 'reported'}
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Quick Actions */}
@@ -303,12 +303,24 @@ export default function AttendanceScreen() {
                     </View>
                   )}
 
-                  {/* Status Buttons */}
+                  {/* Excused Notice - read-only */}
+                  {status === 'excused' && (
+                    <View style={styles.excusedNotice}>
+                      <Ionicons name="alert-circle" size={18} color={colors.warning} />
+                      <Text style={styles.excusedNoticeText}>
+                        {language === 'pl'
+                          ? 'Nieobecność zgłoszona przez rodzica'
+                          : 'Absence reported by parent'}
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Status Buttons - only present and absent */}
                   <Text style={styles.statusLabel}>
                     {language === 'pl' ? 'Status obecności' : 'Attendance status'}:
                   </Text>
                   <View style={styles.statusButtons}>
-                    {(['present', 'absent', 'late', 'excused'] as AttendanceStatus[]).map((s) => {
+                    {(['present', 'absent'] as AttendanceStatus[]).map((s) => {
                       const config = STATUS_CONFIG[s];
                       const isActive = status === s;
                       return (
@@ -538,6 +550,22 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
       flex: 1,
       fontSize: 13,
       color: colors.error,
+    },
+    excusedNotice: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.warningLight,
+      padding: 10,
+      borderRadius: 8,
+      marginBottom: 12,
+      marginTop: 8,
+      gap: 8,
+    },
+    excusedNoticeText: {
+      flex: 1,
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.warning,
     },
     statusLabel: {
       fontSize: 13,
