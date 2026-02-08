@@ -118,10 +118,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (email: string, password: string) => {
     set({ isLoading: true, error: null });
     try {
-      const { user: rawUser } = await api.login(email, password);
+      const response = await api.login(email, password);
+      console.log('=== LOGIN DEBUG ===');
+      console.log('Full API response:', JSON.stringify(response, null, 2));
+
+      const { user: rawUser, debug } = response as any;
+      console.log('Raw user from API:', JSON.stringify(rawUser, null, 2));
+      console.log('Debug info from API:', JSON.stringify(debug, null, 2));
+
       const user = normalizeUserRoles(rawUser);
+      console.log('Normalized user:', JSON.stringify(user, null, 2));
+
       // Set activeRole to user's primary type or first available role
       const activeRole = user.type || user.roles[0] || 'parent';
+      console.log('Active role set to:', activeRole);
+      console.log('=== END LOGIN DEBUG ===');
+
       set({
         user,
         activeRole,
@@ -131,6 +143,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // TODO: Re-enable push notifications when SDK compatibility is resolved
       // initializePushNotifications().catch(console.error);
     } catch (error: any) {
+      console.log('Login error:', error);
       const message = error.response?.data?.message || 'Błąd logowania';
       set({ error: message, isLoading: false });
       throw error;

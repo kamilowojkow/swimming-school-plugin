@@ -365,6 +365,94 @@ function ssm_api_get_or_create_client($user_id, $return_debug = false) {
 
 // ============ AUTH ENDPOINTS ============
 
+// DEBUG: Helper function with detailed debug info
+function ssm_api_get_user_roles_debug($user_id, $wp_roles) {
+    global $wpdb;
+
+    $debug = array(
+        'user_id' => $user_id,
+        'wp_roles_raw' => $wp_roles,
+        'checks' => array()
+    );
+
+    $roles = array();
+
+    // Check if user is an instructor
+    $is_admin = in_array('administrator', $wp_roles);
+    $is_ssm_instructor = in_array('ssm_instructor', $wp_roles);
+    $is_instructor_role = in_array('instructor', $wp_roles);
+    $is_instructor = $is_admin || $is_ssm_instructor || $is_instructor_role;
+
+    $debug['checks']['is_administrator'] = $is_admin;
+    $debug['checks']['is_ssm_instructor'] = $is_ssm_instructor;
+    $debug['checks']['is_instructor_role'] = $is_instructor_role;
+    $debug['checks']['is_instructor_combined'] = $is_instructor;
+
+    // Check if user is explicitly a parent (has ssm_parent role)
+    $is_ssm_parent = in_array('ssm_parent', $wp_roles);
+    $is_parent_role = in_array('parent', $wp_roles);
+    $is_parent = $is_ssm_parent || $is_parent_role;
+
+    $debug['checks']['is_ssm_parent'] = $is_ssm_parent;
+    $debug['checks']['is_parent_role'] = $is_parent_role;
+    $debug['checks']['is_parent_from_wp_roles'] = $is_parent;
+
+    // Also check if user has instructor AND parent meta flags
+    $has_instructor_flag = get_user_meta($user_id, 'ssm_is_instructor', true);
+    $has_parent_flag = get_user_meta($user_id, 'ssm_is_parent', true);
+
+    $debug['checks']['meta_ssm_is_instructor'] = $has_instructor_flag;
+    $debug['checks']['meta_ssm_is_parent'] = $has_parent_flag;
+
+    if ($has_instructor_flag) $is_instructor = true;
+    if ($has_parent_flag) $is_parent = true;
+
+    $debug['checks']['is_instructor_after_meta'] = $is_instructor;
+    $debug['checks']['is_parent_after_meta'] = $is_parent;
+
+    // Check if user has children associated (makes them a parent)
+    $table_children = $wpdb->prefix . 'ssm_client_children';
+    $table_clients = $wpdb->prefix . 'ssm_clients';
+
+    $has_children = $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM $table_children ch
+         INNER JOIN $table_clients c ON ch.client_id = c.id
+         WHERE c.user_id = %d",
+        $user_id
+    ));
+
+    $debug['checks']['children_count'] = (int)$has_children;
+
+    if ($has_children > 0) {
+        $is_parent = true;
+    }
+
+    $debug['checks']['is_parent_after_children_check'] = $is_parent;
+
+    // For administrators: can be both instructor and parent for testing
+    if ($is_admin) {
+        $is_parent = true;
+        $debug['checks']['admin_forced_parent'] = true;
+    }
+
+    $debug['checks']['final_is_instructor'] = $is_instructor;
+    $debug['checks']['final_is_parent'] = $is_parent;
+
+    if ($is_instructor) $roles[] = 'instructor';
+    if ($is_parent) $roles[] = 'parent';
+
+    // Default to parent if no roles detected (for new users without specific role)
+    if (empty($roles)) {
+        $roles[] = 'parent';
+        $debug['checks']['defaulted_to_parent'] = true;
+    }
+
+    $debug['roles'] = $roles;
+    $debug['primary_type'] = count($roles) > 1 ? 'parent' : $roles[0];
+
+    return $debug;
+}
+
 // Helper function to determine user roles for the mobile app
 function ssm_api_get_user_roles($user_id, $wp_roles) {
     $roles = array();
@@ -432,7 +520,12 @@ function ssm_api_login($request) {
     }
 
     $token = ssm_api_generate_token($user->ID);
-    $roles = ssm_api_get_user_roles($user->ID, $user->roles);
+
+    // DEBUG: Get detailed role information
+    $wp_roles = (array) $user->roles;
+    $debug_info = ssm_api_get_user_roles_debug($user->ID, $wp_roles);
+    $roles = $debug_info['roles'];
+
     // For multi-role users, default to 'parent'. For single-role, use their role.
     $primary_type = count($roles) > 1 ? 'parent' : $roles[0];
 
@@ -451,7 +544,9 @@ function ssm_api_login($request) {
             'last_name' => get_user_meta($user->ID, 'last_name', true),
             'type' => $primary_type,
             'roles' => $roles
-        )
+        ),
+        // DEBUG INFO - remove after debugging
+        'debug' => $debug_info
     );
 }
 

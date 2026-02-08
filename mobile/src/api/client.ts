@@ -116,9 +116,9 @@ class ApiClient {
 
   async login(email: string, password: string) {
     const response = await this.client.post('/auth/login', { username: email, password });
-    const { token, user } = response.data;
+    const { token, user, debug } = response.data;
     await this.saveTokens(token, token);
-    return { user, token };
+    return { user, token, debug };
   }
 
   async register(data: {
