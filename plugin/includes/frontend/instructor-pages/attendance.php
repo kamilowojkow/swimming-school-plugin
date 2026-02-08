@@ -698,6 +698,47 @@ $session_id = isset($_GET['session_id']) ? intval($_GET['session_id']) : (isset(
 
         $date = new DateTime($session->session_date);
 
+        // ====== DEBUG SECTION - START ======
+        $debug_absences_table = $wpdb->prefix . 'ssm_absences';
+        $debug_table_exists = $wpdb->get_var("SHOW TABLES LIKE '$debug_absences_table'");
+
+        // Sprawdź wszystkie zgłoszenia nieobecności dla tej sesji
+        $debug_absences = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}ssm_absences WHERE session_id = %d",
+            $session_id
+        ));
+
+        echo '<div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 16px; margin-bottom: 20px; font-family: monospace; font-size: 12px;">';
+        echo '<h4 style="margin: 0 0 10px 0; color: #92400e;">🔧 DEBUG: Attendance Status System</h4>';
+        echo '<p><strong>Session ID:</strong> ' . $session_id . '</p>';
+        echo '<p><strong>Tabela ssm_absences istnieje:</strong> ' . ($debug_table_exists ? 'TAK' : 'NIE') . '</p>';
+        echo '<p><strong>Liczba zgłoszeń nieobecności dla tej sesji:</strong> ' . count($debug_absences) . '</p>';
+
+        if (!empty($debug_absences)) {
+            echo '<details><summary style="cursor:pointer; color: #92400e;"><strong>Zgłoszenia nieobecności (kliknij aby rozwinąć)</strong></summary>';
+            echo '<pre style="background: white; padding: 10px; border-radius: 4px; overflow: auto; max-height: 200px;">';
+            print_r($debug_absences);
+            echo '</pre></details>';
+        }
+
+        echo '<hr style="border: 1px solid #fcd34d; margin: 10px 0;">';
+        echo '<h5 style="margin: 0 0 10px 0; color: #92400e;">Dane dzieci z has_absence_report:</h5>';
+        echo '<table style="width: 100%; border-collapse: collapse; background: white;">';
+        echo '<tr style="background: #fcd34d;"><th style="padding: 5px; border: 1px solid #f59e0b;">ID</th><th style="padding: 5px; border: 1px solid #f59e0b;">Imię i nazwisko</th><th style="padding: 5px; border: 1px solid #f59e0b;">has_absence_report</th><th style="padding: 5px; border: 1px solid #f59e0b;">attendance_status</th><th style="padding: 5px; border: 1px solid #f59e0b;">is_reported_absence</th></tr>';
+        foreach ($children as $debug_child) {
+            $debug_is_reported = $debug_child->has_absence_report > 0;
+            echo '<tr>';
+            echo '<td style="padding: 5px; border: 1px solid #f59e0b;">' . $debug_child->id . '</td>';
+            echo '<td style="padding: 5px; border: 1px solid #f59e0b;">' . esc_html($debug_child->first_name . ' ' . $debug_child->last_name) . '</td>';
+            echo '<td style="padding: 5px; border: 1px solid #f59e0b; ' . ($debug_child->has_absence_report > 0 ? 'background: #fca5a5;' : '') . '">' . $debug_child->has_absence_report . '</td>';
+            echo '<td style="padding: 5px; border: 1px solid #f59e0b;">' . ($debug_child->attendance_status ?: 'null') . '</td>';
+            echo '<td style="padding: 5px; border: 1px solid #f59e0b; ' . ($debug_is_reported ? 'background: #fca5a5;' : 'background: #bbf7d0;') . '">' . ($debug_is_reported ? 'TRUE' : 'FALSE') . '</td>';
+            echo '</tr>';
+        }
+        echo '</table>';
+        echo '</div>';
+        // ====== DEBUG SECTION - END ======
+
         // Policz statystyki
         $stats = array(
             'enrolled' => count($children),
