@@ -2389,6 +2389,23 @@ function ssm_api_session_attendance($request) {
 
             if (!$child_id) continue;
 
+            // Sprawdź czy rodzic zgłosił nieobecność dla tego dziecka
+            $has_absence_report = $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->prefix}ssm_absences
+                 WHERE session_id = %d AND child_id = %d",
+                $session_id, $child_id
+            ));
+
+            // Walidacja statusu:
+            // - "excused" można ustawić TYLKO gdy rodzic zgłosił nieobecność
+            // - instruktor może wybrać tylko "present" lub "absent"
+            if ($status === 'excused' && !$has_absence_report) {
+                $status = 'absent';
+            }
+            if ($has_absence_report) {
+                $status = 'excused';
+            }
+
             // Check if attendance record exists
             $existing = $wpdb->get_var($wpdb->prepare(
                 "SELECT id FROM $table_attendance WHERE session_id = %d AND child_id = %d",
@@ -2456,27 +2473,33 @@ function ssm_api_session_attendance($request) {
             ch.swimming_level,
             ch.medical_notes,
             COALESCE(a.status, 'unmarked') as status,
-            COALESCE(a.notes, '') as notes
+            COALESCE(a.notes, '') as notes,
+            (SELECT COUNT(*) FROM {$wpdb->prefix}ssm_absences ab
+             WHERE ab.session_id = %d AND ab.child_id = ch.id) as has_reported_absence
         FROM {$wpdb->prefix}ssm_enrollments e
         JOIN {$wpdb->prefix}ssm_children ch ON e.child_id = ch.id
         LEFT JOIN $table_attendance a ON a.session_id = %d AND a.child_id = ch.id
         WHERE e.class_id = %d AND e.status = 'active'
         ORDER BY ch.last_name, ch.first_name",
         $session_id,
+        $session_id,
         $session->class_id
     ));
 
     $result = array();
     foreach ($participants as $p) {
+        $is_reported = intval($p->has_reported_absence) > 0;
         $result[] = array(
             'enrollment_id' => intval($p->enrollment_id),
             'child_id' => intval($p->child_id),
             'first_name' => $p->first_name,
             'last_name' => $p->last_name,
-            'status' => $p->status,
+            'status' => $is_reported ? 'excused' : $p->status,
             'notes' => $p->notes,
             'swimming_level' => $p->swimming_level ?: '',
-            'medical_notes' => $p->medical_notes ?: ''
+            'medical_notes' => $p->medical_notes ?: '',
+            'is_reported_absence' => $is_reported,
+            'is_locked' => $is_reported
         );
     }
 

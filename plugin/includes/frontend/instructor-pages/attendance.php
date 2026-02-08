@@ -17,6 +17,23 @@ if (isset($_POST['ssm_save_attendance']) && isset($_POST['session_id'])) {
         $child_id = intval($child_id);
         $status = sanitize_text_field($status);
 
+        // Sprawdź czy rodzic zgłosił nieobecność dla tego dziecka
+        $has_absence_report = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}ssm_absences
+             WHERE session_id = %d AND child_id = %d",
+            $session_id, $child_id
+        ));
+
+        // Walidacja statusu:
+        // - "excused" można ustawić TYLKO gdy rodzic zgłosił nieobecność
+        // - instruktor może wybrać tylko "present" lub "absent"
+        if ($status === 'excused' && !$has_absence_report) {
+            $status = 'absent'; // Fallback: jeśli ktoś próbuje oszukać, ustaw jako nieobecny
+        }
+        if ($has_absence_report) {
+            $status = 'excused'; // Zawsze excused gdy jest zgłoszenie rodzica
+        }
+
         // Sprawdź czy już istnieje
         $existing = $wpdb->get_var($wpdb->prepare(
             "SELECT id FROM {$wpdb->prefix}ssm_attendance
@@ -374,6 +391,19 @@ $session_id = isset($_GET['session_id']) ? intval($_GET['session_id']) : (isset(
     background: #ef4444;
     color: white;
     border-color: #ef4444;
+}
+
+/* Locked attendance (reported absence) */
+.ssm-attendance-locked {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: #f1f5f9;
+    border-radius: 8px;
+    color: #94a3b8;
+    font-size: 18px;
 }
 
 /* Actions bar */
@@ -775,11 +805,16 @@ $session_id = isset($_GET['session_id']) ? intval($_GET['session_id']) : (isset(
                 <?php
                 $counter = 1;
                 foreach ($children as $child):
-                    $default_status = 'present';
-                    if ($child->has_absence_report > 0) {
+                    // Sprawdź czy rodzic zgłosił nieobecność
+                    $is_reported_absence = $child->has_absence_report > 0;
+
+                    // Określ domyślny status
+                    if ($is_reported_absence) {
                         $default_status = 'excused';
-                    } elseif ($child->attendance_status) {
+                    } elseif ($child->attendance_status && $child->attendance_status !== 'excused') {
                         $default_status = $child->attendance_status;
+                    } else {
+                        $default_status = 'present';
                     }
                 ?>
                 <div class="ssm-child-row">
@@ -792,48 +827,46 @@ $session_id = isset($_GET['session_id']) ? intval($_GET['session_id']) : (isset(
                         </div>
                     </div>
                     <div class="ssm-child-badges">
-                        <?php if ($child->has_absence_report > 0): ?>
+                        <?php if ($is_reported_absence): ?>
                             <span class="ssm-badge-reported">
                                 <i class="ri-information-line"></i>
-                                <?php echo ssm_t('instr_absence_reported'); ?>
+                                <?php echo ssm_t('instr_status_excused'); ?>
                             </span>
                         <?php endif; ?>
                     </div>
-                    <div class="ssm-attendance-options">
-                        <div class="ssm-attendance-option option-present">
-                            <input type="radio"
-                                   name="attendance[<?php echo $child->id; ?>]"
-                                   value="present"
-                                   id="present_<?php echo $child->id; ?>"
-                                   <?php checked($default_status, 'present'); ?>>
-                            <label for="present_<?php echo $child->id; ?>">
-                                <i class="ri-checkbox-circle-line"></i>
-                                <?php echo ssm_t('instr_status_present'); ?>
-                            </label>
+                    <?php if ($is_reported_absence): ?>
+                        <!-- Zgłoszona nieobecność - instruktor nie może zmienić -->
+                        <input type="hidden" name="attendance[<?php echo $child->id; ?>]" value="excused">
+                        <div class="ssm-attendance-locked">
+                            <i class="ri-lock-line"></i>
                         </div>
-                        <div class="ssm-attendance-option option-excused">
-                            <input type="radio"
-                                   name="attendance[<?php echo $child->id; ?>]"
-                                   value="excused"
-                                   id="excused_<?php echo $child->id; ?>"
-                                   <?php checked($default_status, 'excused'); ?>>
-                            <label for="excused_<?php echo $child->id; ?>">
-                                <i class="ri-error-warning-line"></i>
-                                <?php echo ssm_t('instr_status_excused'); ?>
-                            </label>
+                    <?php else: ?>
+                        <!-- Instruktor może wybrać tylko: Obecny lub Nieobecny -->
+                        <div class="ssm-attendance-options">
+                            <div class="ssm-attendance-option option-present">
+                                <input type="radio"
+                                       name="attendance[<?php echo $child->id; ?>]"
+                                       value="present"
+                                       id="present_<?php echo $child->id; ?>"
+                                       <?php checked($default_status, 'present'); ?>>
+                                <label for="present_<?php echo $child->id; ?>">
+                                    <i class="ri-checkbox-circle-line"></i>
+                                    <?php echo ssm_t('instr_status_present'); ?>
+                                </label>
+                            </div>
+                            <div class="ssm-attendance-option option-absent">
+                                <input type="radio"
+                                       name="attendance[<?php echo $child->id; ?>]"
+                                       value="absent"
+                                       id="absent_<?php echo $child->id; ?>"
+                                       <?php checked($default_status, 'absent'); ?>>
+                                <label for="absent_<?php echo $child->id; ?>">
+                                    <i class="ri-close-circle-line"></i>
+                                    <?php echo ssm_t('instr_status_absent'); ?>
+                                </label>
+                            </div>
                         </div>
-                        <div class="ssm-attendance-option option-absent">
-                            <input type="radio"
-                                   name="attendance[<?php echo $child->id; ?>]"
-                                   value="absent"
-                                   id="absent_<?php echo $child->id; ?>"
-                                   <?php checked($default_status, 'absent'); ?>>
-                            <label for="absent_<?php echo $child->id; ?>">
-                                <i class="ri-close-circle-line"></i>
-                                <?php echo ssm_t('instr_status_absent'); ?>
-                            </label>
-                        </div>
-                    </div>
+                    <?php endif; ?>
                 </div>
                 <?php endforeach; ?>
             </div>
@@ -854,9 +887,10 @@ $session_id = isset($_GET['session_id']) ? intval($_GET['session_id']) : (isset(
         <script>
         jQuery(document).ready(function($) {
             function updateCounts() {
-                var presentCount = $('input[value="present"]:checked').length;
-                var excusedCount = $('input[value="excused"]:checked').length;
-                var absentCount = $('input[value="absent"]:checked').length;
+                var presentCount = $('input[type="radio"][value="present"]:checked').length;
+                // Excused - liczymy hidden fields (zgłoszone nieobecności przez rodziców)
+                var excusedCount = $('input[type="hidden"][value="excused"]').length;
+                var absentCount = $('input[type="radio"][value="absent"]:checked').length;
 
                 $('.present-count').text(presentCount);
                 $('.excused-count').text(excusedCount);
@@ -868,7 +902,8 @@ $session_id = isset($_GET['session_id']) ? intval($_GET['session_id']) : (isset(
         });
 
         function selectAll(status) {
-            jQuery('input[value="' + status + '"]').prop('checked', true).trigger('change');
+            // Tylko radio buttons (nie hidden fields dla zgłoszonych nieobecności)
+            jQuery('input[type="radio"][value="' + status + '"]').prop('checked', true).trigger('change');
         }
         </script>
 

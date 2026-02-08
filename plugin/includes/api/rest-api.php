@@ -1249,13 +1249,26 @@ class SSM_REST_API {
             SELECT e.id as enrollment_id,
                    ch.id as child_id, ch.first_name, ch.last_name,
                    COALESCE(a.status, 'unmarked') as status,
-                   a.notes
+                   a.notes,
+                   (SELECT COUNT(*) FROM {$wpdb->prefix}ssm_absences ab
+                    WHERE ab.session_id = %d AND ab.enrollment_id = e.id) as has_reported_absence
             FROM {$wpdb->prefix}ssm_enrollments e
             JOIN {$wpdb->prefix}ssm_children ch ON e.child_id = ch.id
             LEFT JOIN {$wpdb->prefix}ssm_attendance a ON a.enrollment_id = e.id AND a.session_id = %d
             WHERE e.class_id = %d AND e.status = 'active'
             ORDER BY ch.first_name
-        ", $session_id, $session->class_id));
+        ", $session_id, $session_id, $session->class_id));
+
+        // Dodaj informację o zgłoszonej nieobecności
+        foreach ($attendance as &$item) {
+            $is_reported = intval($item->has_reported_absence) > 0;
+            $item->is_reported_absence = $is_reported;
+            $item->is_locked = $is_reported;
+            if ($is_reported) {
+                $item->status = 'excused';
+            }
+            unset($item->has_reported_absence);
+        }
 
         return rest_ensure_response($attendance);
     }
@@ -1281,6 +1294,23 @@ class SSM_REST_API {
             $enrollment_id = intval($item['enrollment_id']);
             $status = sanitize_text_field($item['status']);
             $notes = isset($item['notes']) ? sanitize_textarea_field($item['notes']) : '';
+
+            // Sprawdź czy rodzic zgłosił nieobecność dla tego zapisu
+            $has_absence_report = $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->prefix}ssm_absences
+                 WHERE session_id = %d AND enrollment_id = %d",
+                $session_id, $enrollment_id
+            ));
+
+            // Walidacja statusu:
+            // - "excused" można ustawić TYLKO gdy rodzic zgłosił nieobecność
+            // - instruktor może wybrać tylko "present" lub "absent"
+            if ($status === 'excused' && !$has_absence_report) {
+                $status = 'absent';
+            }
+            if ($has_absence_report) {
+                $status = 'excused';
+            }
 
             // Sprawdź czy obecność już istnieje
             $existing = $wpdb->get_var($wpdb->prepare(
