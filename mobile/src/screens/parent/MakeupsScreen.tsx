@@ -130,11 +130,21 @@ export default function MakeupsScreen() {
   };
 
   const cancelAbsence = (absence: Absence) => {
+    const isScheduledMakeup = absence.status === 'makeup_scheduled';
+    const title = language === 'pl'
+      ? (isScheduledMakeup ? 'Cofnij odrobienie' : 'Cofnij zgłoszenie')
+      : (isScheduledMakeup ? 'Cancel makeup' : 'Cancel absence');
+    const message = language === 'pl'
+      ? (isScheduledMakeup
+          ? `Czy na pewno chcesz cofnąć zaplanowane odrobienie dla ${absence.child_name} na zajęcia ${absence.class_name}?`
+          : `Czy na pewno chcesz cofnąć zgłoszenie nieobecności dla ${absence.child_name} na zajęcia ${absence.class_name}?`)
+      : (isScheduledMakeup
+          ? `Are you sure you want to cancel the scheduled makeup for ${absence.child_name} for ${absence.class_name}?`
+          : `Are you sure you want to cancel the absence report for ${absence.child_name} for ${absence.class_name}?`);
+
     Alert.alert(
-      language === 'pl' ? 'Cofnij zgłoszenie' : 'Cancel absence',
-      language === 'pl'
-        ? `Czy na pewno chcesz cofnąć zgłoszenie nieobecności dla ${absence.child_name} na zajęcia ${absence.class_name}?`
-        : `Are you sure you want to cancel the absence report for ${absence.child_name} for ${absence.class_name}?`,
+      title,
+      message,
       [
         {
           text: language === 'pl' ? 'Nie' : 'No',
@@ -258,7 +268,7 @@ export default function MakeupsScreen() {
                       style={styles.cancelButton}
                       onPress={() => cancelAbsence(absence)}
                     >
-                      <Ionicons name="close" size={18} color={colors.error} />
+                      <Ionicons name="arrow-undo" size={18} color={colors.error} />
                     </TouchableOpacity>
                   )}
                 </View>
