@@ -819,8 +819,8 @@ function ssm_ajax_enroll_child() {
     // Dodaj limit odrobień z kursu
     $data['max_makeups'] = intval($class->max_absences) ?: 2;
 
-    $result = $wpdb->insert($wpdb->prefix . 'ssm_enrollments', $data)
-    
+    $result = $wpdb->insert($wpdb->prefix . 'ssm_enrollments', $data);
+
     if ($result) {
         wp_send_json_success('Dziecko zapisane na kurs!');
     } else {
