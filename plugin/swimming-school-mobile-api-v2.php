@@ -2191,15 +2191,27 @@ function ssm_api_get_instructor_schedule($request) {
     $date_from = $request->get_param('date_from') ?: date('Y-m-d');
     $date_to = $request->get_param('date_to') ?: date('Y-m-d', strtotime('+14 days'));
 
-    // Get instructor_id for current user
+    // Get user email for lookup
+    $user_data = get_userdata($user_id);
+    $user_email = $user_data ? $user_data->user_email : '';
+
+    // Get instructor_id for current user (by user_id or email)
     $instructor = $wpdb->get_row($wpdb->prepare(
-        "SELECT id FROM {$wpdb->prefix}ssm_instructors WHERE user_id = %d",
-        $user_id
+        "SELECT id FROM {$wpdb->prefix}ssm_instructors WHERE user_id = %d OR email = %s",
+        $user_id, $user_email
     ));
 
     if (!$instructor) {
-        // No instructor record - return empty array
-        return array();
+        // No instructor record - return debug info
+        return array(
+            '_debug' => array(
+                'error' => 'No instructor found',
+                'user_id' => $user_id,
+                'user_email' => $user_email,
+                'query' => "SELECT id FROM {$wpdb->prefix}ssm_instructors WHERE user_id = $user_id OR email = '$user_email'"
+            ),
+            'sessions' => array()
+        );
     }
 
     // Get sessions for this instructor
@@ -2248,7 +2260,18 @@ function ssm_api_get_instructor_schedule($request) {
         );
     }
 
-    return $result;
+    // Return with debug info
+    return array(
+        '_debug' => array(
+            'user_id' => $user_id,
+            'user_email' => $user_email,
+            'instructor_id' => $instructor->id,
+            'date_from' => $date_from,
+            'date_to' => $date_to,
+            'sessions_found' => count($result)
+        ),
+        'sessions' => $result
+    );
 }
 
 function ssm_api_get_session_details($request) {
@@ -2663,14 +2686,23 @@ function ssm_api_get_salary($request) {
     $month = intval($request->get_param('month') ?: date('n'));
     $year = intval($request->get_param('year') ?: date('Y'));
 
-    // Get instructor for current user
+    // Get user email for lookup
+    $user_data = get_userdata($user_id);
+    $user_email = $user_data ? $user_data->user_email : '';
+
+    // Get instructor for current user (by user_id or email)
     $instructor = $wpdb->get_row($wpdb->prepare(
-        "SELECT id, hourly_rate FROM {$wpdb->prefix}ssm_instructors WHERE user_id = %d",
-        $user_id
+        "SELECT id, hourly_rate FROM {$wpdb->prefix}ssm_instructors WHERE user_id = %d OR email = %s",
+        $user_id, $user_email
     ));
 
     if (!$instructor) {
         return array(
+            '_debug' => array(
+                'error' => 'No instructor found',
+                'user_id' => $user_id,
+                'user_email' => $user_email
+            ),
             'month' => $month,
             'year' => $year,
             'hourly_rate' => 0,
@@ -2733,6 +2765,14 @@ function ssm_api_get_salary($request) {
     $total_salary = $total_hours * $hourly_rate;
 
     return array(
+        '_debug' => array(
+            'user_id' => $user_id,
+            'user_email' => $user_email,
+            'instructor_id' => $instructor->id,
+            'date_from' => $date_from,
+            'date_to' => $date_to,
+            'total_minutes' => $total_minutes
+        ),
         'month' => $month,
         'year' => $year,
         'hourly_rate' => $hourly_rate,

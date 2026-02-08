@@ -66,6 +66,8 @@ export default function InstructorDashboard() {
   const fetchData = async () => {
     try {
       const today = format(new Date(), 'yyyy-MM-dd');
+      console.log('=== INSTRUCTOR DASHBOARD DEBUG ===');
+      console.log('Fetching data for date:', today);
 
       const [scheduleData, substitutionsData, salaryData] = await Promise.all([
         api.getInstructorSchedule(today, today),
@@ -73,9 +75,30 @@ export default function InstructorDashboard() {
         api.getSalary(),
       ]);
 
+      console.log('Schedule API response:', JSON.stringify(scheduleData, null, 2));
+      console.log('Substitutions API response:', JSON.stringify(substitutionsData, null, 2));
+      console.log('Salary API response:', JSON.stringify(salaryData, null, 2));
+
       // Handle both array and object API responses
       const sessionsArray = Array.isArray(scheduleData) ? scheduleData : (scheduleData?.sessions || []);
       const substitutionsArray = Array.isArray(substitutionsData) ? substitutionsData : (substitutionsData?.substitutions || []);
+
+      // Log debug info if present
+      if (scheduleData?._debug) {
+        console.log('Schedule debug:', scheduleData._debug);
+      }
+      if (salaryData?._debug) {
+        console.log('Salary debug:', salaryData._debug);
+      }
+
+      console.log('Parsed sessions:', sessionsArray.length, 'items');
+      console.log('Parsed substitutions:', substitutionsArray.length, 'items');
+      console.log('Month stats from salary:', {
+        sessions_count: salaryData?.sessions_count,
+        total_hours: salaryData?.total_hours,
+        total_salary: salaryData?.total_salary,
+      });
+      console.log('=== END INSTRUCTOR DASHBOARD DEBUG ===');
 
       setTodaySessions(sessionsArray);
       setAvailableSubstitutions(substitutionsArray.slice(0, 3));
