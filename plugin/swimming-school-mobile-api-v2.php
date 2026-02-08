@@ -2329,7 +2329,7 @@ function ssm_api_get_session_details($request) {
             COALESCE(a.status, 'unmarked') as status,
             COALESCE(a.notes, '') as notes
         FROM {$wpdb->prefix}ssm_enrollments e
-        JOIN {$wpdb->prefix}ssm_client_children ch ON e.child_id = ch.id
+        JOIN {$wpdb->prefix}ssm_children ch ON e.child_id = ch.id
         LEFT JOIN {$wpdb->prefix}ssm_attendance a ON a.session_id = %d AND a.child_id = ch.id
         WHERE e.class_id = %d AND e.status = 'active'
         ORDER BY ch.last_name, ch.first_name",
@@ -2458,7 +2458,7 @@ function ssm_api_session_attendance($request) {
             COALESCE(a.status, 'unmarked') as status,
             COALESCE(a.notes, '') as notes
         FROM {$wpdb->prefix}ssm_enrollments e
-        JOIN {$wpdb->prefix}ssm_client_children ch ON e.child_id = ch.id
+        JOIN {$wpdb->prefix}ssm_children ch ON e.child_id = ch.id
         LEFT JOIN $table_attendance a ON a.session_id = %d AND a.child_id = ch.id
         WHERE e.class_id = %d AND e.status = 'active'
         ORDER BY ch.last_name, ch.first_name",
