@@ -61,7 +61,7 @@ export default function LoginScreen() {
                 resizeMode="contain"
               />
             </View>
-            <Text style={styles.title}>Szkółka Pływania</Text>
+            <Text style={styles.title}>Pasja Pływania</Text>
             <Text style={styles.subtitle}>{t.auth.login}</Text>
           </View>
 
