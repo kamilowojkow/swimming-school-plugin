@@ -374,11 +374,9 @@ function ssm_api_get_user_roles($user_id, $wp_roles) {
                      in_array('ssm_instructor', $wp_roles) ||
                      in_array('instructor', $wp_roles);
 
-    // Check if user is a parent (has ssm_parent role or has children associated)
+    // Check if user is explicitly a parent (has ssm_parent role)
     $is_parent = in_array('ssm_parent', $wp_roles) ||
-                 in_array('parent', $wp_roles) ||
-                 in_array('subscriber', $wp_roles) ||
-                 in_array('customer', $wp_roles);
+                 in_array('parent', $wp_roles);
 
     // Also check if user has instructor AND parent meta flags
     $has_instructor_flag = get_user_meta($user_id, 'ssm_is_instructor', true);
@@ -387,15 +385,31 @@ function ssm_api_get_user_roles($user_id, $wp_roles) {
     if ($has_instructor_flag) $is_instructor = true;
     if ($has_parent_flag) $is_parent = true;
 
-    // For demo purposes: administrators can be both instructor and parent
+    // Check if user has children associated (makes them a parent)
+    global $wpdb;
+    $table_children = $wpdb->prefix . 'ssm_client_children';
+    $table_clients = $wpdb->prefix . 'ssm_clients';
+
+    $has_children = $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM $table_children ch
+         INNER JOIN $table_clients c ON ch.client_id = c.id
+         WHERE c.user_id = %d",
+        $user_id
+    ));
+
+    if ($has_children > 0) {
+        $is_parent = true;
+    }
+
+    // For administrators: can be both instructor and parent for testing
     if (in_array('administrator', $wp_roles)) {
-        $is_parent = true; // Allow admins to test both views
+        $is_parent = true;
     }
 
     if ($is_instructor) $roles[] = 'instructor';
     if ($is_parent) $roles[] = 'parent';
 
-    // Default to parent if no roles detected
+    // Default to parent if no roles detected (for new users without specific role)
     if (empty($roles)) {
         $roles[] = 'parent';
     }
