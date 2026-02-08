@@ -12,6 +12,11 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Tymczasowo wyczyść OPcache - USUŃ PO DEBUGOWANIU
+if (function_exists('opcache_reset')) {
+    opcache_reset();
+}
+
 // UWAGA: Tabele bazy danych są tworzone przez główną wtyczkę Swimming School Manager
 // w klasie SSM_Installer (includes/class-ssm-installer.php)
 // NIE definiujemy tabel tutaj, aby uniknąć konfliktów schematu
