@@ -136,10 +136,10 @@ export default function MakeupsScreen() {
       : (isScheduledMakeup ? 'Cancel makeup' : 'Cancel absence');
     const message = language === 'pl'
       ? (isScheduledMakeup
-          ? `Czy na pewno chcesz cofnąć zaplanowane odrobienie dla ${absence.child_name} na zajęcia ${absence.class_name}?`
+          ? 'Czy na pewno chcesz cofnąć zaplanowane odrobienie?'
           : `Czy na pewno chcesz cofnąć zgłoszenie nieobecności dla ${absence.child_name} na zajęcia ${absence.class_name}?`)
       : (isScheduledMakeup
-          ? `Are you sure you want to cancel the scheduled makeup for ${absence.child_name} for ${absence.class_name}?`
+          ? 'Are you sure you want to cancel the scheduled makeup?'
           : `Are you sure you want to cancel the absence report for ${absence.child_name} for ${absence.class_name}?`);
 
     Alert.alert(
