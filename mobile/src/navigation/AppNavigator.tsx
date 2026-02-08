@@ -13,6 +13,7 @@ import RoleSwitcher from '../components/RoleSwitcher';
 // Auth Screens
 import LoginScreen from '../screens/auth/LoginScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+import RegisterScreen from '../screens/auth/RegisterScreen';
 
 // Parent Screens
 import ParentDashboard from '../screens/parent/DashboardScreen';
@@ -50,6 +51,7 @@ export type RootStackParamList = {
 
 export type AuthStackParamList = {
   Login: undefined;
+  Register: undefined;
   ForgotPassword: undefined;
 };
 
@@ -82,6 +84,7 @@ function AuthNavigator() {
   return (
     <AuthStack.Navigator screenOptions={{ headerShown: false }}>
       <AuthStack.Screen name="Login" component={LoginScreen} />
+      <AuthStack.Screen name="Register" component={RegisterScreen} />
       <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
     </AuthStack.Navigator>
   );

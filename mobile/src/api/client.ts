@@ -121,6 +121,17 @@ class ApiClient {
     return { user, token };
   }
 
+  async register(data: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone?: string;
+    password: string;
+  }) {
+    const response = await this.client.post('/auth/register', data);
+    return response.data;
+  }
+
   async logout() {
     try {
       await this.client.post('/auth/logout');

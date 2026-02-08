@@ -9,6 +9,8 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Image,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,7 +20,7 @@ import { useSettingsStore, useThemeColors } from '../../store/settingsStore';
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
   const { login, isLoading, error, clearError } = useAuthStore();
-  const { t, isDark } = useSettingsStore();
+  const { t, isDark, language } = useSettingsStore();
   const colors = useThemeColors();
 
   const [email, setEmail] = useState('');
@@ -45,15 +47,23 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.content}>
-        {/* Logo / Header */}
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Ionicons name="water" size={64} color={colors.primary} />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.content}>
+          {/* Logo / Header */}
+          <View style={styles.header}>
+            <View style={styles.logoContainer}>
+              <Image
+                source={require('../../../assets/logo.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            </View>
+            <Text style={styles.title}>Szkółka Pływania</Text>
+            <Text style={styles.subtitle}>{t.auth.login}</Text>
           </View>
-          <Text style={styles.title}>Szkółka Pływania</Text>
-          <Text style={styles.subtitle}>{t.auth.login}</Text>
-        </View>
 
         {/* Form */}
         <View style={styles.form}>
@@ -130,13 +140,24 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Aplikacja dla rodziców i instruktorów
-          </Text>
+          {/* Footer */}
+          <View style={styles.footer}>
+            <View style={styles.registerContainer}>
+              <Text style={styles.registerText}>
+                {language === 'pl' ? 'Nie masz konta?' : "Don't have an account?"}
+              </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                <Text style={styles.registerLink}>
+                  {language === 'pl' ? 'Zarejestruj się' : 'Register'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.footerText}>
+              Aplikacja dla rodziców i instruktorów
+            </Text>
+          </View>
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -146,6 +167,10 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>, isDark: boolean
     container: {
       flex: 1,
       backgroundColor: colors.background,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: 'center',
     },
     content: {
       flex: 1,
@@ -159,11 +184,13 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>, isDark: boolean
     logoContainer: {
       width: 120,
       height: 120,
-      borderRadius: 60,
-      backgroundColor: colors.primaryLight,
-      justifyContent: 'center',
-      alignItems: 'center',
+      borderRadius: 24,
+      overflow: 'hidden',
       marginBottom: 16,
+    },
+    logo: {
+      width: '100%',
+      height: '100%',
     },
     title: {
       fontSize: 28,
@@ -236,6 +263,22 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>, isDark: boolean
     },
     footer: {
       alignItems: 'center',
+      marginTop: 24,
+    },
+    registerContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 16,
+      gap: 4,
+    },
+    registerText: {
+      color: colors.textSecondary,
+      fontSize: 14,
+    },
+    registerLink: {
+      color: colors.primary,
+      fontSize: 14,
+      fontWeight: '600',
     },
     footerText: {
       color: colors.textTertiary,

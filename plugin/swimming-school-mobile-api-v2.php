@@ -26,6 +26,12 @@ add_action('rest_api_init', function () {
         'permission_callback' => '__return_true',
     ));
 
+    register_rest_route($namespace, '/auth/register', array(
+        'methods' => 'POST',
+        'callback' => 'ssm_api_register',
+        'permission_callback' => '__return_true',
+    ));
+
     register_rest_route($namespace, '/auth/logout', array(
         'methods' => 'POST',
         'callback' => 'ssm_api_logout',
@@ -432,6 +438,84 @@ function ssm_api_login($request) {
             'type' => $primary_type,
             'roles' => $roles
         )
+    );
+}
+
+function ssm_api_register($request) {
+    $params = $request->get_json_params();
+
+    $first_name = sanitize_text_field($params['first_name'] ?? '');
+    $last_name = sanitize_text_field($params['last_name'] ?? '');
+    $email = sanitize_email($params['email'] ?? '');
+    $phone = sanitize_text_field($params['phone'] ?? '');
+    $password = $params['password'] ?? '';
+
+    // Validation
+    if (empty($first_name) || empty($last_name)) {
+        return new WP_REST_Response(array('message' => 'Imię i nazwisko są wymagane'), 400);
+    }
+
+    if (empty($email) || !is_email($email)) {
+        return new WP_REST_Response(array('message' => 'Podaj poprawny adres email'), 400);
+    }
+
+    if (empty($password) || strlen($password) < 6) {
+        return new WP_REST_Response(array('message' => 'Hasło musi mieć minimum 6 znaków'), 400);
+    }
+
+    // Check if email already exists
+    if (email_exists($email)) {
+        return new WP_REST_Response(array('message' => 'Ten adres email jest już zarejestrowany'), 400);
+    }
+
+    // Check if username (email) already exists
+    if (username_exists($email)) {
+        return new WP_REST_Response(array('message' => 'Ten adres email jest już zarejestrowany'), 400);
+    }
+
+    // Create user
+    $user_id = wp_create_user($email, $password, $email);
+
+    if (is_wp_error($user_id)) {
+        return new WP_REST_Response(array('message' => 'Nie udało się utworzyć konta: ' . $user_id->get_error_message()), 500);
+    }
+
+    // Update user meta
+    update_user_meta($user_id, 'first_name', $first_name);
+    update_user_meta($user_id, 'last_name', $last_name);
+    if (!empty($phone)) {
+        update_user_meta($user_id, 'phone', $phone);
+    }
+
+    // Set display name
+    wp_update_user(array(
+        'ID' => $user_id,
+        'display_name' => trim($first_name . ' ' . $last_name),
+        'first_name' => $first_name,
+        'last_name' => $last_name,
+    ));
+
+    // Assign 'ssm_parent' role (registered users are parents by default)
+    $user = new WP_User($user_id);
+    $user->set_role('ssm_parent');
+
+    // Create client record in ssm_clients table
+    global $wpdb;
+    $table_clients = $wpdb->prefix . 'ssm_clients';
+
+    $wpdb->insert($table_clients, array(
+        'user_id' => $user_id,
+        'first_name' => $first_name,
+        'last_name' => $last_name,
+        'email' => $email,
+        'phone' => $phone,
+        'created_at' => current_time('mysql'),
+    ));
+
+    return array(
+        'success' => true,
+        'message' => 'Konto zostało utworzone',
+        'user_id' => $user_id,
     );
 }
 
