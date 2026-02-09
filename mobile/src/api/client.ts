@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Adres WordPressa
-const API_BASE_URL = 'https://woykow.pl/wp-json/ssm/v1';
+const API_BASE_URL = 'https://pasjaplywania.pl/wp-json/ssm/v1';
 
 // Klucze do przechowywania tokenów
 const TOKEN_KEY = 'ssm_access_token';

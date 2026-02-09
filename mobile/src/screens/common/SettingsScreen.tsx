@@ -60,11 +60,11 @@ export default function SettingsScreen() {
   };
 
   const handleContact = () => {
-    Linking.openURL('mailto:kontakt@szkolkaplywania.pl');
+    Linking.openURL('mailto:kontakt@pasjaplywania.pl');
   };
 
   const handleWebsite = () => {
-    Linking.openURL('https://woykow.pl');
+    Linking.openURL('https://pasjaplywania.pl');
   };
 
   const styles = createStyles(colors, isDark);
