@@ -295,7 +295,7 @@ $school_name = get_option('ssm_school_name', 'Szkola Plywania');
             <table class="form-table">
                 <tr>
                     <th>Wersja wtyczki:</th>
-                    <td><strong>2.0</strong></td>
+                    <td><strong><?php echo SSM_VERSION; ?></strong></td>
                 </tr>
                 <tr>
                     <th>Shortcody:</th>

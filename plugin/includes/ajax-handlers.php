@@ -955,10 +955,7 @@ function ssm_ajax_report_absence() {
     }
     
     global $wpdb;
-    
-    // Loguj wszystkie otrzymane dane
-    error_log('SSM Absence Report - POST data: ' . print_r($_POST, true));
-    
+
     $session_id = isset($_POST['session_id']) ? intval($_POST['session_id']) : 0;
     $enrollment_id = isset($_POST['enrollment_id']) ? intval($_POST['enrollment_id']) : 0;
     $reason = isset($_POST['reason']) ? sanitize_textarea_field($_POST['reason']) : '';

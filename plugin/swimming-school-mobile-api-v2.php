@@ -12,11 +12,6 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Tymczasowo wyczyść OPcache - USUŃ PO DEBUGOWANIU
-if (function_exists('opcache_reset')) {
-    opcache_reset();
-}
-
 // UWAGA: Tabele bazy danych są tworzone przez główną wtyczkę Swimming School Manager
 // w klasie SSM_Installer (includes/class-ssm-installer.php)
 // NIE definiujemy tabel tutaj, aby uniknąć konfliktów schematu
@@ -356,7 +351,6 @@ function ssm_api_get_or_create_client($user_id, $return_debug = false) {
 
         $client_id = $wpdb->insert_id;
         if ($client_id) {
-            error_log("SSM API: Auto-created client record id=$client_id for user_id=$user_id");
             $client = (object) array('id' => $client_id);
             $debug['auto_created'] = true;
             $debug['client_id'] = $client_id;
@@ -813,8 +807,6 @@ function ssm_api_get_children($request) {
     $client = $result['client'];
     $debug_info = $result['debug'];
 
-    error_log("SSM API get_children DEBUG: " . json_encode($debug_info));
-
     if (!$client) {
         return array(
             '_debug' => $debug_info,
@@ -856,8 +848,6 @@ function ssm_api_get_children($request) {
     $debug_info['children_found'] = count($children);
     $debug_info['last_query'] = $wpdb->last_query;
     $debug_info['last_error'] = $wpdb->last_error;
-
-    error_log("SSM API get_children RESULT: " . json_encode($debug_info));
 
     $result = array();
     foreach ($children as $child) {

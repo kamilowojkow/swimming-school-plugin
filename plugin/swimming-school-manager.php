@@ -1,10 +1,10 @@
 <?php
 /**
  * Plugin Name: Swimming School Manager
- * Plugin URI: https://example.com
+ * Plugin URI: https://github.com/kamilowojkow/swimming-school-plugin
  * Description: System zarządzania szkółką pływania - Rodzice, Dzieci, Instruktorzy, Kursy z harmonogramem
- * Version: 2.65
- * Author: Twoje Imię
+ * Version: 2.66
+ * Author: Kamil Owojkow
  * Text Domain: swimming-school
  * Domain Path: /languages
  */
@@ -15,11 +15,12 @@ if (!defined('ABSPATH')) {
 }
 
 // Stałe
-define('SSM_VERSION', '2.65');
+define('SSM_VERSION', '2.66');
 define('SSM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SSM_PLUGIN_URL', plugin_dir_url(__FILE__));
 
-// Załaduj instalator jako pierwszy
+// Załaduj konfigurację i instalator jako pierwsze
+require_once SSM_PLUGIN_DIR . 'includes/class-ssm-config.php';
 require_once SSM_PLUGIN_DIR . 'includes/class-ssm-installer.php';
 
 // Funkcja pomocnicza - polskie nazwy dni tygodnia
@@ -168,7 +169,8 @@ class Swimming_School_Manager_V2 {
         add_submenu_page('swimming-school', 'Powiadomienia', '🔔 Powiadomienia', 'manage_options', 'swimming-school-notifications', array($this, 'notifications_page'));
         add_submenu_page(null, 'Lista poleceń', 'Lista poleceń', 'manage_options', 'swimming-school-referrals-list', array($this, 'referrals_list_page')); // Ukryte submenu
         add_submenu_page('swimming-school', 'Ustawienia', 'Ustawienia', 'manage_options', 'ssm-settings', array($this, 'settings_page'));
-        
+        add_submenu_page('swimming-school', 'Srodowisko', 'Srodowisko', 'manage_options', 'ssm-environment', array($this, 'environment_page'));
+
         // Harmonogram (ukryte menu - dostęp przez ?page=ssm-sessions&class_id=X)
         add_submenu_page(null, 'Harmonogram', 'Harmonogram', 'manage_options', 'ssm-sessions', array($this, 'sessions_page'));
     }
@@ -277,6 +279,10 @@ class Swimming_School_Manager_V2 {
 
     public function settings_page() {
         include SSM_PLUGIN_DIR . 'includes/admin/settings.php';
+    }
+
+    public function environment_page() {
+        include SSM_PLUGIN_DIR . 'includes/admin/environment-settings.php';
     }
     
     // Shortcodes

@@ -280,11 +280,7 @@ function ssm_ifirma_api_request($endpoint, $data = null, $method = 'GET') {
     
     $status_code = wp_remote_retrieve_response_code($response);
     $body = json_decode(wp_remote_retrieve_body($response), true);
-    
-    // Loguj request/response dla debugowania
-    error_log('iFirma API Request: ' . $endpoint);
-    error_log('iFirma API Response: ' . wp_remote_retrieve_body($response));
-    
+
     if ($status_code === 200 || $status_code === 201) {
         return array(
             'success' => true,
