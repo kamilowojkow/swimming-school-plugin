@@ -8,6 +8,12 @@
       "android": {
         "buildType": "apk"
       }
+    },
+    "local-apk": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
     }
   }
 }
