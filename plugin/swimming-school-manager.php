@@ -85,7 +85,9 @@ class Swimming_School_Manager_V2 {
         require_once SSM_PLUGIN_DIR . 'includes/gamification-system.php';
         require_once SSM_PLUGIN_DIR . 'includes/translations.php';
         require_once SSM_PLUGIN_DIR . 'includes/notification-system.php';
-        require_once SSM_PLUGIN_DIR . 'includes/api/rest-api.php';
+        // REST API is provided by the separate 'Swimming School Mobile API' plugin
+        // (swimming-school-mobile-api-v2.php). Do not load the old API to avoid route conflicts.
+        // require_once SSM_PLUGIN_DIR . 'includes/api/rest-api.php';
 
         // Inicjalizacja
         add_action('plugins_loaded', array($this, 'init'));
