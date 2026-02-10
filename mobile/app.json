@@ -2,6 +2,9 @@
   "expo": {
     "name": "Szkółka Pływania",
     "slug": "swimming-school-app",
+    "plugins": [
+      "./plugins/withRemoveFlipper"
+    ],
     "version": "1.0.0",
     "sdkVersion": "52.0.0",
     "orientation": "portrait",
