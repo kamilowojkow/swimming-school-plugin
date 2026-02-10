@@ -101,13 +101,11 @@ class ApiClient {
       throw new Error('No refresh token');
     }
 
-    const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-      refresh_token: refreshToken,
-    });
-
-    const { access_token, refresh_token } = response.data.tokens;
-    await this.saveTokens(access_token, refresh_token);
-    return access_token;
+    // API uses long-lived tokens without a refresh endpoint.
+    // Re-login is required when the token expires.
+    // If the stored token is still the same, force re-authentication.
+    await this.clearTokens();
+    throw new Error('Token expired, please login again');
   }
 
   // ============================================
@@ -199,7 +197,8 @@ class ApiClient {
   }
 
   async getEnrollments() {
-    const response = await this.client.get('/parent/enrollments');
+    // No dedicated enrollments endpoint - use children data instead
+    const response = await this.client.get('/parent/children');
     return response.data;
   }
 
@@ -218,8 +217,10 @@ class ApiClient {
   }
 
   async getPaymentDetails(paymentId: number) {
-    const response = await this.client.get(`/parent/payments/${paymentId}`);
-    return response.data;
+    // No dedicated payment details endpoint - get all payments and filter
+    const response = await this.client.get('/parent/payments');
+    const payments = Array.isArray(response.data) ? response.data : response.data?.payments || [];
+    return payments.find((p: any) => p.id === paymentId) || null;
   }
 
   async getPaymentHistory() {
@@ -280,13 +281,15 @@ class ApiClient {
   }
 
   async getChildAchievements(childId: number) {
-    const response = await this.client.get(`/parent/children/${childId}/achievements`);
-    return response.data;
+    // Achievements are included in child details response
+    const response = await this.client.get(`/parent/children/${childId}`);
+    return response.data?.achievements || [];
   }
 
   async getChildProgress(childId: number) {
-    const response = await this.client.get(`/parent/children/${childId}/progress`);
-    return response.data;
+    // Progress is included in child details response
+    const response = await this.client.get(`/parent/children/${childId}`);
+    return response.data?.progress || [];
   }
 
   // ============================================
@@ -383,13 +386,13 @@ class ApiClient {
   // ============================================
 
   async getFacilities() {
-    const response = await this.client.get('/facilities');
-    return response.data;
+    // Public facilities endpoint not available yet
+    return [];
   }
 
   async getClasses() {
-    const response = await this.client.get('/classes');
-    return response.data;
+    // Public classes endpoint not available yet
+    return [];
   }
 }
 
