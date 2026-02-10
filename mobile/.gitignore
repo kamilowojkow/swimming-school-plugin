@@ -16,7 +16,11 @@ web-build/
 *.p8
 *.p12
 *.key
+*.keystore
 *.mobileprovision
+
+# Signing
+keystore.properties
 
 # Metro
 .metro-health-check*

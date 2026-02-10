@@ -3,7 +3,8 @@
     "name": "Szkółka Pływania",
     "slug": "swimming-school-app",
     "plugins": [
-      "./plugins/withRemoveFlipper"
+      "./plugins/withRemoveFlipper",
+      "./plugins/withAndroidSigning"
     ],
     "version": "1.0.0",
     "sdkVersion": "52.0.0",
